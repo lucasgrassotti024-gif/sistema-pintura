@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --bg-base: #090d16;
+    --bg-surface: #0f172a;
+    --bg-surface-raised: #182234;
+    --bg-surface-highlight: #202d42;
+    
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-medium: rgba(255, 255, 255, 0.14);
+    --border-strong: rgba(255, 255, 255, 0.20);
+    
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    
+    /* Verde Industrial Tecnológico */
+    --accent-green: #10b981;
+    --accent-green-glow: rgba(16, 185, 129, 0.2);
+    --accent-green-hover: #059669;
+    --accent-green-subtle: rgba(16, 185, 129, 0.08);
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Universal: Mapeamento de superfícies claras para o Design System Dark */
+  .bg-white {
+    background-color: #0f172a !important;
+  }
+
+  .bg-slate-50 {
+    background-color: #090d16 !important;
+  }
+
+  .bg-slate-100 {
+    background-color: #182234 !important;
+  }
+
+  .bg-slate-200 {
+    background-color: #243044 !important;
+  }
+
+  /* Bordas e Divisórias universais Dark */
+  .border-slate-100,
+  .border-slate-200,
+  .border-slate-300,
+  .border-gray-200 {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+  .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  /* Textos universais Dark */
+  .text-slate-900,
+  .text-slate-800 {
+    color: #f8fafc !important;
+  }
+
+  .text-slate-700 {
+    color: #cbd5e1 !important;
+  }
+
+  .text-slate-600 {
+    color: #94a3b8 !important;
+  }
+
+  .text-slate-500 {
+    color: #64748b !important;
+  }
+
+  /* Inputs, selects e textareas */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    background-color: #090d16 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
+    border-radius: 0.375rem;
+    transition: all 0.15s ease-in-out;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  select:focus,
+  textarea:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 1px #10b981, 0 0 10px -2px rgba(16, 185, 129, 0.3) !important;
+    outline: none !important;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #475569 !important;
+  }
+
+  /* Modais com elevação de superfície grafite */
+  .fixed .bg-white,
+  .fixed [class*="bg-white"] {
+    background-color: #0f172a !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    color: #f8fafc !important;
+  }
+
+  /* Hover em elementos de lista e tabelas */
+  .hover\:bg-slate-50:hover,
+  .hover\:bg-slate-100:hover {
+    background-color: rgba(255, 255, 255, 0.04) !important;
+  }
+
+  .hover\:bg-slate-200:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+  }
+}
+
+/* Utilitários do Design System Industrial Dark */
+@layer utilities {
+  .bg-industrial-base {
+    background-color: #090d16;
+  }
+  
+  .bg-industrial-surface {
+    background-color: #0f172a;
+  }
+  
+  .bg-industrial-raised {
+    background-color: #182234;
+  }
+
+  .border-industrial-subtle {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .border-industrial-medium {
+    border-color: rgba(255, 255, 255, 0.14);
+  }
+
+  .glow-green-subtle {
+    box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.25);
+  }
+
+  .glow-green-sm {
+    box-shadow: 0 0 10px -2px rgba(16, 185, 129, 0.35);
+  }
+
+  .industrial-card {
+    background-color: #0f172a;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.5rem;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .industrial-card:hover {
+    border-color: rgba(255, 255, 255, 0.14);
+    box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.6);
+  }
+}
