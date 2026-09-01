@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Material, NewMaterialInput, StockEntryInput } from "../types/material.types";
+import {
+  Material,
+  MaterialPlanningMetrics,
+  MaterialPlanningSummary,
+  NewMaterialInput,
+  PlanningPeriodFilter,
+  StockEntryInput,
+} from "../types/material.types";
 import {
   getMaterials,
   createMaterial as createMaterialService,
@@ -11,48 +18,49 @@ import {
   mapRowToMaterial,
   SupabaseMaterialRow,
 } from "../services/material.service";
+import { getMaterialsPlanningMetrics } from "../services/material-planning.service";
 import { createClient } from "@/lib/supabase/client";
 
 export function useMaterials() {
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
+  const [planningMetricsList, setPlanningMetricsList] = useState<MaterialPlanningMetrics[]>([]);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string | null>(null);
+  const [period, setPeriod] = useState<PlanningPeriodFilter>("semana");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filtros
+  // Filtros de busca
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
 
+  // Carregar materiais e consolidar com planejamento
   const loadMaterials = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await getMaterials();
-      setMaterials(data);
-      if (selectedMaterial) {
-        const refreshed = data.find((m) => m.id === selectedMaterial.id);
-        if (refreshed) setSelectedMaterial(refreshed);
-      }
+      const mats = await getMaterials();
+      setMaterials(mats);
+
+      const metrics = await getMaterialsPlanningMetrics(mats, period);
+      setPlanningMetricsList(metrics);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro ao carregar materiais.";
+      const msg = err instanceof Error ? err.message : "Erro ao carregar catálogo e planejamento.";
       setError(msg);
     } finally {
       setIsLoading(false);
     }
-  }, [selectedMaterial]);
+  }, [period]);
 
   useEffect(() => {
     loadMaterials();
-  }, []);
+  }, [loadMaterials]);
 
-  // ----------------------------------------------------------------------------
-  // Sincronização em Tempo Real (Supabase Realtime)
-  // ----------------------------------------------------------------------------
+  // Sincronização em tempo real (Supabase Realtime para materials)
   useEffect(() => {
     const supabase = createClient();
 
     const channel = supabase
-      .channel("realtime-materials-channel")
+      .channel("realtime-materials-planning-channel")
       .on(
         "postgres_changes",
         {
@@ -72,14 +80,12 @@ export function useMaterials() {
             setMaterials((prev) =>
               prev.map((m) => (m.id === updatedMaterial.id ? updatedMaterial : m))
             );
-            setSelectedMaterial((curr) =>
-              curr?.id === updatedMaterial.id ? updatedMaterial : curr
-            );
           } else if (payload.eventType === "DELETE") {
             const deletedId = (payload.old as { id: string }).id;
             setMaterials((prev) => prev.filter((m) => m.id !== deletedId));
-            setSelectedMaterial((curr) => (curr?.id === deletedId ? null : curr));
           }
+          // Recarregar métricas para garantir sincronia física
+          loadMaterials();
         }
       )
       .subscribe();
@@ -87,12 +93,12 @@ export function useMaterials() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [loadMaterials]);
 
   const addNewMaterial = async (input: NewMaterialInput): Promise<Material> => {
     const created = await createMaterialService(input);
-    setMaterials((prev) => [created, ...prev]);
-    setSelectedMaterial(created);
+    await loadMaterials();
+    setSelectedMaterialId(created.id);
     return created;
   };
 
@@ -101,60 +107,28 @@ export function useMaterials() {
     input: NewMaterialInput & { active?: boolean }
   ): Promise<Material> => {
     const updated = await updateMaterialService(id, input);
-    setMaterials((prev) => prev.map((m) => (m.id === id ? updated : m)));
-    if (selectedMaterial?.id === id) {
-      setSelectedMaterial(updated);
-    }
+    await loadMaterials();
     return updated;
   };
 
   const removeMaterial = async (id: string): Promise<void> => {
     const inactived = await deleteMaterialService(id);
-    setMaterials((prev) => prev.map((m) => (m.id === id ? inactived : m)));
-    if (selectedMaterial?.id === id) {
-      setSelectedMaterial(inactived);
+    await loadMaterials();
+    if (selectedMaterialId === id) {
+      setSelectedMaterialId(null);
     }
   };
 
   const addStockEntry = async (input: StockEntryInput) => {
     const result = await registerStockEntryService(input);
-    setMaterials((prev) =>
-      prev.map((m) =>
-        m.id === input.materialId
-          ? {
-              ...m,
-              currentStock: result.newStock,
-              status:
-                result.newStock < m.minimumStock
-                  ? "critico"
-                  : result.newStock <= m.minimumStock * 1.15
-                  ? "atencao"
-                  : "adequado",
-            }
-          : m
-      )
-    );
-    if (selectedMaterial && selectedMaterial.id === input.materialId) {
-      setSelectedMaterial((prev) =>
-        prev
-          ? {
-              ...prev,
-              currentStock: result.newStock,
-              status:
-                result.newStock < prev.minimumStock
-                  ? "critico"
-                  : result.newStock <= prev.minimumStock * 1.15
-                  ? "atencao"
-                  : "adequado",
-            }
-          : null
-      );
-    }
+    await loadMaterials();
     return result;
   };
 
-  const filteredMaterials = useMemo(() => {
-    return materials.filter((m) => {
+  // Filtragem dos cards de planejamento
+  const filteredMetrics = useMemo(() => {
+    return planningMetricsList.filter((item) => {
+      const m = item.material;
       if (search.trim()) {
         const term = search.toLowerCase();
         const matchesCode = m.code.toLowerCase().includes(term);
@@ -162,18 +136,62 @@ export function useMaterials() {
         const matchesType = m.type.toLowerCase().includes(term);
         if (!matchesCode && !matchesName && !matchesType) return false;
       }
-      if (statusFilter !== "todos" && m.status !== statusFilter) {
-        return false;
+
+      if (statusFilter !== "todos") {
+        if (statusFilter === "adequado" && item.projectedStatus !== "adequado") return false;
+        if (statusFilter === "atencao" && item.projectedStatus !== "atencao") return false;
+        if (statusFilter === "critico" && item.projectedStatus !== "critico") return false;
       }
+
       return true;
     });
-  }, [materials, search, statusFilter]);
+  }, [planningMetricsList, search, statusFilter]);
+
+  // Material e métricas selecionadas
+  const selectedMetrics = useMemo(() => {
+    if (!selectedMaterialId) return null;
+    return planningMetricsList.find((pm) => pm.material.id === selectedMaterialId) || null;
+  }, [planningMetricsList, selectedMaterialId]);
+
+  const selectedMaterial = useMemo(() => {
+    return selectedMetrics ? selectedMetrics.material : null;
+  }, [selectedMetrics]);
+
+  // Indicadores de resumo do topo da tela
+  const summary: MaterialPlanningSummary = useMemo(() => {
+    let atRiskCount = 0;
+    let insufficientCount = 0;
+    let totalPlannedVolume = 0;
+    let totalConsumedVolume = 0;
+
+    for (const item of planningMetricsList) {
+      if (item.projectedStatus === "atencao") atRiskCount++;
+      if (item.projectedStatus === "critico") insufficientCount++;
+      totalPlannedVolume += item.plannedOriginal;
+      totalConsumedVolume += item.consumedReal;
+    }
+
+    return {
+      totalMaterialsCount: planningMetricsList.length,
+      atRiskCount,
+      insufficientCount,
+      totalPlannedVolume: Math.round(totalPlannedVolume * 100) / 100,
+      totalConsumedVolume: Math.round(totalConsumedVolume * 100) / 100,
+    };
+  }, [planningMetricsList]);
 
   return {
-    materials: filteredMaterials,
+    materials,
     rawMaterials: materials,
+    planningMetricsList: filteredMetrics,
+    selectedMetrics,
     selectedMaterial,
-    setSelectedMaterial,
+    selectedMaterialId,
+    setSelectedMaterialId,
+    setSelectedMaterial: (m: Material | null) => setSelectedMaterialId(m ? m.id : null),
+    period,
+    setPeriod,
+    summary,
     isLoading,
     error,
     search,
@@ -187,4 +205,3 @@ export function useMaterials() {
     addStockEntry,
   };
 }
-

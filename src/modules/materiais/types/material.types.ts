@@ -1,5 +1,7 @@
 export type MaterialStockStatus = "adequado" | "atencao" | "critico";
 
+export type PlanningPeriodFilter = "semana" | "mes" | "todas";
+
 export interface Material {
   id: string;
   code: string;
@@ -21,7 +23,7 @@ export interface Material {
 export interface StockMovement {
   id: string;
   materialId: string;
-  movementType: "entrada";
+  movementType: "entrada" | "saida_atividade" | "ajuste";
   quantity: number;
   previousStock: number;
   newStock: number;
@@ -30,6 +32,8 @@ export interface StockMovement {
   documentReference?: string;
   observation?: string;
   userId?: string;
+  activityId?: string;
+  consumptionId?: string;
   createdAt: string;
 }
 
@@ -52,6 +56,51 @@ export interface StockEntryInput {
   expirationDate?: string;
   documentReference?: string;
   observation?: string;
+}
+
+/**
+ * Atividade vinculada demandando ou consumindo o material no período
+ */
+export interface MaterialLinkedActivity {
+  activityId: string;
+  orderNumber: string;
+  activityName: string;
+  serviceType?: string;
+  status: string;
+  progressPercentage: number;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  plannedQuantity: number;
+  consumedQuantity: number;
+  remainingPlannedQuantity: number;
+  deviationQuantity: number;
+  unit: string;
+}
+
+/**
+ * Métricas operacionais consolidadas de planejamento por material
+ */
+export interface MaterialPlanningMetrics {
+  material: Material;
+  plannedOriginal: number;
+  consumedReal: number;
+  remainingPlanned: number;
+  projectedStock: number;
+  deviation: number;
+  availablePercentageAfterPlanning: number;
+  projectedStatus: MaterialStockStatus;
+  linkedActivities: MaterialLinkedActivity[];
+}
+
+/**
+ * Resumo global dos indicadores no topo da tela de Materiais & Estoque
+ */
+export interface MaterialPlanningSummary {
+  totalMaterialsCount: number;
+  atRiskCount: number;
+  insufficientCount: number;
+  totalPlannedVolume: number;
+  totalConsumedVolume: number;
 }
 
 export const MOCK_MATERIALS: Material[] = [
@@ -115,4 +164,3 @@ export const MOCK_MATERIALS: Material[] = [
     technicalInfo: "Solvente para ajuste de viscosidade e limpeza de ferramentas de epóxi.",
   },
 ];
-
