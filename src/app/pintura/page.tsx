@@ -151,7 +151,7 @@ export default function PinturaInicioPage() {
       )}
 
       {/* 2. RESUMO EXECUTIVO (4 Blocos Compactos) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Atividades Ativas */}
         <div className="bg-[#0f172a] border border-white/10 rounded-lg p-3.5 flex flex-col justify-between">
           <span className="text-[10px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
@@ -198,8 +198,8 @@ export default function PinturaInicioPage() {
       </div>
 
       {/* 3. RESUMO DA PROGRAMAÇÃO DA SEMANA ATUAL (Segunda a Sexta) */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-lg p-5 space-y-3 shadow-md">
-        <div className="flex justify-between items-center border-b border-white/5 pb-2">
+      <div className="bg-[#0f172a] border border-white/10 rounded-lg p-4 sm:p-5 space-y-3 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-white/5 pb-2 gap-1">
           <div>
             <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
               Programação da Semana ({weekInfo.startDate} a {weekInfo.endDate})
@@ -208,13 +208,13 @@ export default function PinturaInicioPage() {
           </div>
           <Link
             href="/pintura/programacao"
-            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors self-start sm:self-auto"
           >
             Ver grade completa →
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1">
           {weekDaysActivities.map((day) => (
             <Link
               key={day.date}
@@ -245,7 +245,7 @@ export default function PinturaInicioPage() {
       {/* 4. GRID OPERACIONAL: ATIVIDADES DE HOJE + ATIVIDADES ATRASADAS */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Atividades de Hoje */}
-        <div className="bg-[#0f172a] border border-white/10 rounded-lg p-5 space-y-3 shadow-md flex flex-col justify-between">
+        <div className="bg-[#0f172a] border border-white/10 rounded-lg p-4 sm:p-5 space-y-3 shadow-md flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center border-b border-white/5 pb-2">
               <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2">
@@ -264,14 +264,14 @@ export default function PinturaInicioPage() {
               <div className="divide-y divide-white/5 text-xs">
                 {activitiesToday.map((act) => (
                   <div key={act.id} className="py-2.5 space-y-1">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-2">
                       <span className="font-mono font-bold text-emerald-400">{act.orderNumber}</span>
                       <ActivityStatusBadge status={act.status} />
                     </div>
                     <p className="font-semibold text-slate-100 leading-snug">{act.name}</p>
                     <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
-                      <span>{act.location?.area || "Área geral"} • Resp: {act.assignedTo || "—"}</span>
-                      <span className="font-mono font-bold text-slate-300">{act.progressPercentage}%</span>
+                      <span className="truncate max-w-[200px]">{act.location?.area || "Área geral"} • Resp: {act.assignedTo || "—"}</span>
+                      <span className="font-mono font-bold text-slate-300 shrink-0">{act.progressPercentage}%</span>
                     </div>
                   </div>
                 ))}
@@ -290,7 +290,7 @@ export default function PinturaInicioPage() {
         </div>
 
         {/* Atividades Atrasadas */}
-        <div className="bg-[#0f172a] border border-rose-500/30 rounded-lg p-5 space-y-3 shadow-md flex flex-col justify-between">
+        <div className="bg-[#0f172a] border border-rose-500/30 rounded-lg p-4 sm:p-5 space-y-3 shadow-md flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-center border-b border-rose-500/20 pb-2">
               <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
@@ -309,16 +309,16 @@ export default function PinturaInicioPage() {
               <div className="divide-y divide-white/5 text-xs">
                 {delayedActivities.map((act) => (
                   <div key={act.id} className="py-2.5 space-y-1">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start gap-2">
                       <span className="font-mono font-bold text-rose-400">{act.orderNumber}</span>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/30">
+                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/30 shrink-0">
                         Venceu em {act.schedule.plannedEndDate}
                       </span>
                     </div>
                     <p className="font-semibold text-slate-100 leading-snug">{act.name}</p>
                     <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
                       <span>Progresso: {act.progressPercentage}%</span>
-                      <span>{act.location?.area || "Área geral"}</span>
+                      <span className="truncate max-w-[150px]">{act.location?.area || "Área geral"}</span>
                     </div>
                   </div>
                 ))}
@@ -338,11 +338,11 @@ export default function PinturaInicioPage() {
       </div>
 
       {/* 5. ATALHOS RÁPIDOS (Dark Premium Industrial com badges reais) */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-lg p-5 space-y-3 shadow-md">
+      <div className="bg-[#0f172a] border border-white/10 rounded-lg p-4 sm:p-5 space-y-3 shadow-md">
         <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300 border-b border-white/5 pb-2">
           Módulos & Acessos Rápidos
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {shortcuts.map((s) => (
             <Link
               key={s.href}

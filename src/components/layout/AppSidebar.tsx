@@ -1,14 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useSidebar } from "@/context/SidebarContext";
 
 export function AppSidebar() {
   const pathname = usePathname();
   const { user, profile, signOut } = useAuth();
-  const [collapsed, setCollapsed] = useState(false);
+  const { isMobileOpen, closeMobile, isCollapsed, toggleCollapsed } = useSidebar();
 
   // Mapeamento estrito das rotas reais do projeto
   const menuGroups = [
@@ -57,6 +58,15 @@ export function AppSidebar() {
           ),
         },
         {
+          label: "Histórico & Auditoria",
+          href: "/pintura/historico",
+          icon: (
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ),
+        },
+        {
           label: "Materiais & Estoque",
           href: "/pintura/materiais-estoque",
           icon: (
@@ -88,118 +98,148 @@ export function AppSidebar() {
   ];
 
   return (
-    <aside
-      className={`bg-[#0c121e] border-r border-white/5 flex flex-col justify-between transition-all duration-300 z-30 shrink-0 select-none ${
-        collapsed ? "w-16" : "w-60"
-      }`}
-    >
-      {/* Topo: Logo & Botão de Recolher */}
-      <div>
-        <div className="h-16 flex items-center justify-between px-4 border-b border-white/5">
-          <Link href="/pintura" className="flex items-center gap-3 overflow-hidden">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs tracking-wider shrink-0 shadow-[0_0_12px_-2px_rgba(16,185,129,0.3)]">
-              SP
-            </div>
-            {!collapsed && (
-              <div className="flex flex-col">
-                <span className="font-bold text-slate-100 text-xs tracking-wide">
-                  SISTEMA PINTURA
-                </span>
-                <span className="text-[10px] text-emerald-400 font-mono tracking-wider uppercase">
-                  Industrial Pro
-                </span>
-              </div>
-            )}
-          </Link>
+    <>
+      {/* Backdrop com Blur no Mobile (< 768px) */}
+      {isMobileOpen && (
+        <div
+          onClick={closeMobile}
+          aria-hidden="true"
+          className="fixed inset-0 bg-black/70 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300 animate-in fade-in"
+        />
+      )}
 
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            title={collapsed ? "Expandir menu" : "Recolher menu"}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors"
-          >
-            <svg
-              className={`w-4 h-4 transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
+      {/* Sidebar / Off-Canvas Drawer */}
+      <aside
+        className={`fixed md:sticky top-0 inset-y-0 left-0 h-screen bg-[#0c121e] border-r border-white/5 flex flex-col justify-between transition-all duration-300 z-50 md:z-30 shrink-0 select-none ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+        } ${isCollapsed ? "md:w-16 w-64" : "w-64"}`}
+      >
+        {/* Topo: Logo & Botão de Fechar no Mobile / Recolher no Desktop */}
+        <div>
+          <div className="h-16 flex items-center justify-between px-4 border-b border-white/5">
+            <Link
+              href="/pintura"
+              onClick={closeMobile}
+              className="flex items-center gap-3 overflow-hidden"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Lista de Navegação Agrupada */}
-        <nav className="p-3 space-y-6 overflow-y-auto">
-          {menuGroups.map((group) => (
-            <div key={group.category} className="space-y-1">
-              {!collapsed && (
-                <div className="px-3 pb-1 text-[10px] font-bold tracking-wider text-slate-500 font-mono">
-                  {group.category}
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs tracking-wider shrink-0 shadow-[0_0_12px_-2px_rgba(16,185,129,0.3)]">
+                SP
+              </div>
+              {(!isCollapsed || isMobileOpen) && (
+                <div className="flex flex-col">
+                  <span className="font-bold text-slate-100 text-xs tracking-wide">
+                    SISTEMA PINTURA
+                  </span>
+                  <span className="text-[10px] text-emerald-400 font-mono tracking-wider uppercase">
+                    Industrial Pro
+                  </span>
                 </div>
               )}
-              {group.items.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={collapsed ? item.label : undefined}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium transition-all duration-150 relative group ${
-                      isActive
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_-4px_rgba(16,185,129,0.3)] font-semibold"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
-                    } ${collapsed ? "justify-center px-0" : ""}`}
-                  >
-                    {/* Indicador sutil de página ativa */}
-                    {isActive && (
-                      <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-emerald-500 rounded-r shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-                    )}
-                    <span className={isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-200"}>
-                      {item.icon}
-                    </span>
-                    {!collapsed && <span>{item.label}</span>}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
-      </div>
+            </Link>
 
-      {/* Rodapé da Sidebar: Perfil & Sair */}
-      <div className="p-3 border-t border-white/5 bg-[#090d16]/50">
-        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} gap-2`}>
-          <div className="flex items-center gap-2 overflow-hidden">
-            <div className="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-300 text-xs font-bold shrink-0">
-              {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
-            </div>
-            {!collapsed && (
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-medium text-slate-200 truncate leading-tight">
-                  {profile?.fullName || user?.email?.split("@")[0] || "Operador"}
-                </span>
-                <span className="text-[10px] text-slate-400 font-mono uppercase truncate">
-                  {profile?.role || "Acesso"}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {!collapsed && (
+            {/* Botão no Desktop: Recolher/Expandir */}
             <button
               type="button"
-              onClick={signOut}
-              title="Encerrar sessão"
-              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"
+              onClick={toggleCollapsed}
+              title={isCollapsed ? "Expandir menu" : "Recolher menu"}
+              className="hidden md:flex p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              <svg
+                className={`w-4 h-4 transition-transform duration-300 ${isCollapsed ? "rotate-180" : ""}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
               </svg>
             </button>
-          )}
+
+            {/* Botão no Mobile: Fechar Gaveta */}
+            <button
+              type="button"
+              onClick={closeMobile}
+              title="Fechar menu"
+              className="md:hidden p-1.5 rounded-md text-slate-400 hover:text-slate-100 hover:bg-white/5 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Lista de Navegação Agrupada */}
+          <nav className="p-3 space-y-5 overflow-y-auto max-h-[calc(100vh-8rem)]">
+            {menuGroups.map((group) => (
+              <div key={group.category} className="space-y-1">
+                {(!isCollapsed || isMobileOpen) && (
+                  <div className="px-3 pb-1 text-[10px] font-bold tracking-wider text-slate-500 font-mono">
+                    {group.category}
+                  </div>
+                )}
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={closeMobile}
+                      title={isCollapsed && !isMobileOpen ? item.label : undefined}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-xs font-medium transition-all duration-150 relative group ${
+                        isActive
+                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_15px_-4px_rgba(16,185,129,0.3)] font-semibold"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-white/5 border border-transparent"
+                      } ${isCollapsed && !isMobileOpen ? "justify-center px-0" : ""}`}
+                    >
+                      {/* Indicador sutil de página ativa */}
+                      {isActive && (
+                        <span className="absolute left-0 top-1.5 bottom-1.5 w-1 bg-emerald-500 rounded-r shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                      )}
+                      <span className={isActive ? "text-emerald-400" : "text-slate-400 group-hover:text-slate-200"}>
+                        {item.icon}
+                      </span>
+                      {(!isCollapsed || isMobileOpen) && <span>{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
         </div>
-      </div>
-    </aside>
+
+        {/* Rodapé da Sidebar: Perfil & Sair */}
+        <div className="p-3 border-t border-white/5 bg-[#090d16]/50">
+          <div className={`flex items-center ${isCollapsed && !isMobileOpen ? "justify-center" : "justify-between"} gap-2`}>
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <div className="w-8 h-8 rounded-full bg-slate-800 border border-white/10 flex items-center justify-center text-slate-300 text-xs font-bold shrink-0">
+                {profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || "U"}
+              </div>
+              {(!isCollapsed || isMobileOpen) && (
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-medium text-slate-200 truncate leading-tight">
+                    {profile?.fullName || user?.email?.split("@")[0] || "Operador"}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono uppercase truncate">
+                    {profile?.role || "Acesso"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {(!isCollapsed || isMobileOpen) && (
+              <button
+                type="button"
+                onClick={signOut}
+                title="Encerrar sessão"
+                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-md transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }

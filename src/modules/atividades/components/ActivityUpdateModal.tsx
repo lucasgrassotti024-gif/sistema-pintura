@@ -25,6 +25,11 @@ export function ActivityUpdateModal({ activity, onSave, onClose }: ActivityUpdat
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Proteção rigorosa contra duplo clique/concorrência no frontend
+  const isSubmittingRef = React.useRef(false);
+  // Chave única estável por sessão de submissão (reutilizada em caso de retry/repetição da mesma tentativa)
+  const idempotencyKeyRef = React.useRef<string>(crypto.randomUUID());
+
   const handleAddMaterial = () => {
     const finalMatName = selectedMaterialName === "Outro" ? customMaterialName.trim() : selectedMaterialName;
     const qtyNum = parseFloat(quantity);
@@ -86,19 +91,25 @@ export function ActivityUpdateModal({ activity, onSave, onClose }: ActivityUpdat
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
     setError(null);
 
     if (!validateProgress(progress)) {
       setError("O progresso deve estar entre 0% e 100%.");
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
     if (progress < activity.progressPercentage) {
       setError(`O progresso não pode ser menor que o progresso anterior (${activity.progressPercentage}%).`);
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
       return;
     }
 
-    setIsSubmitting(true);
     try {
       const consumptionsPayload = consumedList.map((c) => ({
         materialName: c.materialName,
@@ -106,20 +117,25 @@ export function ActivityUpdateModal({ activity, onSave, onClose }: ActivityUpdat
         unit: c.unit,
       }));
 
+      // Envia a chave estável da operação (a mesma é mantida caso ocorra retry)
       const updated = await updateActivityProgress(
         activity.id,
         progress,
         consumptionsPayload,
         observation.trim() || undefined,
-        photos.length > 0 ? { files: photos } : undefined
+        photos.length > 0 ? { files: photos } : undefined,
+        idempotencyKeyRef.current
       );
 
+      // Sucesso na submissão: gera uma nova chave para futuras operações
+      idempotencyKeyRef.current = crypto.randomUUID();
       onSave(updated);
     } catch (err) {
       console.error("Erro ao salvar atualização no Supabase:", err);
       const msg = err instanceof Error ? err.message : "Erro desconhecido ao salvar atualização.";
       setError(msg);
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };

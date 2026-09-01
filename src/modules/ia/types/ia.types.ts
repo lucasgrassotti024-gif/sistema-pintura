@@ -16,6 +16,22 @@ export interface IaRouterResult {
   matchedKeywords: string[];
 }
 
+export interface IaConversation {
+  id: string;
+  userId: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IaDbMessage {
+  id: string;
+  conversationId: string;
+  sender: "user" | "ia";
+  content: string;
+  createdAt: string;
+}
+
 export interface IaChatMessage {
   id: string;
   sender: "user" | "ia";

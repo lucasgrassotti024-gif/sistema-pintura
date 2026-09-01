@@ -198,14 +198,14 @@ export function CompletedActivitiesHistoryView() {
         <div className={selectedActivity ? "lg:col-span-2 space-y-4" : "lg:col-span-3 space-y-4"}>
           {/* Navegação por Abas */}
           <div className="bg-[#0f172a] border border-white/10 rounded-lg p-2 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-1.5 bg-[#090d16] p-1 rounded border border-white/10">
+            <div className="flex items-center gap-1.5 bg-[#090d16] p-1 rounded border border-white/10 flex-wrap">
               <button
                 type="button"
                 onClick={() => {
                   setActiveTab("concluidas");
                   setSelectedActivity(null);
                 }}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
                   activeTab === "concluidas"
                     ? "bg-emerald-600 text-white shadow-xs"
                     : "text-slate-400 hover:text-slate-200"
@@ -219,7 +219,7 @@ export function CompletedActivitiesHistoryView() {
                   setActiveTab("canceladas");
                   setSelectedActivity(null);
                 }}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
                   activeTab === "canceladas"
                     ? "bg-rose-600 text-white shadow-xs"
                     : "text-slate-400 hover:text-slate-200"
@@ -233,7 +233,7 @@ export function CompletedActivitiesHistoryView() {
                   setActiveTab("arquivadas");
                   setSelectedActivity(null);
                 }}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
                   activeTab === "arquivadas"
                     ? "bg-slate-700 text-white shadow-xs"
                     : "text-slate-400 hover:text-slate-200"
@@ -252,14 +252,14 @@ export function CompletedActivitiesHistoryView() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar OS, atividade, responsável..."
-                className="w-full bg-[#090d16] border border-white/10 rounded px-2.5 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-hidden focus:border-emerald-500"
+                className="w-full bg-[#090d16] border border-white/10 rounded px-2.5 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-hidden focus:border-emerald-500"
               />
             </div>
             <div>
               <select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full bg-[#090d16] border border-white/10 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                className="w-full bg-[#090d16] border border-white/10 rounded px-2.5 py-2 text-xs text-slate-200 focus:outline-hidden focus:border-emerald-500"
               >
                 <option value="todas">Todas as Áreas</option>
                 {areasList.map((area) => (
@@ -273,7 +273,7 @@ export function CompletedActivitiesHistoryView() {
               <select
                 value={selectedResp}
                 onChange={(e) => setSelectedResp(e.target.value)}
-                className="w-full bg-[#090d16] border border-white/10 rounded px-2.5 py-1.5 text-xs text-slate-200 focus:outline-hidden focus:border-emerald-500"
+                className="w-full bg-[#090d16] border border-white/10 rounded px-2.5 py-2 text-xs text-slate-200 focus:outline-hidden focus:border-emerald-500"
               >
                 <option value="todos">Todos os Responsáveis</option>
                 {respList.map((resp) => (
@@ -285,8 +285,43 @@ export function CompletedActivitiesHistoryView() {
             </div>
           </div>
 
-          {/* Tabela de Histórico */}
-          <div className="bg-[#0f172a] border border-white/10 rounded-lg overflow-hidden shadow-md">
+          {/* 1. VISUALIZAÇÃO EM CARDS (MOBILE < 768px) */}
+          <div className="md:hidden space-y-3">
+            {isLoading ? (
+              <div className="p-8 text-center text-slate-400 font-mono text-xs bg-[#0f172a] rounded-lg border border-white/10">
+                Carregando histórico do Supabase...
+              </div>
+            ) : filteredActivities.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 font-mono text-xs bg-[#0f172a] rounded-lg border border-white/10">
+                Nenhuma atividade encontrada nesta aba.
+              </div>
+            ) : (
+              filteredActivities.map((act) => (
+                <div
+                  key={act.id}
+                  onClick={() => setSelectedActivity(act)}
+                  className={`p-3.5 rounded-lg border bg-[#0f172a] shadow-sm transition-all cursor-pointer space-y-2 ${
+                    selectedActivity?.id === act.id
+                      ? "border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/30"
+                      : "border-white/10 hover:border-white/20"
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="font-mono font-bold text-emerald-400 text-xs">{act.orderNumber}</span>
+                    <ActivityStatusBadge status={act.status} />
+                  </div>
+                  <p className="font-semibold text-slate-100 text-xs leading-snug">{act.name}</p>
+                  <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-white/5">
+                    <span>{act.location?.area || "—"}</span>
+                    <span>Resp: {act.assignedTo || "—"}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* 2. VISUALIZAÇÃO EM TABELA TÉCNICA (DESKTOP >= 768px) */}
+          <div className="hidden md:block bg-[#0f172a] border border-white/10 rounded-lg overflow-hidden shadow-md">
             <table className="min-w-full text-left text-xs">
               <thead className="text-[10px] uppercase font-mono font-bold text-slate-400 bg-[#090d16] border-b border-white/10">
                 <tr>

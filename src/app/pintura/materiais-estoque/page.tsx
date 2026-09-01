@@ -203,8 +203,56 @@ export default function MateriaisEstoquePage() {
 
           {/* Grid Principal: Tabela de Materiais + Painel de Detalhes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className={selectedMaterial ? "lg:col-span-2" : "lg:col-span-3"}>
-              <div className="overflow-x-auto border border-white/10 rounded-lg bg-[#0f172a] shadow-md">
+            <div className={selectedMaterial ? "lg:col-span-2 space-y-3" : "lg:col-span-3 space-y-3"}>
+              {/* 1. VISUALIZAÇÃO EM CARDS (MOBILE < 768px) */}
+              <div className="md:hidden space-y-3">
+                {isLoading ? (
+                  <div className="p-8 text-center text-slate-400 font-mono text-xs bg-[#0f172a] rounded-lg border border-white/10">
+                    Carregando catálogo de materiais do Supabase...
+                  </div>
+                ) : materials.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-xs bg-[#0f172a] rounded-lg border border-white/10">
+                    Nenhum material encontrado com os filtros aplicados.
+                  </div>
+                ) : (
+                  materials.map((m) => {
+                    const isSelected = selectedMaterial?.id === m.id;
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => setSelectedMaterial(m)}
+                        className={`p-4 rounded-lg border bg-[#0f172a] shadow-sm transition-all cursor-pointer space-y-2.5 ${
+                          isSelected
+                            ? "border-emerald-500/50 bg-emerald-500/5 ring-1 ring-emerald-500/30"
+                            : "border-white/10 hover:border-white/20"
+                        }`}
+                      >
+                        <div className="flex justify-between items-start gap-2">
+                          <span className="font-mono font-bold text-emerald-400 text-xs">{m.code}</span>
+                          {getStatusBadge(m.status)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-100 text-xs leading-snug">{m.name}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            {m.type} {m.manufacturer ? `• ${m.manufacturer}` : ""} {m.color ? `• ${m.color}` : ""}
+                          </p>
+                        </div>
+                        <div className="flex justify-between items-center text-xs pt-1 border-t border-white/5 font-mono">
+                          <span className="text-slate-300">
+                            Saldo: <strong className="text-emerald-400">{m.currentStock} {m.unit}</strong>
+                          </span>
+                          <span className="text-slate-400 text-[11px]">
+                            Mín: {m.minimumStock} {m.unit}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* 2. VISUALIZAÇÃO EM TABELA TÉCNICA (DESKTOP >= 768px) */}
+              <div className="hidden md:block overflow-x-auto border border-white/10 rounded-lg bg-[#0f172a] shadow-md">
                 <table className="min-w-full divide-y divide-white/10 text-left text-xs">
                   <thead className="bg-[#090d16] text-slate-400 font-mono font-bold uppercase tracking-wider">
                     <tr>

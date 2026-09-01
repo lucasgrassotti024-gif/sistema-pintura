@@ -129,7 +129,7 @@ export default function ProgramacaoPage() {
                 return (
                   <div
                     key={day.date}
-                    className={`bg-[#0f172a] border rounded-lg p-3 flex flex-col min-h-[380px] transition-all shadow-sm ${
+                    className={`bg-[#0f172a] border rounded-lg p-3 flex flex-col min-h-[120px] md:min-h-[380px] transition-all shadow-sm ${
                       day.isToday
                         ? "border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30"
                         : "border-white/10"

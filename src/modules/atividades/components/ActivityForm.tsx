@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Activity,
   ActivityPriority,
@@ -10,7 +10,7 @@ import {
 
 interface ActivityFormProps {
   initialActivity?: Activity | null; // Quando fornecido, atua em modo de EDIÇÃO da atividade
-  onSave: (activity: Activity) => void;
+  onSave: (activity: Activity) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -125,8 +125,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   // Observações
   const [observations, setObservations] = useState(initialActivity?.observations || "");
 
-  // Mensagens de Erro
+  // Mensagens de Erro e Estado de Submissão
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const handleAddAdditionalTag = () => {
     if (newAdditionalTag.trim()) {
@@ -159,8 +161,9 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
     setPlannedMaterials(plannedMaterials.filter((m) => m.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
     setError(null);
 
     // Validações obrigatórias
@@ -189,6 +192,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
       setError("Informe a Área da atividade.");
       return;
     }
+
+    // Trava síncrona imediata contra cliques simultâneos
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
 
     // Montagem das Tags
     const tagsList = [];
@@ -257,7 +264,15 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
         updatedAt: now.split(" ")[0],
       };
 
-      onSave(updatedActivity);
+      try {
+        await onSave(updatedActivity);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro ao salvar atividade no sistema.";
+        setError(msg);
+      } finally {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+      }
     } else {
       // MODO CRIAÇÃO: Nova atividade
       const newActivity: Activity = {
@@ -301,7 +316,15 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
         updatedAt: now.split(" ")[0],
       };
 
-      onSave(newActivity);
+      try {
+        await onSave(newActivity);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Erro ao cadastrar atividade no sistema.";
+        setError(msg);
+      } finally {
+        isSubmittingRef.current = false;
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -787,15 +810,24 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded border border-slate-300"
+            disabled={isSubmitting}
+            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancelar
           </button>
           <button
             type="submit"
-            className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-xs transition-colors"
+            disabled={isSubmitting}
+            className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
-            {isEditing ? "Salvar Alterações" : "Cadastrar Atividade"}
+            {isSubmitting && (
+              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            )}
+            {isSubmitting
+              ? "Salvando..."
+              : isEditing
+              ? "Salvar Alterações"
+              : "Cadastrar Atividade"}
           </button>
         </div>
       </form>

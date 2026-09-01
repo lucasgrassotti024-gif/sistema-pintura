@@ -71,7 +71,7 @@ export function ActivitiesView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Link
             href="/pintura/historico"
             className="text-xs font-semibold px-3 py-2 bg-[#0f172a] hover:bg-white/5 text-slate-300 rounded-md border border-white/10 hover:border-white/20 transition-colors"

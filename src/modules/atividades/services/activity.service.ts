@@ -882,8 +882,9 @@ export async function getActivityAuditHistory(activityId: string): Promise<Activ
 }
 
 /**
- * Atualiza o progresso físico e registra consumo real em public.activities,
- * public.activity_consumptions e public.activity_audit_logs no Supabase.
+ * Atualiza o progresso físico e registra consumo real atomicamente via RPC
+ * public.update_activity_progress_and_consumption no Supabase com suporte
+ * a débito atômico em materials.current_stock e registro em stock_movements.
  * Fotos são totalmente opcionais.
  */
 export async function updateActivityProgress(
@@ -893,100 +894,41 @@ export async function updateActivityProgress(
   observation?: string,
   photosPayload?: {
     files?: File[];
-  }
+  },
+  idempotencyKey?: string
 ): Promise<Activity> {
   const supabase = createClient();
 
-  const { data: authData } = await supabase.auth.getUser();
-  const authUser = authData?.user;
-  let userName = "Operador de Pintura";
+  if (!idempotencyKey) {
+    throw new Error("Idempotency key é obrigatória para atualização de atividade.");
+  }
 
-  if (authUser) {
-    const { data: userProfile } = await supabase
-      .from("users")
-      .select("full_name")
-      .eq("id", authUser.id)
-      .maybeSingle();
-    if (userProfile?.full_name) {
-      userName = userProfile.full_name;
+  // 1. Invocar RPC Atômica Transacional Idempotente
+  const consumptionsPayload = consumptionsList.map((c) => ({
+    custom_material_name: c.materialName,
+    quantity: c.quantity,
+    unit: c.unit,
+  }));
+
+  const { data: rpcResult, error: rpcErr } = await supabase.rpc(
+    "update_activity_progress_and_consumption",
+    {
+      p_activity_id: activityId,
+      p_new_progress: newProgress,
+      p_consumptions: consumptionsPayload,
+      p_observation: observation?.trim() || null,
+      p_idempotency_key: idempotencyKey,
     }
+  );
+
+  if (rpcErr || !rpcResult) {
+    console.error("[updateActivityProgress] Erro ao executar RPC no Supabase:", rpcErr);
+    throw new Error(rpcErr?.message || "Erro desconhecido ao atualizar progresso da atividade.");
   }
 
-  // 1. Obter estado atual da atividade
-  const { data: currentActivity, error: fetchErr } = await supabase
-    .from("activities")
-    .select("progress_percentage, status")
-    .eq("id", activityId)
-    .single();
-
-  if (fetchErr || !currentActivity) {
-    throw new Error("Atividade não encontrada para atualização de progresso.");
-  }
-
-  const oldProgress = Number(currentActivity.progress_percentage || 0);
-  const calculatedStatus = newProgress === 0 ? "programada" : newProgress >= 100 ? "concluida" : "em_andamento";
-  const now = new Date().toISOString();
-
-  // 2. Atualizar tabela principal public.activities
-  const { error: updateErr } = await supabase
-    .from("activities")
-    .update({
-      progress_percentage: newProgress,
-      status: calculatedStatus,
-      updated_at: now,
-    })
-    .eq("id", activityId);
-
-  if (updateErr) {
-    throw new Error(`Falha ao atualizar progresso da atividade: ${updateErr.message}`);
-  }
-
-  // 3. Inserir consumos em public.activity_consumptions se houver
-  if (consumptionsList.length > 0) {
-    for (const item of consumptionsList) {
-      let matId: string | null = null;
-      const { data: matData } = await supabase
-        .from("materials")
-        .select("id")
-        .eq("name", item.materialName)
-        .maybeSingle();
-
-      if (matData) matId = matData.id;
-
-      await supabase.from("activity_consumptions").insert({
-        activity_id: activityId,
-        material_id: matId,
-        custom_material_name: item.materialName,
-        quantity: item.quantity,
-        unit: item.unit,
-        registered_by_user_id: authUser?.id || null,
-        observation: observation?.trim() || null,
-        created_at: now,
-      });
-    }
-  }
-
-  // 4. Inserir no log oficial de auditoria public.activity_audit_logs
-  const auditAction = `Avanço de Progresso: ${oldProgress}% → ${newProgress}% (${calculatedStatus.toUpperCase()})`;
-  await supabase.from("activity_audit_logs").insert({
-    activity_id: activityId,
-    user_id: authUser?.id || null,
-    user_name_cache: userName,
-    action: auditAction,
-    field: "Progresso",
-    old_value: `${oldProgress}%`,
-    new_value: `${newProgress}%`,
-    old_progress: oldProgress,
-    new_progress: newProgress,
-    consumed_materials_json: consumptionsList.length > 0 ? consumptionsList : null,
-    observation: observation?.trim() || null,
-    created_at: now,
-  });
-
-  // 5. Se houver fotos (opcional) e a sessão puder ser iniciada
+  // 2. Se houver fotos (opcional) e a sessão puder ser iniciada
   if (photosPayload?.files && photosPayload.files.length > 0) {
     try {
-      // Iniciar sessão
       const { data: sessionData, error: sessionErr } = await supabase.rpc("start_photo_record_session", {
         p_activity_id: activityId,
         p_observation: observation?.trim() || null,
@@ -1034,11 +976,11 @@ export async function updateActivityProgress(
     }
   }
 
-  // Recarregar atividade atualizada
+  // 3. Recarregar atividade atualizada
   const activities = await getActivities();
   const updated = activities.find((a) => a.id === activityId);
   if (!updated) {
-    throw new Error("Progresso atualizado, mas não foi possível recarregar a atividade.");
+    throw new Error("Atividade atualizada com sucesso, mas não pôde ser recarregada.");
   }
 
   return updated;

@@ -74,12 +74,23 @@ export default function LoginPage() {
         )}
 
         {/* Formulário de Login */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form
+          id="login-form"
+          name="login"
+          method="post"
+          onSubmit={handleLogin}
+          className="space-y-4"
+        >
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label
+              htmlFor="email"
+              className="block text-xs font-semibold text-slate-700 mb-1"
+            >
               E-mail de Acesso *
             </label>
             <input
+              id="email"
+              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -87,15 +98,20 @@ export default function LoginPage() {
               className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
               required
               disabled={isLoading}
-              autoComplete="email"
+              autoComplete="username email"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label
+              htmlFor="password"
+              className="block text-xs font-semibold text-slate-700 mb-1"
+            >
               Senha *
             </label>
             <input
+              id="password"
+              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

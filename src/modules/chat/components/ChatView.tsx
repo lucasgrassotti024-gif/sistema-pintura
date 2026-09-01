@@ -199,7 +199,7 @@ export function ChatView() {
   const activeError = uploadError || chatError;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-6.5rem)] w-full mx-auto">
+    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100dvh-7rem)] sm:h-[calc(100vh-6.5rem)] w-full mx-auto">
       {/* 1. PAINEL PRINCIPAL DO CHAT (Elemento Dominante) */}
       <div className="flex-1 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-0">
         {/* Cabeçalho Técnico da Sala */}

@@ -11,6 +11,25 @@ import {
 } from "../services/activity.service";
 import { createClient } from "@/lib/supabase/client";
 
+/**
+ * Garante que a lista de atividades permaneça estritamente desduplicada por ID ou número de OS (orderNumber).
+ * Caso o registro já exista no estado, substitui com os dados mais recentes; caso contrário, prepende à lista.
+ */
+function upsertActivityInList(list: Activity[], item: Activity): Activity[] {
+  const itemOrderNum = item.orderNumber ? item.orderNumber.toUpperCase().trim() : "";
+  const existsIndex = list.findIndex(
+    (a) =>
+      a.id === item.id ||
+      (itemOrderNum && a.orderNumber && a.orderNumber.toUpperCase().trim() === itemOrderNum)
+  );
+
+  if (existsIndex >= 0) {
+    return list.map((a, idx) => (idx === existsIndex ? item : a));
+  }
+
+  return [item, ...list];
+}
+
 export function useActivities() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
@@ -30,9 +49,23 @@ export function useActivities() {
     setError(null);
     try {
       const data = await fetchActivities();
-      setActivities(data);
+      // Desduplica por ID e por orderNumber para integridade absoluta
+      const uniqueData: Activity[] = [];
+      for (const item of data) {
+        const itemOrderNum = item.orderNumber ? item.orderNumber.toUpperCase().trim() : "";
+        const exists = uniqueData.some(
+          (u) =>
+            u.id === item.id ||
+            (itemOrderNum && u.orderNumber && u.orderNumber.toUpperCase().trim() === itemOrderNum)
+        );
+        if (!exists) {
+          uniqueData.push(item);
+        }
+      }
+
+      setActivities(uniqueData);
       if (selectedActivity) {
-        const refreshed = data.find((a) => a.id === selectedActivity.id);
+        const refreshed = uniqueData.find((a) => a.id === selectedActivity.id);
         if (refreshed) setSelectedActivity(refreshed);
       }
     } catch (err) {
@@ -67,11 +100,7 @@ export function useActivities() {
             const newId = (payload.new as { id: string }).id;
             const fullActivity = await getActivityById(newId);
             if (fullActivity && !fullActivity.archivedAt) {
-              setActivities((prev) => {
-                // Evita duplicata se já foi adicionado otimisticamente
-                if (prev.some((a) => a.id === fullActivity.id)) return prev;
-                return [fullActivity, ...prev];
-              });
+              setActivities((prev) => upsertActivityInList(prev, fullActivity));
             }
           } else if (payload.eventType === "UPDATE") {
             const updatedId = (payload.new as { id: string }).id;
@@ -82,9 +111,7 @@ export function useActivities() {
                 setActivities((prev) => prev.filter((a) => a.id !== updatedId));
                 setSelectedActivity((curr) => (curr?.id === updatedId ? null : curr));
               } else {
-                setActivities((prev) =>
-                  prev.map((a) => (a.id === updatedId ? fullActivity : a))
-                );
+                setActivities((prev) => upsertActivityInList(prev, fullActivity));
                 setSelectedActivity((curr) => (curr?.id === updatedId ? fullActivity : curr));
               }
             }
@@ -167,23 +194,21 @@ export function useActivities() {
   const addActivity = async (newActivity: Activity) => {
     try {
       const persisted = await createActivity(newActivity);
-      setActivities((prev) => [persisted, ...prev]);
+      setActivities((prev) => upsertActivityInList(prev, persisted));
       setSelectedActivity(persisted);
       return persisted;
     } catch (err) {
-      console.error("Falha ao salvar no banco, mantendo localmente para não perder dados:", err);
-      setActivities((prev) => [newActivity, ...prev]);
-      setSelectedActivity(newActivity);
-      return newActivity;
+      console.error("Erro ao persistir atividade no Supabase:", err);
+      const msg = err instanceof Error ? err.message : "Falha ao salvar atividade no banco.";
+      setError(msg);
+      throw err;
     }
   };
 
   const updateActivity = async (updatedActivity: Activity) => {
     try {
       const persisted = await updateActivityService(updatedActivity);
-      setActivities((prev) =>
-        prev.map((act) => (act.id === persisted.id ? persisted : act))
-      );
+      setActivities((prev) => upsertActivityInList(prev, persisted));
       setSelectedActivity(persisted);
       return persisted;
     } catch (err) {

@@ -191,7 +191,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
         </div>
 
         {/* Tipo, Fabricante, Cor e Unidade */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block font-semibold text-slate-300 mb-1">Tipo / Família *</label>
             <select

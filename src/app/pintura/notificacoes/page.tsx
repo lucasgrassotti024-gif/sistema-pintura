@@ -110,7 +110,7 @@ export default function NotificacoesPage() {
       {/* 2. FILTROS (Abas de Leitura e Categoria) */}
       <div className="bg-[#0f172a] border border-white/10 rounded-lg p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
         {/* Filtro de Leitura */}
-        <div className="flex items-center gap-1.5 bg-[#090d16] p-1 rounded border border-white/10">
+        <div className="flex items-center gap-1.5 bg-[#090d16] p-1 rounded border border-white/10 flex-wrap">
           <button
             type="button"
             onClick={() => setReadFilter("todas")}
@@ -136,9 +136,9 @@ export default function NotificacoesPage() {
         </div>
 
         {/* Filtro por Categoria */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-slate-400 font-mono text-[11px]">Categoria:</span>
-          <div className="flex items-center gap-1 bg-[#090d16] p-1 rounded border border-white/10">
+          <div className="flex items-center gap-1 bg-[#090d16] p-1 rounded border border-white/10 flex-wrap">
             <button
               type="button"
               onClick={() => setCategoryFilter("todas")}
