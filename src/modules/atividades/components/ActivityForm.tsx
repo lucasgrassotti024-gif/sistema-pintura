@@ -496,7 +496,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
-                placeholder="Ex.: OS-2026-104"
                 disabled={isEditing} // Regra: Nota é imutável em edição para preservar a identidade da OS
                 className={`w-full text-sm border border-slate-300 rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
                   isEditing ? "bg-slate-100 text-slate-600 cursor-not-allowed" : ""
@@ -515,7 +514,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Ex.: Aplicação de Fundo Epóxi na Tubulação da Linha B"
                 className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
@@ -547,7 +545,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={originReference}
                 onChange={(e) => setOriginReference(e.target.value)}
-                placeholder="Ex.: Relatório de Inspeção R-44 / Chamado #982"
                 className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
@@ -561,7 +558,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Especificações, procedimentos ou detalhes complementares da intervenção..."
               className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>
@@ -595,7 +591,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customArea}
                   onChange={(e) => setCustomArea(e.target.value)}
-                  placeholder="Especifique a Área..."
                   className="mt-1.5 w-full text-xs border border-slate-300 rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                   required
                 />
@@ -624,7 +619,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customLocal}
                   onChange={(e) => setCustomLocal(e.target.value)}
-                  placeholder="Especifique o Local..."
                   className="mt-1.5 w-full text-xs border border-slate-300 rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
               )}
@@ -652,7 +646,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customEquipment}
                   onChange={(e) => setCustomEquipment(e.target.value)}
-                  placeholder="Especifique o Equipamento..."
                   className="mt-1.5 w-full text-xs border border-slate-300 rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
               )}
@@ -674,7 +667,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={mainTag}
                 onChange={(e) => setMainTag(e.target.value)}
-                placeholder="Ex.: TK-102 / VLV-401"
                 className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
@@ -688,7 +680,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={newAdditionalTag}
                   onChange={(e) => setNewAdditionalTag(e.target.value)}
-                  placeholder="Adicionar tag..."
                   className="flex-1 text-sm border border-slate-300 rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
                 <button
@@ -778,7 +769,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                placeholder="Ex.: Carlos Andrade"
                 className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
@@ -812,7 +802,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 min="0"
                 value={serviceQuantity}
                 onChange={(e) => setServiceQuantity(e.target.value)}
-                placeholder="Ex.: 120"
                 className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
@@ -916,7 +905,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 min="0.1"
                 value={matQty}
                 onChange={(e) => setMatQty(e.target.value)}
-                placeholder="Ex.: 10"
                 className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
@@ -1018,7 +1006,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
             rows={2}
             value={observations}
             onChange={(e) => setObservations(e.target.value)}
-            placeholder="Requisitos de andaime, restrições de clima, EPIs específicos ou observações gerais..."
             className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
           />
         </div>
