@@ -64,28 +64,28 @@ export function StockEntryModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-[#0f172a] border border-white/10 rounded-lg p-6 max-w-lg w-full space-y-5 shadow-2xl">
-        <div className="flex justify-between items-start border-b border-white/5 pb-3">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-6 max-w-lg w-full space-y-5 shadow-2xl">
+        <div className="flex justify-between items-start border-b border-blue-500/15 pb-3">
           <div>
-            <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
-              Movimentação Operacional
+            <span className="text-xs font-mono font-bold text-orange-400 uppercase tracking-wider">
+              Movimentação Operacional RSS3
             </span>
-            <h2 className="text-base font-bold text-slate-100 leading-snug">
+            <h2 className="text-base font-bold text-white leading-snug">
               Adicionar Material (Entrada de Estoque)
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 text-lg leading-none"
+            className="text-slate-400 hover:text-white text-lg leading-none"
           >
             &times;
           </button>
         </div>
 
         {error && (
-          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3 rounded">
+          <div className="bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs p-3 rounded font-mono">
             {error}
           </div>
         )}
@@ -99,12 +99,9 @@ export function StockEntryModal({
             <select
               value={selectedMaterialId}
               onChange={(e) => setSelectedMaterialId(e.target.value)}
-              className="w-full bg-[#090d16] text-slate-200 border border-white/10 rounded px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
+              className="w-full bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
               required
             >
-              <option value="" disabled>
-                Selecione um material...
-              </option>
               {materials.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.code} - {m.name} (Saldo atual: {m.currentStock} {m.unit})
@@ -113,13 +110,13 @@ export function StockEntryModal({
             </select>
           </div>
 
-          {/* Quantidade a Adicionar */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Quantidade */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block font-semibold text-slate-300 mb-1">
-                Quantidade a Adicionar *
+                Quantidade de Entrada *
               </label>
-              <div className="relative">
+              <div className="flex items-center gap-2">
                 <input
                   type="number"
                   step="0.01"
@@ -127,95 +124,77 @@ export function StockEntryModal({
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="Ex: 50"
-                  className="w-full bg-[#090d16] text-slate-200 border border-white/10 rounded px-3 py-2 pr-12 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                  className="w-full bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden font-mono font-bold"
                   required
                 />
-                <span className="absolute right-3 top-2 text-slate-400 font-mono text-xs">
-                  {selectedMat?.unit || "-"}
+                <span className="font-mono text-blue-400 font-bold">
+                  {selectedMat?.unit || "un"}
                 </span>
               </div>
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">
-                Lote da Remessa (Opcional)
-              </label>
+              <label className="block font-semibold text-slate-300 mb-1">Lote / Batelada</label>
               <input
                 type="text"
                 value={batch}
                 onChange={(e) => setBatch(e.target.value)}
-                placeholder="Ex: L-2026-09A"
-                className="w-full bg-[#090d16] text-slate-200 border border-white/10 rounded px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                placeholder="Ex: LOTE-2026-X"
+                className="w-full bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden font-mono"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          {/* Validade e Documento */}
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">
-                Validade do Lote (Opcional)
-              </label>
+              <label className="block font-semibold text-slate-300 mb-1">Data de Validade</label>
               <input
                 type="date"
                 value={expirationDate}
                 onChange={(e) => setExpirationDate(e.target.value)}
-                className="w-full bg-[#090d16] text-slate-200 border border-white/10 rounded px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                className="w-full bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden font-mono"
               />
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-300 mb-1">
-                Nota Fiscal / Documento (Opcional)
-              </label>
+              <label className="block font-semibold text-slate-300 mb-1">Nota Fiscal / Doc.</label>
               <input
                 type="text"
                 value={documentReference}
                 onChange={(e) => setDocumentReference(e.target.value)}
-                placeholder="Ex: NF 10423"
-                className="w-full bg-[#090d16] text-slate-200 border border-white/10 rounded px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
+                placeholder="Ex: NF 14592"
+                className="w-full bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden font-mono"
               />
             </div>
           </div>
 
+          {/* Observações */}
           <div>
-            <label className="block font-semibold text-slate-300 mb-1">
-              Observações do Recebimento (Opcional)
-            </label>
+            <label className="block font-semibold text-slate-300 mb-1">Observações da Entrada</label>
             <textarea
-              rows={2}
               value={observation}
               onChange={(e) => setObservation(e.target.value)}
-              placeholder="Ex: Entrega recebida sem avarias no almoxarifado químico..."
-              className="w-full bg-[#090d16] text-slate-200 border border-white/10 rounded px-3 py-2 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
+              rows={2}
+              placeholder="Ex: Recebido pelo almoxarifado central em perfeito estado."
+              className="w-full bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
             />
           </div>
 
-          {selectedMat && quantity && Number(quantity) > 0 && (
-            <div className="p-3 bg-[#090d16] border border-emerald-500/20 rounded text-xs space-y-1 font-mono">
-              <div className="flex justify-between text-slate-400">
-                <span>Saldo Atual:</span>
-                <span>{selectedMat.currentStock} {selectedMat.unit}</span>
-              </div>
-              <div className="flex justify-between text-emerald-400 font-bold border-t border-white/5 pt-1">
-                <span>Novo Saldo Previsto:</span>
-                <span>{(selectedMat.currentStock + Number(quantity)).toFixed(2)} {selectedMat.unit}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/5">
+          {/* Ações */}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-blue-500/15">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2 font-semibold text-slate-300 hover:bg-white/5 rounded border border-white/10 transition-colors"
+              className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#070c14] hover:bg-blue-500/15 rounded border border-blue-500/20 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 rounded shadow-[0_0_12px_-2px_rgba(16,185,129,0.4)] transition-colors"
+              className="px-5 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] transition-all active:scale-95"
             >
               {isSubmitting ? "Registrando..." : "Confirmar Entrada"}
             </button>

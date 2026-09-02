@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -39,36 +38,31 @@ export default function LoginPage() {
       // Redirecionamento após autenticação bem-sucedida
       router.push("/");
       router.refresh();
-    } catch (err) {
+    } catch {
       setErrorMessage("Ocorreu um erro inesperado ao tentar entrar. Tente novamente.");
       setIsLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 sm:p-6 relative">
-      {/* Botão de Tema no Canto Superior */}
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
-      <div className="max-w-md w-full bg-white border border-slate-200 rounded-xl p-6 sm:p-8 space-y-6 shadow-xs">
+    <main className="min-h-screen bg-[#070c14] flex flex-col items-center justify-center p-4 sm:p-6 relative">
+      <div className="max-w-md w-full bg-[#0c1524] border border-blue-500/20 rounded-xl p-6 sm:p-8 space-y-6 shadow-2xl">
         {/* Cabeçalho */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600 text-white font-bold text-lg mb-1 shadow-xs">
-            SP
+          <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-orange-500/15 border border-orange-500/40 text-orange-500 font-extrabold text-xl mb-1 shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)]">
+            RSS3
           </div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Sistema de Pintura Industrial
+          <h1 className="text-xl font-bold text-white tracking-tight">
+            SOLUÇÕES INDUSTRIAIS
           </h1>
-          <p className="text-xs text-slate-500">
-            Acesso operacional restrito para equipes e coordenação.
+          <p className="text-xs text-blue-400 font-mono uppercase tracking-wider">
+            Gestão Operacional de Pintura Industrial
           </p>
         </div>
 
         {/* Mensagem de Erro */}
         {errorMessage && (
-          <div className="p-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded-lg font-medium">
+          <div className="p-3 text-xs bg-rose-500/10 text-rose-300 border border-rose-500/30 rounded-lg font-medium font-mono">
             {errorMessage}
           </div>
         )}
@@ -84,7 +78,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="email"
-              className="block text-xs font-semibold text-slate-700 mb-1"
+              className="block text-xs font-semibold text-slate-200 mb-1"
             >
               E-mail de Acesso *
             </label>
@@ -94,8 +88,8 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu.email@empresa.com"
-              className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              placeholder="seu.email@rss3.com.br"
+              className="w-full text-sm bg-[#070c14] text-white border border-blue-500/25 rounded-lg px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 focus:outline-hidden transition-all placeholder:text-slate-500"
               required
               disabled={isLoading}
               autoComplete="username email"
@@ -105,7 +99,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-xs font-semibold text-slate-700 mb-1"
+              className="block text-xs font-semibold text-slate-200 mb-1"
             >
               Senha *
             </label>
@@ -116,7 +110,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full text-sm bg-[#070c14] text-white border border-blue-500/25 rounded-lg px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 focus:outline-hidden transition-all placeholder:text-slate-500"
               required
               disabled={isLoading}
               autoComplete="current-password"
@@ -126,19 +120,19 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full py-2.5 px-4 text-xs font-bold text-white rounded-lg shadow-xs transition-colors ${
+            className={`w-full py-2.5 px-4 text-xs font-bold text-white rounded-lg transition-all shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] ${
               isLoading
-                ? "bg-blue-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+                ? "bg-orange-500/50 cursor-not-allowed"
+                : "bg-orange-500 hover:bg-orange-600 active:scale-[0.99]"
             }`}
           >
             {isLoading ? "Validando credenciais..." : "Entrar no Sistema"}
           </button>
         </form>
 
-        <div className="pt-2 text-center border-t border-slate-100">
-          <p className="text-[11px] text-slate-400">
-            Acesso protegido por autenticação segura Supabase Auth.
+        <div className="pt-2 text-center border-t border-blue-500/15">
+          <p className="text-[11px] text-slate-400 font-mono">
+            Acesso operacional protegido por autenticação segura RSS3.
           </p>
         </div>
       </div>

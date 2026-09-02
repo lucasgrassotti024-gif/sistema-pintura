@@ -29,21 +29,21 @@ export function MaterialPlanningDetailPanel({
     switch (status) {
       case "adequado":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider bg-[#090d16] text-emerald-400 border border-emerald-500/30 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider bg-[#070c14] text-emerald-400 border border-emerald-500/30 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             Adequado
           </span>
         );
       case "atencao":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider bg-[#090d16] text-amber-400 border border-amber-500/30 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider bg-[#070c14] text-amber-400 border border-amber-500/30 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
             Atenção
           </span>
         );
       case "critico":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider bg-[#090d16] text-rose-400 border border-rose-500/30 font-medium">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider bg-[#070c14] text-rose-400 border border-rose-500/30 font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
             {projectedStock <= 0 ? "Insuficiente" : "Crítico"}
           </span>
@@ -52,14 +52,14 @@ export function MaterialPlanningDetailPanel({
   };
 
   return (
-    <div className="bg-[#0f172a] border border-white/10 rounded-lg p-5 space-y-4 shadow-xl text-slate-200">
+    <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 space-y-4 shadow-xl text-slate-200">
       {/* 1. CABEÇALHO */}
       <div className="flex justify-between items-start">
         <div className="space-y-1">
-          <span className="text-xs font-mono font-bold text-emerald-400 tracking-wider">
+          <span className="text-xs font-mono font-bold text-blue-400 tracking-wider">
             {material.code}
           </span>
-          <h3 className="text-base font-bold text-slate-100 mt-0.5 leading-snug">
+          <h3 className="text-base font-bold text-white mt-0.5 leading-snug">
             {material.name}
           </h3>
           <p className="text-xs text-slate-400">
@@ -70,19 +70,19 @@ export function MaterialPlanningDetailPanel({
         <button
           type="button"
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-200 text-xs px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded transition-colors"
+          className="text-slate-400 hover:text-white text-xs px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/20 transition-colors"
         >
           Fechar
         </button>
       </div>
 
       {/* 2. ÁREA DE AÇÕES CADASTRAIS */}
-      <div className="flex items-center gap-2 flex-wrap border-b border-white/5 pb-3 pt-1">
+      <div className="flex items-center gap-2 flex-wrap border-b border-blue-500/15 pb-3 pt-1">
         <PermissionGate permission="materiais.editar">
           <button
             type="button"
             onClick={onEditMaterial}
-            className="text-xs font-semibold px-2.5 py-1 bg-[#090d16] hover:bg-white/5 text-slate-200 rounded border border-white/10 hover:border-white/20 transition-colors"
+            className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-slate-200 rounded border border-blue-500/20 hover:border-blue-500/40 transition-colors"
           >
             Editar Catálogo
           </button>
@@ -93,7 +93,7 @@ export function MaterialPlanningDetailPanel({
             type="button"
             onClick={onDeleteMaterial}
             disabled={isDeleting}
-            className="text-xs font-semibold px-2.5 py-1 bg-[#090d16] hover:bg-rose-500/10 text-rose-300 rounded border border-rose-500/30 hover:border-rose-500/50 transition-colors"
+            className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-rose-500/10 text-rose-300 rounded border border-rose-500/30 hover:border-rose-500/50 transition-colors"
           >
             {isDeleting ? "Inativando..." : "Inativar"}
           </button>
@@ -103,7 +103,7 @@ export function MaterialPlanningDetailPanel({
           type="button"
           onClick={onGeneratePdf}
           disabled={isGeneratingPdf}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-[#090d16] hover:bg-white/5 text-emerald-400 rounded border border-emerald-500/30 hover:border-emerald-500/50 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-blue-400 rounded border border-blue-500/30 hover:border-blue-500/50 transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -112,127 +112,98 @@ export function MaterialPlanningDetailPanel({
         </button>
       </div>
 
-      {/* 3. SITUAÇÃO E ESTOQUE FÍSICO */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {getStatusBadge(projectedStatus)}
-        <span className="text-xs text-slate-400 font-mono">Unidade: {material.unit}</span>
-      </div>
+      {/* 3. SITUAÇÃO ATUAL */}
+      <div>{getStatusBadge(projectedStatus)}</div>
 
-      {/* 4. BLOCO DE SALDO E PLANEJAMENTO NO PERÍODO */}
-      <div className="bg-[#090d16] border border-white/5 rounded-md p-3.5 space-y-2 text-xs">
-        <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+      {/* 4. QUADRO TÉCNICO DE SALDOS */}
+      <div className="bg-[#070c14] border border-blue-500/15 rounded-md p-3.5 space-y-2 text-xs">
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
           <span className="text-slate-400 font-mono">Estoque Físico Atual:</span>
-          <span className="font-mono font-bold text-emerald-400 text-sm">
+          <span className="font-bold text-white font-mono">
             {material.currentStock} {material.unit}
           </span>
         </div>
-        <div className="flex justify-between items-center py-0.5 border-b border-white/5">
-          <span className="text-slate-400 font-mono">Estoque Mínimo:</span>
-          <span className="font-mono text-slate-300">
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
+          <span className="text-slate-400 font-mono">Estoque Mínimo Exigido:</span>
+          <span className="font-semibold text-slate-300 font-mono">
             {material.minimumStock} {material.unit}
           </span>
         </div>
-        <div className="flex justify-between items-center py-0.5 border-b border-white/5">
-          <span className="text-slate-400 font-mono">Planejado no Período:</span>
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
+          <span className="text-slate-400 font-mono">Demanda Original:</span>
           <span className="font-mono text-slate-200">
             {plannedOriginal} {material.unit}
           </span>
         </div>
-        <div className="flex justify-between items-center py-0.5 border-b border-white/5">
-          <span className="text-slate-400 font-mono">Consumido Real:</span>
-          <span className="font-mono font-semibold text-emerald-400">
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
+          <span className="text-slate-400 font-mono">Consumo Real Apontado:</span>
+          <span className="font-mono font-bold text-orange-400">
             {consumedReal} {material.unit}
           </span>
         </div>
-        <div className="flex justify-between items-center py-0.5 border-b border-white/5">
-          <span className="text-slate-400 font-mono">Ainda Planejado (Restante):</span>
-          <span className="font-mono font-semibold text-sky-400">
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
+          <span className="text-slate-400 font-mono">Demanda Restante a Consumir:</span>
+          <span className="font-mono text-blue-300">
             {remainingPlanned} {material.unit}
           </span>
         </div>
-        <div className="flex justify-between items-center py-1 bg-white/5 px-2 rounded">
-          <span className="text-slate-200 font-mono font-bold">Saldo Projetado:</span>
-          <span
-            className={`font-mono font-bold text-sm ${
-              projectedStock <= 0
-                ? "text-rose-400"
-                : projectedStock < material.minimumStock
-                ? "text-amber-400"
-                : "text-emerald-400"
-            }`}
-          >
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
+          <span className="text-slate-400 font-mono">Desvio Real vs Planejado:</span>
+          <span className={`font-mono font-bold ${deviation > 0 ? "text-amber-400" : "text-emerald-400"}`}>
+            {deviation > 0 ? `+${deviation}` : deviation} {material.unit}
+          </span>
+        </div>
+        <div className="flex justify-between items-center py-1 bg-[#131f33] px-2 rounded font-bold">
+          <span className="text-slate-200 font-mono">Estoque Final Projetado:</span>
+          <span className={`font-mono ${projectedStock <= 0 ? "text-rose-400" : "text-emerald-400"}`}>
             {projectedStock} {material.unit}
           </span>
         </div>
-        {deviation > 0 && (
-          <div className="flex justify-between items-center py-0.5 text-amber-400 text-[11px] font-mono">
-            <span>Desvio Acima do Planejado:</span>
-            <span>+{deviation} {material.unit}</span>
-          </div>
-        )}
       </div>
 
-      {/* 5. ATIVIDADES VINCULADAS NO PERÍODO */}
-      <div className="space-y-2 pt-1">
-        <h4 className="text-xs font-mono uppercase text-slate-400 tracking-wider flex items-center justify-between">
-          <span>Atividades Demandantes ({linkedActivities.length})</span>
-        </h4>
-
-        {linkedActivities.length === 0 ? (
-          <div className="p-4 text-center text-xs text-slate-500 bg-[#090d16] rounded border border-white/5">
-            Nenhuma atividade programada para este material no período selecionado.
-          </div>
-        ) : (
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            {linkedActivities.map((act) => {
-              const isDone = act.status === "concluida";
-              return (
-                <div
-                  key={act.activityId}
-                  className="bg-[#090d16] border border-white/5 rounded p-3 text-xs space-y-1.5"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="font-mono font-bold text-emerald-400">{act.orderNumber}</span>
-                    <span className={`font-mono text-[10px] uppercase px-1.5 py-0.5 rounded border ${
-                      isDone
-                        ? "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"
-                        : "text-sky-400 border-sky-500/30 bg-sky-500/10"
-                    }`}>
-                      {act.status} ({act.progressPercentage}%)
-                    </span>
-                  </div>
-
-                  <p className="text-[11px] text-slate-200 font-medium leading-tight">{act.activityName}</p>
-
-                  <div className="flex justify-between items-center pt-1 border-t border-white/5 text-[11px] font-mono text-slate-400">
-                    <span>
-                      Consumido: <strong className="text-emerald-400">{act.consumedQuantity} {act.unit}</strong>
-                    </span>
-                    <span>
-                      Planejado: <strong className="text-slate-300">{act.plannedQuantity} {act.unit}</strong>
-                    </span>
-                    <span>
-                      Restante: <strong className="text-sky-400">{act.remainingPlannedQuantity} {act.unit}</strong>
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 6. BOTÃO DE ENTRADA DE ESTOQUE */}
-      <div className="pt-2">
-        <PermissionGate permission="estoque.movimentar">
+      {/* 5. AÇÃO DE MOVIMENTAÇÃO (Botão Laranja RSS3) */}
+      <PermissionGate permission="estoque.movimentar">
+        <div>
           <button
             type="button"
             onClick={onAddStock}
-            className="w-full text-xs font-bold py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded shadow-[0_0_12px_-2px_rgba(16,185,129,0.4)] transition-colors"
+            className="w-full text-xs font-bold py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] transition-all active:scale-[0.99]"
           >
             + Registrar Entrada de Estoque
           </button>
-        </PermissionGate>
+        </div>
+      </PermissionGate>
+
+      {/* 6. ATIVIDADES VINCULADAS */}
+      <div className="space-y-2 pt-2 border-t border-blue-500/15">
+        <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">
+          Ordens de Serviço Vinculadas ({linkedActivities.length})
+        </h4>
+
+        {linkedActivities.length === 0 ? (
+          <p className="text-xs text-slate-500 italic py-2">
+            Nenhuma atividade no período consome este material.
+          </p>
+        ) : (
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {linkedActivities.map((act) => (
+              <div
+                key={act.activityId}
+                className="bg-[#070c14] border border-blue-500/15 rounded p-2 text-xs space-y-1"
+              >
+                <div className="flex justify-between items-start">
+                  <span className="font-mono font-bold text-blue-400">{act.orderNumber}</span>
+                  <span className="text-[10px] font-mono text-slate-400">{act.status}</span>
+                </div>
+                <p className="font-semibold text-slate-200 truncate">{act.activityName}</p>
+                <div className="flex justify-between text-[11px] text-slate-400 pt-0.5 border-t border-blue-500/10 font-mono">
+                  <span>Plan: {act.plannedQuantity} {material.unit}</span>
+                  <span className="text-orange-400 font-bold">Real: {act.consumedQuantity} {material.unit}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

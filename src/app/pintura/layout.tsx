@@ -10,8 +10,8 @@ export default function PinturaLayout({
 }) {
   return (
     <SidebarProvider>
-      <div className="min-h-screen bg-[#090d16] text-slate-100 flex">
-        {/* Sidebar Lateral / Drawer Off-Canvas no Mobile */}
+      <div className="min-h-screen bg-[#070c14] text-slate-100 flex">
+        {/* Sidebar Lateral RSS3 */}
         <AppSidebar />
 
         {/* Área Principal de Conteúdo */}

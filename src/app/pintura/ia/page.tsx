@@ -10,19 +10,16 @@ import { formatDateISO } from "@/modules/atividades/utils/week.utils";
 export default function IAPage() {
   const { messages, isLoading, isInitializing, error, sendMessage, stopGeneration, clearChat } = useIaChat();
   
-  // Fontes de dados reais preservadas para cálculo determinístico das sugestões rápidas
   const { rawActivities } = useActivities();
   const { materials } = useMaterials();
 
   const [inputQuery, setInputQuery] = useState("");
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
-  // Rolagem automática suave ao receber chunks de streaming
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Cálculo das condições operacionais reais para sugestões contextuais inteligentes
   const todayISO = useMemo(() => formatDateISO(new Date()), []);
   const tomorrowISO = useMemo(() => {
     const d = new Date();
@@ -56,7 +53,6 @@ export default function IAPage() {
     };
   }, [rawActivities, materials, todayISO, tomorrowISO]);
 
-  // Sugestões Rápidas Dinâmicas baseadas no estado real do banco de dados
   const dynamicSuggestions = useMemo(() => {
     const list: string[] = [];
 
@@ -99,15 +95,15 @@ export default function IAPage() {
 
   return (
     <div className="space-y-3 sm:space-y-4 max-w-5xl mx-auto flex flex-col h-[calc(100dvh-7rem)] sm:h-[calc(100vh-6.5rem)]">
-      {/* 1. CABEÇALHO TÉCNICO COMPACTO */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs shrink-0">
+      {/* 1. CABEÇALHO TÉCNICO */}
+      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-md shrink-0">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-            <h1 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">
-              Inteligência Operacional
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] animate-pulse" />
+            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
+              Inteligência Operacional RSS3
             </h1>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
               Read-Only • Gemini 3.6 Flash
             </span>
           </div>
@@ -121,17 +117,17 @@ export default function IAPage() {
             type="button"
             onClick={clearChat}
             disabled={isLoading || messages.length <= 1}
-            className="text-xs font-semibold px-3 py-1.5 bg-[#090d16] hover:bg-white/5 disabled:opacity-30 text-slate-300 rounded border border-white/10 hover:border-white/20 transition-colors"
+            className="text-xs font-semibold px-3 py-1.5 bg-[#070c14] hover:bg-blue-500/15 disabled:opacity-30 text-slate-300 rounded border border-blue-500/20 hover:border-blue-500/40 transition-colors"
           >
             Limpar Conversa
           </button>
         </div>
       </div>
 
-      {/* 2. SUGESTÕES RÁPIDAS DINÂMICAS INTEGRADAS */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-lg px-3.5 sm:px-4 py-2.5 space-y-2 shadow-xs shrink-0">
-        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+      {/* 2. SUGESTÕES RÁPIDAS */}
+      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg px-3.5 sm:px-4 py-2.5 space-y-2 shadow-xs shrink-0">
+        <span className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
           Sugestões de Consulta Operacional:
         </span>
         <div className="flex flex-wrap gap-2 max-h-24 sm:max-h-none overflow-y-auto">
@@ -141,7 +137,7 @@ export default function IAPage() {
               type="button"
               onClick={() => handleSend(prompt)}
               disabled={isLoading}
-              className="text-xs bg-[#090d16] hover:bg-emerald-500/10 hover:border-emerald-500/30 border border-white/10 disabled:opacity-50 px-3 py-1.5 rounded text-slate-300 hover:text-emerald-400 transition-colors text-left font-medium"
+              className="text-xs bg-[#070c14] hover:bg-orange-500/15 hover:border-orange-500/40 border border-blue-500/20 disabled:opacity-50 px-3 py-1.5 rounded text-slate-200 hover:text-orange-400 transition-colors text-left font-medium"
             >
               {prompt}
             </button>
@@ -149,13 +145,12 @@ export default function IAPage() {
         </div>
       </div>
 
-      {/* 3. JANELA DE CONVERSA PRINCIPAL DEDICADA */}
-      <div className="bg-[#0f172a] border border-white/10 rounded-lg shadow-md flex flex-col flex-1 min-h-[250px] sm:min-h-[420px] overflow-hidden">
-        {/* Histórico de Mensagens com Rolagem */}
-        <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-[#090d16]/50">
+      {/* 3. JANELA DE CONVERSA PRINCIPAL */}
+      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg shadow-md flex flex-col flex-1 min-h-[250px] sm:min-h-[420px] overflow-hidden">
+        <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-[#070c14]/60">
           {isInitializing ? (
             <div className="h-full flex items-center justify-center text-xs text-slate-400 font-mono py-12">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-2" />
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping mr-2" />
               Recuperando histórico da conversa...
             </div>
           ) : (
@@ -164,12 +159,12 @@ export default function IAPage() {
                 key={msg.id}
                 className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
               >
-                {/* Identificador e Horário */}
+                {/* Identificador */}
                 <div className="flex items-center gap-2 mb-1 px-1">
                   <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
-                    msg.sender === "user" ? "text-slate-400" : "text-emerald-400 flex items-center gap-1"
+                    msg.sender === "user" ? "text-orange-400" : "text-blue-400 flex items-center gap-1"
                   }`}>
-                    {msg.sender === "user" ? "[Você]" : "● Assistente Operacional"}
+                    {msg.sender === "user" ? "[Você]" : "● Assistente Operacional RSS3"}
                   </span>
                   <span className="text-[10px] font-mono text-slate-500">{msg.timestamp}</span>
                 </div>
@@ -178,20 +173,20 @@ export default function IAPage() {
                 <div
                   className={`max-w-[95%] sm:max-w-[85%] rounded-lg p-3.5 sm:p-4 text-xs leading-relaxed border break-words overflow-x-auto ${
                     msg.sender === "user"
-                      ? "bg-[#0f172a] border-white/15 text-slate-100 shadow-xs"
-                      : "bg-[#090d16] border-emerald-500/20 text-slate-200 shadow-md ring-1 ring-emerald-500/10"
+                      ? "bg-[#0c1524] border-blue-500/30 text-white shadow-xs"
+                      : "bg-[#070c14] border-blue-500/20 text-slate-200 shadow-md ring-1 ring-blue-500/10"
                   }`}
                 >
                   {msg.text ? (
                     <div className="whitespace-pre-wrap font-sans space-y-2">
                       {msg.text}
                       {msg.isStreaming && (
-                        <span className="inline-block w-2 h-3.5 ml-1 bg-emerald-400 animate-pulse align-middle" />
+                        <span className="inline-block w-2 h-3.5 ml-1 bg-orange-500 animate-pulse align-middle" />
                       )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 text-slate-400 font-mono py-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />
                       Consultando dados operacionais da planta...
                     </div>
                   )}
@@ -200,13 +195,11 @@ export default function IAPage() {
             ))
           )}
 
-          {/* Âncora para scroll automático */}
           <div ref={chatBottomRef} />
         </div>
 
-        {/* Alerta de Erro */}
         {error && (
-          <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-xs text-rose-300 flex items-center justify-between shrink-0">
+          <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-xs text-rose-300 flex items-center justify-between shrink-0 font-mono">
             <span>{error}</span>
             <button
               type="button"
@@ -218,8 +211,8 @@ export default function IAPage() {
           </div>
         )}
 
-        {/* Barra Inferior de Entrada de Pergunta */}
-        <div className="p-3 sm:p-3.5 bg-[#0f172a] border-t border-white/10 flex items-end gap-2 shrink-0">
+        {/* Barra Inferior de Entrada */}
+        <div className="p-3 sm:p-3.5 bg-[#0c1524] border-t border-blue-500/15 flex items-end gap-2 shrink-0">
           <textarea
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
@@ -227,7 +220,7 @@ export default function IAPage() {
             disabled={isLoading}
             placeholder="Pergunte sobre atividades, prazos, estoque ou uma OS..."
             rows={2}
-            className="flex-1 bg-[#090d16] border border-white/10 focus:border-emerald-500/50 rounded-lg p-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-hidden resize-none transition-colors"
+            className="flex-1 bg-[#070c14] border border-blue-500/20 focus:border-orange-500/60 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-hidden resize-none transition-colors"
           />
 
           {isLoading ? (
@@ -243,7 +236,7 @@ export default function IAPage() {
               type="button"
               onClick={() => handleSend()}
               disabled={!inputQuery.trim()}
-              className="px-3.5 sm:px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_12px_-2px_rgba(16,185,129,0.3)] shrink-0"
+              className="px-3.5 sm:px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] shrink-0 active:scale-95"
             >
               Enviar
             </button>

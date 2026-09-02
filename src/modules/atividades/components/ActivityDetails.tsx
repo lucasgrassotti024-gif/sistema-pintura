@@ -66,17 +66,17 @@ export function ActivityDetails({
 
   return (
     <div
-      className={`bg-[#0f172a] border rounded-lg p-5 space-y-4 shadow-md transition-all ${
-        isCancelled ? "border-rose-500/30 bg-[#0f172a]" : "border-white/10"
+      className={`bg-[#0c1524] border rounded-lg p-5 space-y-4 shadow-xl transition-all ${
+        isCancelled ? "border-rose-500/30 bg-[#0c1524]" : "border-blue-500/20"
       }`}
     >
-      {/* 1. CABEÇALHO (Número da OS à esquerda e Botão Fechar no canto superior direito) */}
+      {/* 1. CABEÇALHO */}
       <div className="flex justify-between items-start">
         <div className="space-y-1">
-          <span className="text-xs font-mono font-bold text-emerald-400 tracking-wider">
+          <span className="text-xs font-mono font-bold text-blue-400 tracking-wider">
             {activity.orderNumber}
           </span>
-          <h3 className="text-base font-bold text-slate-100 mt-0.5 leading-snug">
+          <h3 className="text-base font-bold text-white mt-0.5 leading-snug">
             {activity.name}
           </h3>
         </div>
@@ -86,59 +86,59 @@ export function ActivityDetails({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-200 text-xs px-2.5 py-1 bg-white/5 hover:bg-white/10 rounded transition-colors"
+            className="text-slate-400 hover:text-white text-xs px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/20 transition-colors"
           >
             Fechar
           </button>
         )}
       </div>
 
-      {/* 2. ÁREA DE AÇÕES (Abaixo do título) */}
-      <div className="flex items-center gap-2 flex-wrap border-b border-white/5 pb-3 pt-1">
-        {/* Editar Atividade (Ação secundária cadastral) */}
+      {/* 2. ÁREA DE AÇÕES */}
+      <div className="flex items-center gap-2 flex-wrap border-b border-blue-500/15 pb-3 pt-1">
+        {/* Editar Atividade */}
         {editable && !isCompleted && onStartEdit && (
           <PermissionGate permission="atividades.editar">
             <button
               type="button"
               onClick={() => onStartEdit(activity)}
-              className="text-xs font-semibold px-2.5 py-1 bg-[#090d16] hover:bg-white/5 text-slate-200 rounded border border-white/10 hover:border-white/20 transition-colors"
+              className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-slate-200 rounded border border-blue-500/20 hover:border-blue-500/40 transition-colors"
             >
               Editar
             </button>
           </PermissionGate>
         )}
 
-        {/* Arquivar Atividade (Ação administrativa de ciclo de vida) */}
+        {/* Arquivar Atividade */}
         {!isArchived && (
           <PermissionGate permission="atividades.arquivar">
             <button
               type="button"
               onClick={() => setIsArchiving(true)}
-              className="text-xs font-semibold px-2.5 py-1 bg-[#090d16] hover:bg-white/5 text-slate-300 rounded border border-white/10 hover:border-white/20 transition-colors"
+              className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-slate-300 rounded border border-blue-500/20 hover:border-blue-500/40 transition-colors"
             >
               Arquivar
             </button>
           </PermissionGate>
         )}
 
-        {/* Excluir Definitivamente (Exclusivo da Página de Histórico) */}
+        {/* Excluir Definitivamente */}
         {allowPermanentDelete && onDeletePermanently && (
           <PermissionGate permission="atividades.excluir">
             <button
               type="button"
               onClick={() => setIsDeletingPermanently(true)}
-              className="text-xs font-semibold px-2.5 py-1 bg-[#090d16] hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 rounded border border-rose-500/30 hover:border-rose-500/50 transition-colors"
+              className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 rounded border border-rose-500/30 hover:border-rose-500/50 transition-colors"
             >
               Excluir definitivamente
             </button>
           </PermissionGate>
         )}
 
-        {/* Gerar PDF (Ação utilitária de exportação) */}
+        {/* Gerar PDF */}
         <button
           type="button"
           onClick={() => setIsGeneratingPdf(true)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-[#090d16] hover:bg-white/5 text-emerald-400 rounded border border-emerald-500/30 hover:border-emerald-500/50 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-blue-400 rounded border border-blue-500/30 hover:border-blue-500/50 transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -147,10 +147,10 @@ export function ActivityDetails({
         </button>
       </div>
 
-      {/* 3. STATUS E PRIORIDADE (Badges informativos sem aparência de botão) */}
+      {/* 3. STATUS E PRIORIDADE */}
       <div className="flex items-center gap-2 flex-wrap">
         {isArchived ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider bg-[#090d16] text-slate-300 border border-white/20 select-none cursor-default">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider bg-[#070c14] text-slate-300 border border-blue-500/20 select-none cursor-default">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             Arquivada
           </span>
@@ -166,18 +166,18 @@ export function ActivityDetails({
         )}
       </div>
 
-      {/* 4. INFORMAÇÕES PRINCIPAIS (Bloco único organizado: Rótulo vs Valor) */}
-      <div className="bg-[#090d16] border border-white/5 rounded-md p-3.5 space-y-2 text-xs">
-        <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+      {/* 4. INFORMAÇÕES PRINCIPAIS */}
+      <div className="bg-[#070c14] border border-blue-500/15 rounded-md p-3.5 space-y-2 text-xs">
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
           <span className="text-slate-400 font-mono">Área:</span>
           <span className="font-semibold text-slate-200">{activity.location.area || "-"}</span>
         </div>
-        <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
           <span className="text-slate-400 font-mono">Local específico:</span>
           <span className="font-semibold text-slate-200">{activity.location.local || "-"}</span>
         </div>
         {activity.location.equipment && (
-          <div className="flex justify-between items-center py-0.5 border-b border-white/5">
+          <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
             <span className="text-slate-400 font-mono">Equipamento:</span>
             <span className="font-semibold text-slate-200">{activity.location.equipment}</span>
           </div>
@@ -190,21 +190,21 @@ export function ActivityDetails({
         )}
       </div>
 
-      {/* 5. PROGRESSO (Percentual e Barra) */}
+      {/* 5. PROGRESSO */}
       <div className="space-y-2 pt-1">
         <ActivityProgress currentProgress={activity.progressPercentage} />
       </div>
 
-      {/* 6. AÇÃO OPERACIONAL PRINCIPAL (Atualizar Progresso - Botão Largo Inferior) */}
+      {/* 6. AÇÃO OPERACIONAL PRINCIPAL (Atualizar em Laranja RSS3) */}
       {editable && (
         <div className="pt-2">
           <PermissionGate permission={["atividades.atualizar_progresso", "atividades.registrar_consumo"]}>
             <button
               type="button"
               onClick={() => setIsUpdating(true)}
-              className="w-full text-xs font-bold py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded shadow-[0_0_12px_-2px_rgba(16,185,129,0.4)] transition-colors"
+              className="w-full text-xs font-bold py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] transition-all active:scale-[0.99]"
             >
-              Atualizar
+              Atualizar Progresso / Apontamentos
             </button>
           </PermissionGate>
         </div>

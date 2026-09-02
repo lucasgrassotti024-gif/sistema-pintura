@@ -62,24 +62,24 @@ export default function ProgramacaoPage() {
   return (
     <div className="space-y-6">
       {/* Cabeçalho */}
-      <div className="border-b border-white/10 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="border-b border-blue-500/15 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-slate-100 tracking-tight">
+          <h1 className="text-xl font-bold text-white tracking-tight">
             Programação Operacional
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Quadro semanal de ordens de serviço, frentes ativas e distribuição de equipes.
+            Quadro semanal de ordens de serviço, frentes ativas e distribuição de equipes RSS3.
           </p>
         </div>
 
         {/* Navegação Semanal */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center bg-[#0f172a] border border-white/10 rounded-md overflow-hidden">
+          <div className="flex items-center bg-[#0c1524] border border-blue-500/20 rounded-md overflow-hidden">
             <button
               type="button"
               onClick={handlePreviousWeek}
               title="Semana anterior"
-              className="px-2.5 py-1 text-xs font-bold text-slate-300 hover:bg-white/5 border-r border-white/10 transition-colors"
+              className="px-2.5 py-1 text-xs font-bold text-slate-300 hover:bg-blue-500/10 border-r border-blue-500/20 transition-colors"
             >
               ←
             </button>
@@ -87,7 +87,7 @@ export default function ProgramacaoPage() {
               type="button"
               onClick={handleCurrentWeek}
               title="Ir para semana atual"
-              className="px-3 py-1 text-xs font-semibold text-slate-200 hover:bg-white/5 transition-colors"
+              className="px-3 py-1 text-xs font-semibold text-slate-200 hover:bg-blue-500/10 transition-colors"
             >
               Hoje
             </button>
@@ -95,20 +95,20 @@ export default function ProgramacaoPage() {
               type="button"
               onClick={handleNextWeek}
               title="Próxima semana"
-              className="px-2.5 py-1 text-xs font-bold text-slate-300 hover:bg-white/5 border-l border-white/10 transition-colors"
+              className="px-2.5 py-1 text-xs font-bold text-slate-300 hover:bg-blue-500/10 border-l border-blue-500/20 transition-colors"
             >
               →
             </button>
           </div>
 
-          <span className="text-xs font-mono font-bold px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded">
+          <span className="text-xs font-mono font-bold px-3 py-1 bg-orange-500/15 border border-orange-500/35 text-orange-400 rounded">
             {weekInfo.label}
           </span>
         </div>
       </div>
 
       {error && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-xs text-rose-300">
+        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-xs text-rose-300 font-mono">
           {error}
         </div>
       )}
@@ -129,20 +129,20 @@ export default function ProgramacaoPage() {
                 return (
                   <div
                     key={day.date}
-                    className={`bg-[#0f172a] border rounded-lg p-3 flex flex-col min-h-[120px] md:min-h-[380px] transition-all shadow-sm ${
+                    className={`bg-[#0c1524] border rounded-lg p-3 flex flex-col min-h-[120px] md:min-h-[380px] transition-all shadow-sm ${
                       day.isToday
-                        ? "border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/30"
-                        : "border-white/10"
+                        ? "border-orange-500/60 shadow-[0_0_15px_rgba(249,115,22,0.2)] ring-1 ring-orange-500/40"
+                        : "border-blue-500/15"
                     }`}
                   >
                     {/* Cabeçalho do Dia */}
-                    <div className="border-b border-white/10 pb-2 mb-3">
+                    <div className="border-b border-blue-500/15 pb-2 mb-3">
                       <div className="flex justify-between items-center">
-                        <span className={`text-xs font-bold ${day.isToday ? "text-emerald-400 font-mono" : "text-slate-200"}`}>
+                        <span className={`text-xs font-bold ${day.isToday ? "text-orange-400 font-mono" : "text-slate-200"}`}>
                           {day.dayOfWeek}
                         </span>
                         {day.isToday && (
-                          <span className="text-[9px] uppercase font-bold bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/30 font-mono">
+                          <span className="text-[9px] uppercase font-bold bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/40 font-mono">
                             Hoje
                           </span>
                         )}
@@ -153,7 +153,7 @@ export default function ProgramacaoPage() {
                     {/* Lista de Atividades do Dia */}
                     <div className="space-y-2 flex-1 overflow-y-auto pr-1">
                       {dayActivities.length === 0 ? (
-                        <p className="text-[11px] text-slate-500 text-center py-10">Sem atividades</p>
+                        <p className="text-[11px] text-slate-500 text-center py-10 font-mono">Sem atividades</p>
                       ) : (
                         dayActivities.map((act) => {
                           const delayed = isActivityDelayed(act, todayISO);
@@ -165,14 +165,14 @@ export default function ProgramacaoPage() {
                               onClick={() => setSelectedActivity(act)}
                               className={`p-2.5 rounded-md border text-xs cursor-pointer transition-all ${
                                 isSelected
-                                  ? "bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500"
+                                  ? "bg-orange-500/15 border-orange-500 ring-1 ring-orange-500"
                                   : delayed
                                   ? "bg-rose-500/5 border-rose-500/30 hover:border-rose-500/50"
-                                  : "bg-[#090d16] border-white/5 hover:border-white/20"
+                                  : "bg-[#070c14] border-blue-500/15 hover:border-blue-500/35 hover:bg-[#131f33]/40"
                               }`}
                             >
                               <div className="flex justify-between items-start mb-1">
-                                <span className="font-mono font-bold text-slate-300 text-[11px]">
+                                <span className="font-mono font-bold text-blue-300 text-[11px]">
                                   {act.orderNumber}
                                 </span>
                                 {delayed && (
@@ -181,11 +181,11 @@ export default function ProgramacaoPage() {
                                   </span>
                                 )}
                               </div>
-                              <p className="font-medium text-slate-100 leading-snug line-clamp-2">
+                              <p className="font-medium text-white leading-snug line-clamp-2">
                                 {act.name}
                               </p>
                               <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-                                <span className={act.progressPercentage === 100 ? "text-emerald-400 font-bold" : "text-slate-300"}>
+                                <span className={act.progressPercentage === 100 ? "text-emerald-400 font-bold" : "text-orange-400 font-semibold"}>
                                   {act.progressPercentage}%
                                 </span>
                                 <span className="truncate max-w-[80px] text-slate-400">{act.assignedTo || act.team || "-"}</span>
@@ -216,10 +216,10 @@ export default function ProgramacaoPage() {
         </div>
       )}
 
-      {/* Modal de Edição de Atividade (Reutiliza o formulário oficial) */}
+      {/* Modal de Edição de Atividade */}
       {editingActivity && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#0f172a] border border-white/10 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
             <ActivityForm
               initialActivity={editingActivity}
               onSave={handleSaveEdit}
@@ -231,5 +231,3 @@ export default function ProgramacaoPage() {
     </div>
   );
 }
-
-

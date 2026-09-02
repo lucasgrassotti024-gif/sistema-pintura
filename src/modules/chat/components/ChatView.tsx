@@ -73,7 +73,6 @@ export function ChatView() {
       const updated = current.substring(0, start) + emoji + current.substring(end);
       setInputContent(updated);
 
-      // Reposiciona o cursor após o emoji inserido
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(start + emoji.length, start + emoji.length);
@@ -111,7 +110,7 @@ export function ChatView() {
     }
   };
 
-  // Envio Geral de Mensagem (Texto, Foto ou ambos)
+  // Envio Geral de Mensagem
   const handleSendMessage = async () => {
     const trimmed = inputContent.trim();
     if ((!trimmed && !selectedImageFile) || isSending || isUploadingImage) return;
@@ -200,21 +199,21 @@ export function ChatView() {
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[calc(100dvh-7rem)] sm:h-[calc(100vh-6.5rem)] w-full mx-auto">
-      {/* 1. PAINEL PRINCIPAL DO CHAT (Elemento Dominante) */}
-      <div className="flex-1 flex flex-col bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden min-w-0">
+      {/* 1. PAINEL PRINCIPAL DO CHAT */}
+      <div className="flex-1 flex flex-col bg-[#0c1524] border border-blue-500/20 rounded-xl shadow-xl overflow-hidden min-w-0">
         {/* Cabeçalho Técnico da Sala */}
-        <div className="px-5 py-3.5 border-b border-white/10 bg-[#0c121e]/90 flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 border-b border-blue-500/15 bg-[#08101d]/90 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-sm shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+            <div className="w-9 h-9 rounded-lg bg-orange-500/15 border border-orange-500/35 flex items-center justify-center text-orange-400 font-bold text-sm shadow-[0_0_12px_rgba(249,115,22,0.2)]">
               💬
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-slate-100 tracking-tight">
+                <h1 className="text-sm font-bold text-white tracking-tight">
                   Chat da Operação
                 </h1>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  Sala Principal • Realtime
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                  Sala Operacional RSS3
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 mt-0.5">
@@ -224,18 +223,18 @@ export function ChatView() {
           </div>
 
           {/* Indicador de Presença */}
-          <div className="flex items-center gap-2 bg-[#090d16] border border-white/10 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
-            <span className="font-bold text-slate-100">{onlineUsers.length}</span>
+          <div className="flex items-center gap-2 bg-[#070c14] border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_6px_rgba(249,115,22,0.8)]" />
+            <span className="font-bold text-white">{onlineUsers.length}</span>
             <span className="text-slate-400">online</span>
           </div>
         </div>
 
         {/* Área de Rolagem das Mensagens */}
-        <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#090d16]/60 scrollbar-thin">
+        <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#070c14]/70 scrollbar-thin">
           {isLoading ? (
             <div className="h-full flex items-center justify-center text-xs font-mono text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-2" />
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping mr-2" />
               Sincronizando mensagens da operação...
             </div>
           ) : messages.length === 0 ? (
@@ -253,16 +252,16 @@ export function ChatView() {
                   key={msg.id}
                   className={`flex flex-col ${isMine ? "items-end" : "items-start"} group animate-in fade-in duration-150`}
                 >
-                  {/* Cabeçalho da Mensagem: Autor + Cargo + Horário */}
+                  {/* Cabeçalho da Mensagem */}
                   <div className="flex items-center gap-2 mb-1 px-1 text-[10px] font-mono">
                     <span
                       className={`font-bold ${
-                        isMine ? "text-emerald-400" : "text-slate-300"
+                        isMine ? "text-orange-400" : "text-blue-300"
                       }`}
                     >
                       {isMine ? "Você" : msg.user.fullName}
                     </span>
-                    <span className="text-slate-400 uppercase px-1.5 py-0.2 bg-white/5 rounded border border-white/5">
+                    <span className="text-slate-400 uppercase px-1.5 py-0.2 bg-[#070c14] rounded border border-blue-500/15">
                       {msg.user.role}
                     </span>
                     <span className="text-slate-500">
@@ -272,7 +271,7 @@ export function ChatView() {
                       })}
                     </span>
 
-                    {/* Botão de Excluir (somente a própria mensagem) */}
+                    {/* Botão de Excluir */}
                     {isMine && (
                       <button
                         type="button"
@@ -293,7 +292,7 @@ export function ChatView() {
                         src={msg.imageUrl}
                         alt={msg.imageName || "Foto da operação"}
                         onClick={() => setLightboxImage({ url: msg.imageUrl!, name: msg.imageName || undefined })}
-                        className="rounded-lg max-h-64 object-cover border border-white/10 hover:border-emerald-500/50 cursor-pointer transition-all shadow-md hover:scale-[1.01]"
+                        className="rounded-lg max-h-64 object-cover border border-blue-500/20 hover:border-orange-500/50 cursor-pointer transition-all shadow-md hover:scale-[1.01]"
                       />
                     </div>
                   )}
@@ -303,8 +302,8 @@ export function ChatView() {
                     <div
                       className={`rounded-xl px-4 py-2.5 text-xs leading-relaxed max-w-[85%] break-words border shadow-xs ${
                         isMine
-                          ? "bg-emerald-600/20 border-emerald-500/40 text-slate-100 ring-1 ring-emerald-500/10"
-                          : "bg-[#0f172a] border-white/10 text-slate-200"
+                          ? "bg-orange-500/20 border-orange-500/40 text-white ring-1 ring-orange-500/20"
+                          : "bg-[#0c1524] border-blue-500/20 text-slate-200"
                       }`}
                     >
                       {msg.content}
@@ -338,7 +337,7 @@ export function ChatView() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Barra de Notificação de Erro */}
+        {/* Barra de Erro */}
         {activeError && (
           <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-xs text-rose-300 flex items-center justify-between shrink-0 font-mono">
             <span>⚠️ {activeError}</span>
@@ -353,15 +352,15 @@ export function ChatView() {
         )}
 
         {/* Rodapé: Ações de Anexo + Preview de Imagem + Campo de Entrada */}
-        <div className="p-3.5 bg-[#0f172a] border-t border-white/10 space-y-3 shrink-0 relative">
-          {/* Prévia da Imagem Selecionada para Envio */}
+        <div className="p-3.5 bg-[#0c1524] border-t border-blue-500/15 space-y-3 shrink-0 relative">
+          {/* Prévia da Imagem Selecionada */}
           {imagePreviewUrl && (
-            <div className="flex items-center gap-3 p-2 bg-[#090d16] border border-white/10 rounded-lg max-w-sm animate-in fade-in">
+            <div className="flex items-center gap-3 p-2 bg-[#070c14] border border-blue-500/20 rounded-lg max-w-sm animate-in fade-in">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imagePreviewUrl}
                 alt="Prévia da foto"
-                className="w-14 h-14 object-cover rounded-md border border-white/10"
+                className="w-14 h-14 object-cover rounded-md border border-blue-500/20"
               />
               <div className="flex-1 min-w-0">
                 <span className="text-xs text-slate-200 font-medium block truncate">
@@ -382,17 +381,17 @@ export function ChatView() {
             </div>
           )}
 
-          {/* Barra de Ações Rápidas: Emojis, Foto, Atividade, Material */}
+          {/* Barra de Ações Rápidas */}
           <div className="flex items-center gap-2 relative flex-wrap">
             {/* Popover de Emojis */}
             <div className="relative">
               <button
                 type="button"
                 onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#090d16] border text-sm transition-colors ${
+                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#070c14] border text-sm transition-colors ${
                   isEmojiPickerOpen
-                    ? "border-emerald-500 text-emerald-400 bg-emerald-500/10"
-                    : "border-white/10 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-400"
+                    ? "border-orange-500 text-orange-400 bg-orange-500/10"
+                    : "border-blue-500/20 hover:border-orange-500/30 text-slate-300 hover:text-orange-400"
                 }`}
                 title="Inserir Emoji"
               >
@@ -417,7 +416,7 @@ export function ChatView() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#090d16] hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 border border-white/10 hover:border-emerald-500/30 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
               title="Anexar Foto (JPG, PNG, WEBP)"
             >
               <span>📷</span>
@@ -426,11 +425,11 @@ export function ChatView() {
 
             <span className="text-white/10">|</span>
 
-            {/* Botões de Vínculos Estruturados */}
+            {/* Botões de Vínculos */}
             <button
               type="button"
               onClick={() => setIsAttachingActivity(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#090d16] hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 border border-white/10 hover:border-emerald-500/30 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
             >
               <span>+</span>
               <span>Atividade</span>
@@ -439,14 +438,14 @@ export function ChatView() {
             <button
               type="button"
               onClick={() => setIsAttachingMaterial(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#090d16] hover:bg-emerald-500/10 text-slate-300 hover:text-emerald-400 border border-white/10 hover:border-emerald-500/30 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
             >
               <span>+</span>
               <span>Material</span>
             </button>
           </div>
 
-          {/* Campo de Texto e Botão Enviar */}
+          {/* Campo de Texto e Botão Enviar (Laranja RSS3) */}
           <div className="flex items-end gap-2.5">
             <textarea
               ref={textareaRef}
@@ -460,14 +459,14 @@ export function ChatView() {
                   : "Escreva uma mensagem sobre a operação... (Enter para enviar)"
               }
               rows={2}
-              className="flex-1 bg-[#090d16] border border-white/10 focus:border-emerald-500/50 rounded-lg p-2.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-hidden resize-none transition-colors"
+              className="flex-1 bg-[#070c14] border border-blue-500/20 focus:border-orange-500/60 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-hidden resize-none transition-colors"
             />
 
             <button
               type="button"
               onClick={handleSendMessage}
               disabled={(!inputContent.trim() && !selectedImageFile) || isSending || isUploadingImage}
-              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_12px_-2px_rgba(16,185,129,0.3)] shrink-0 flex items-center gap-1.5"
+              className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] shrink-0 flex items-center gap-1.5 active:scale-95"
             >
               {isSending || isUploadingImage ? (
                 <>
@@ -485,11 +484,11 @@ export function ChatView() {
         </div>
       </div>
 
-      {/* 2. PAINEL LATERAL DE CONTEXTO DA SALA & USUÁRIOS ONLINE */}
-      <div className="hidden lg:flex flex-col w-72 bg-[#0f172a] border border-white/10 rounded-xl shadow-xl overflow-hidden shrink-0">
+      {/* 2. PAINEL LATERAL DE CONTEXTO */}
+      <div className="hidden lg:flex flex-col w-72 bg-[#0c1524] border border-blue-500/20 rounded-xl shadow-xl overflow-hidden shrink-0">
         {/* Topo do Painel */}
-        <div className="p-3.5 border-b border-white/10 bg-[#0c121e]/80">
-          <h2 className="text-xs font-bold text-slate-100 uppercase font-mono tracking-wider">
+        <div className="p-3.5 border-b border-blue-500/15 bg-[#08101d]/90">
+          <h2 className="text-xs font-bold text-white uppercase font-mono tracking-wider">
             Contexto da Operação
           </h2>
           <p className="text-[11px] text-slate-400 mt-0.5">
@@ -497,23 +496,23 @@ export function ChatView() {
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-5 bg-[#090d16]/40 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-5 bg-[#070c14]/50 scrollbar-thin">
           {/* Usuários Online */}
           <div className="space-y-2">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-orange-500" />
               Operadores Online ({onlineUsers.length}):
             </span>
             <div className="space-y-1.5">
               {onlineUsers.map((u) => (
                 <div
                   key={u.userId}
-                  className="p-2 rounded bg-[#090d16] border border-white/5 flex items-center justify-between"
+                  className="p-2 rounded bg-[#070c14] border border-blue-500/15 flex items-center justify-between"
                 >
-                  <span className="text-xs text-slate-200 font-medium truncate">
+                  <span className="text-xs text-white font-medium truncate">
                     {u.fullName}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase bg-white/5 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] font-mono text-blue-400 uppercase bg-blue-500/10 px-1.5 py-0.5 rounded">
                     {u.role}
                   </span>
                 </div>
@@ -537,17 +536,17 @@ export function ChatView() {
                     key={act.id}
                     type="button"
                     onClick={() => handleOpenActivityDetails(act.id)}
-                    className="w-full text-left p-2.5 rounded bg-[#090d16] hover:bg-emerald-500/5 border border-white/5 hover:border-emerald-500/30 transition-all flex flex-col gap-1"
+                    className="w-full text-left p-2.5 rounded bg-[#070c14] hover:bg-blue-500/10 border border-blue-500/15 hover:border-blue-500/35 transition-all flex flex-col gap-1"
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-mono font-bold text-emerald-400">
+                      <span className="text-xs font-mono font-bold text-blue-400">
                         {act.orderNumber}
                       </span>
-                      <span className="text-[10px] font-mono text-slate-400">
+                      <span className="text-[10px] font-mono text-orange-400 font-semibold">
                         {act.progressPercentage}%
                       </span>
                     </div>
-                    <span className="text-xs text-slate-200 truncate">{act.name}</span>
+                    <span className="text-xs text-white truncate">{act.name}</span>
                   </button>
                 ))}
               </div>
@@ -572,25 +571,25 @@ export function ChatView() {
                     onClick={() => {
                       window.location.href = "/pintura/materiais-estoque";
                     }}
-                    className="w-full text-left p-2.5 rounded bg-[#090d16] hover:bg-emerald-500/5 border border-white/5 hover:border-emerald-500/30 transition-all flex flex-col gap-1"
+                    className="w-full text-left p-2.5 rounded bg-[#070c14] hover:bg-blue-500/10 border border-blue-500/15 hover:border-blue-500/35 transition-all flex flex-col gap-1"
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-mono font-bold text-emerald-400">
+                      <span className="text-xs font-mono font-bold text-blue-400">
                         {mat.code}
                       </span>
                       <span
                         className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border uppercase ${
                           mat.status === "critico"
-                            ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                            ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
                             : mat.status === "atencao"
-                            ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                            : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                         }`}
                       >
                         {mat.status}
                       </span>
                     </div>
-                    <span className="text-xs text-slate-200 truncate">{mat.name}</span>
+                    <span className="text-xs text-white truncate">{mat.name}</span>
                     <span className="text-[10px] font-mono text-slate-400">
                       Saldo: {mat.currentStock} {mat.unit}
                     </span>
@@ -617,7 +616,7 @@ export function ChatView() {
 
       {/* Modal de Detalhes da Atividade Clicada */}
       {selectedActivityDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
           <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <ActivityDetails
               activity={selectedActivityDetails}
@@ -637,7 +636,7 @@ export function ChatView() {
       )}
 
       {isLoadingActivityDetails && (
-        <div className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg bg-[#0f172a] border border-white/10 text-xs font-mono text-slate-200 shadow-xl animate-pulse">
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg bg-[#0c1524] border border-blue-500/30 text-xs font-mono text-white shadow-xl animate-pulse">
           Carregando dados da atividade...
         </div>
       )}

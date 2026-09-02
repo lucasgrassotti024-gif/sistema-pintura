@@ -9,18 +9,18 @@ export function ActivityStatusBadge({ status }: ActivityStatusBadgeProps) {
   const statusConfig: Record<ActivityStatus, { label: string; dotColor: string; className: string }> = {
     programada: {
       label: "Programada",
-      dotColor: "bg-slate-400",
-      className: "bg-[#090d16] text-slate-300 border-white/10",
+      dotColor: "bg-blue-400",
+      className: "bg-[#070c14] text-blue-300 border-blue-500/25",
     },
     planejada: {
       label: "Planejada",
-      dotColor: "bg-slate-400",
-      className: "bg-[#090d16] text-slate-300 border-white/10",
+      dotColor: "bg-blue-400",
+      className: "bg-[#070c14] text-blue-300 border-blue-500/25",
     },
     em_andamento: {
       label: "Em Andamento",
-      dotColor: "bg-emerald-400",
-      className: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-medium",
+      dotColor: "bg-orange-500",
+      className: "bg-orange-500/15 text-orange-400 border-orange-500/35 font-medium shadow-[0_0_10px_-2px_rgba(249,115,22,0.3)]",
     },
     pausada: {
       label: "Pausada",
@@ -42,7 +42,7 @@ export function ActivityStatusBadge({ status }: ActivityStatusBadgeProps) {
   const current = statusConfig[status] || {
     label: status,
     dotColor: "bg-slate-400",
-    className: "bg-[#090d16] text-slate-400 border-white/10",
+    className: "bg-[#070c14] text-slate-400 border-blue-500/15",
   };
 
   return (

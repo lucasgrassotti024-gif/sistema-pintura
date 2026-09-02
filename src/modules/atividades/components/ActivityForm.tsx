@@ -454,13 +454,13 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-6 shadow-xs max-w-4xl mx-auto">
-      <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+    <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-6 space-y-6 shadow-xl max-w-4xl mx-auto">
+      <div className="flex justify-between items-center border-b border-blue-500/15 pb-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-white">
             {isEditing ? `Editar Atividade: ${initialActivity?.orderNumber}` : "Cadastrar Nova Atividade"}
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5">
             {isEditing
               ? "Altere os dados operacionais ou datas da atividade. O identificador, progresso físico e consumos serão preservados."
               : "Preencha os dados operacionais. A atividade iniciará com status PROGRAMADA e 0% de progresso."}
@@ -469,14 +469,14 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-slate-500 hover:text-slate-800 px-3 py-1.5 bg-slate-100 rounded border border-slate-200"
+          className="text-xs text-slate-400 hover:text-white px-3 py-1.5 bg-[#070c14] hover:bg-blue-500/15 rounded border border-blue-500/20 transition-colors"
         >
           Cancelar
         </button>
       </div>
 
       {error && (
-        <div className="p-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded-md font-medium">
+        <div className="p-3 text-xs bg-rose-500/10 text-rose-300 border border-rose-500/30 rounded-md font-medium font-mono">
           {error}
         </div>
       )}
@@ -484,7 +484,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Bloco 1: Identificação Básica */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">
+          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-400 border-b border-blue-500/15 pb-1">
             1. Identificação da Atividade
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1010,19 +1010,19 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
         </div>
 
         {/* Ações do Formulário */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-blue-500/15">
           <button
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-[#070c14] hover:bg-blue-500/15 rounded border border-blue-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95"
           >
             {isSubmitting && (
               <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
