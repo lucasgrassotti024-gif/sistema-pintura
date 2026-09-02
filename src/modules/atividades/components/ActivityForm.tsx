@@ -853,7 +853,6 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                     }
                   }}
                   onFocus={() => setIsSearchDropdownOpen(true)}
-                  placeholder="Digite o código ou nome do material..."
                   className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
                 {selectedCatalogMaterial && (
