@@ -38,7 +38,7 @@ export function DashboardView() {
   }, []);
   const currentWeek = useMemo(() => getWeekInfo(new Date(), true), []);
 
-  // Lista dinâmica de Áreas reais
+  // Lista dinâmica de Áreas reais extraídas das atividades
   const areasList = useMemo(() => {
     const set = new Set<string>();
     activities.forEach((a) => {
@@ -156,14 +156,14 @@ export function DashboardView() {
     return { total, criticos, atencao, adequados };
   }, [rawMaterials]);
 
-  // Materiais críticos
+  // Materiais críticos para exibição na tabela
   const criticalMaterials = useMemo(() => {
     return rawMaterials
       .filter((mat) => mat.status === "critico" || mat.status === "atencao")
       .sort((a, b) => a.currentStock - b.currentStock);
   }, [rawMaterials]);
 
-  // Itens que "Requerem Atenção"
+  // Lista de itens que "Requerem Atenção"
   const attentionItems = useMemo(() => {
     const list: Array<{
       id: string;
@@ -228,21 +228,21 @@ export function DashboardView() {
 
   return (
     <div className="space-y-6">
-      {/* 1. CABEÇALHO & FILTROS NO TOPO (Identidade Clara e Profissional RSS3) */}
-      <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+      {/* 1. CABEÇALHO & FILTROS NO TOPO (Identidade RSS3 Azul Escuro / Petróleo) */}
+      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 space-y-4 shadow-md">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-blue-500/15 pb-3">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+            <h1 className="text-xl font-bold text-white tracking-tight">
               Dashboard Operacional da Pintura
             </h1>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-blue-300/80 mt-0.5">
               Painel consolidado em tempo real com base nos registros da RSS3 Soluções Industriais.
             </p>
           </div>
           {statusCardFilter && (
             <button
               onClick={() => setStatusCardFilter(null)}
-              className="text-xs font-semibold px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-md hover:bg-orange-100 transition-colors self-start sm:self-auto"
+              className="text-xs font-semibold px-2.5 py-1 bg-orange-500/15 text-orange-300 border border-orange-500/35 rounded hover:bg-orange-500/25 transition-colors self-start sm:self-auto"
             >
               Filtro ativo: {statusCardFilter} (Limpar ×)
             </button>
@@ -251,7 +251,7 @@ export function DashboardView() {
 
         {/* Mensagem de Erro Real (se houver) */}
         {error && (
-          <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-mono">
+          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-xs text-rose-300 font-mono">
             {error}
           </div>
         )}
@@ -260,15 +260,15 @@ export function DashboardView() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
           {/* Período */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Período</label>
-            <div className="grid grid-cols-4 gap-1 bg-slate-100 p-1 rounded-md border border-slate-200">
+            <label className="block font-semibold text-slate-300 mb-1">Período</label>
+            <div className="grid grid-cols-4 gap-1 bg-[#070c14] p-1 rounded border border-blue-500/20">
               <button
                 type="button"
                 onClick={() => setPeriod("hoje")}
                 className={`py-1 text-xs font-semibold rounded text-center transition-colors ${
                   period === "hoje"
-                    ? "bg-white text-blue-700 shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-orange-500 text-white shadow-xs font-bold"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Hoje
@@ -278,8 +278,8 @@ export function DashboardView() {
                 onClick={() => setPeriod("semana")}
                 className={`py-1 text-xs font-semibold rounded text-center transition-colors ${
                   period === "semana"
-                    ? "bg-white text-blue-700 shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-orange-500 text-white shadow-xs font-bold"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Semana
@@ -289,8 +289,8 @@ export function DashboardView() {
                 onClick={() => setPeriod("mes")}
                 className={`py-1 text-xs font-semibold rounded text-center transition-colors ${
                   period === "mes"
-                    ? "bg-white text-blue-700 shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-orange-500 text-white shadow-xs font-bold"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Mês
@@ -300,8 +300,8 @@ export function DashboardView() {
                 onClick={() => setPeriod("todas")}
                 className={`py-1 text-xs font-semibold rounded text-center transition-colors ${
                   period === "todas"
-                    ? "bg-white text-blue-700 shadow-xs font-bold"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-orange-500 text-white shadow-xs font-bold"
+                    : "text-slate-400 hover:text-white"
                 }`}
               >
                 Todas
@@ -311,11 +311,11 @@ export function DashboardView() {
 
           {/* Área */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Área</label>
+            <label className="block font-semibold text-slate-300 mb-1">Área</label>
             <select
               value={selectedArea}
               onChange={(e) => setSelectedArea(e.target.value)}
-              className="w-full bg-white text-slate-900 border border-slate-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-600 focus:outline-hidden"
+              className="w-full bg-[#070c14] text-slate-200 border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
             >
               <option value="todas">Todas as Áreas ({areasList.length})</option>
               {areasList.map((a) => (
@@ -328,11 +328,11 @@ export function DashboardView() {
 
           {/* Equipe */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Equipe</label>
+            <label className="block font-semibold text-slate-300 mb-1">Equipe</label>
             <select
               value={selectedTeam}
               onChange={(e) => setSelectedTeam(e.target.value)}
-              className="w-full bg-white text-slate-900 border border-slate-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-600 focus:outline-hidden"
+              className="w-full bg-[#070c14] text-slate-200 border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
             >
               <option value="todas">Todas as Equipes ({teamsList.length})</option>
               {teamsList.map((t) => (
@@ -345,11 +345,11 @@ export function DashboardView() {
 
           {/* Responsável */}
           <div>
-            <label className="block font-semibold text-slate-700 mb-1">Responsável</label>
+            <label className="block font-semibold text-slate-300 mb-1">Responsável</label>
             <select
               value={selectedResp}
               onChange={(e) => setSelectedResp(e.target.value)}
-              className="w-full bg-white text-slate-900 border border-slate-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-600 focus:outline-hidden"
+              className="w-full bg-[#070c14] text-slate-200 border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
             >
               <option value="todos">Todos os Responsáveis ({respList.length})</option>
               {respList.map((r) => (
@@ -367,125 +367,125 @@ export function DashboardView() {
         {/* Total de Atividades */}
         <div
           onClick={() => setStatusCardFilter(null)}
-          className={`border rounded-lg p-3.5 transition-all cursor-pointer bg-white shadow-xs ${
+          className={`border rounded-lg p-3.5 transition-all cursor-pointer ${
             !statusCardFilter
-              ? "border-blue-500 ring-1 ring-blue-400 bg-blue-50/20"
-              : "border-slate-200 hover:border-blue-300"
+              ? "bg-[#131f33] border-blue-500/50 shadow-[0_0_15px_-2px_rgba(37,99,235,0.25)]"
+              : "bg-[#0c1524] border-blue-500/15 hover:border-blue-500/35"
           }`}
         >
-          <span className="text-[11px] font-mono font-semibold text-slate-500 uppercase tracking-wider">
+          <span className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider">
             Total
           </span>
-          <p className="text-2xl font-bold font-mono text-slate-900 mt-1">
+          <p className="text-2xl font-bold font-mono text-white mt-1">
             {isLoading ? "—" : totalPeriod}
           </p>
-          <span className="text-[10px] text-slate-500">atividades</span>
+          <span className="text-[10px] text-slate-400">atividades</span>
         </div>
 
         {/* Programadas */}
         <div
           onClick={() => setStatusCardFilter("programadas")}
-          className={`border rounded-lg p-3.5 transition-all cursor-pointer bg-white shadow-xs ${
+          className={`border rounded-lg p-3.5 transition-all cursor-pointer ${
             statusCardFilter === "programadas"
-              ? "border-blue-500 ring-1 ring-blue-400 bg-blue-50/20"
-              : "border-slate-200 hover:border-blue-300"
+              ? "bg-[#131f33] border-blue-500/50 shadow-[0_0_15px_-2px_rgba(37,99,235,0.25)]"
+              : "bg-[#0c1524] border-blue-500/15 hover:border-blue-500/35"
           }`}
         >
-          <span className="text-[11px] font-mono font-semibold text-blue-700 uppercase tracking-wider">
+          <span className="text-[11px] font-mono font-semibold text-blue-400 uppercase tracking-wider">
             Programadas
           </span>
-          <p className="text-2xl font-bold font-mono text-blue-700 mt-1">
+          <p className="text-2xl font-bold font-mono text-blue-300 mt-1">
             {isLoading ? "—" : countProgramadas}
           </p>
-          <span className="text-[10px] text-slate-500">a iniciar</span>
+          <span className="text-[10px] text-slate-400">a iniciar</span>
         </div>
 
         {/* Em Andamento */}
         <div
           onClick={() => setStatusCardFilter("em_andamento")}
-          className={`border rounded-lg p-3.5 transition-all cursor-pointer bg-white shadow-xs ${
+          className={`border rounded-lg p-3.5 transition-all cursor-pointer ${
             statusCardFilter === "em_andamento"
-              ? "border-orange-500 ring-1 ring-orange-400 bg-orange-50/20"
-              : "border-slate-200 hover:border-orange-300"
+              ? "bg-[#131f33] border-orange-500/60 shadow-[0_0_15px_-2px_rgba(249,115,22,0.3)]"
+              : "bg-[#0c1524] border-blue-500/15 hover:border-orange-500/35"
           }`}
         >
-          <span className="text-[11px] font-mono font-semibold text-orange-600 uppercase tracking-wider">
+          <span className="text-[11px] font-mono font-semibold text-orange-400 uppercase tracking-wider">
             Em Andamento
           </span>
-          <p className="text-2xl font-bold font-mono text-orange-600 mt-1">
+          <p className="text-2xl font-bold font-mono text-orange-400 mt-1">
             {isLoading ? "—" : countEmAndamento}
           </p>
-          <span className="text-[10px] text-slate-500">ativas</span>
+          <span className="text-[10px] text-slate-400">ativas</span>
         </div>
 
         {/* Concluídas */}
         <div
           onClick={() => setStatusCardFilter("concluidas")}
-          className={`border rounded-lg p-3.5 transition-all cursor-pointer bg-white shadow-xs ${
+          className={`border rounded-lg p-3.5 transition-all cursor-pointer ${
             statusCardFilter === "concluidas"
-              ? "border-emerald-500 ring-1 ring-emerald-400 bg-emerald-50/20"
-              : "border-slate-200 hover:border-emerald-300"
+              ? "bg-[#131f33] border-emerald-500/50 shadow-[0_0_15px_-2px_rgba(16,185,129,0.3)]"
+              : "bg-[#0c1524] border-blue-500/15 hover:border-emerald-500/35"
           }`}
         >
-          <span className="text-[11px] font-mono font-semibold text-emerald-600 uppercase tracking-wider">
+          <span className="text-[11px] font-mono font-semibold text-emerald-400 uppercase tracking-wider">
             Concluídas
           </span>
-          <p className="text-2xl font-bold font-mono text-emerald-600 mt-1">
+          <p className="text-2xl font-bold font-mono text-emerald-400 mt-1">
             {isLoading ? "—" : countConcluidas}
           </p>
-          <span className="text-[10px] text-slate-500">finalizadas</span>
+          <span className="text-[10px] text-slate-400">finalizadas</span>
         </div>
 
         {/* Em Atraso */}
         <div
           onClick={() => setStatusCardFilter("atrasadas")}
-          className={`border rounded-lg p-3.5 transition-all cursor-pointer bg-white shadow-xs ${
+          className={`border rounded-lg p-3.5 transition-all cursor-pointer ${
             statusCardFilter === "atrasadas"
-              ? "border-rose-500 ring-1 ring-rose-400 bg-rose-50/20"
-              : "border-slate-200 hover:border-rose-300"
+              ? "bg-[#131f33] border-rose-500/50 shadow-[0_0_15px_-2px_rgba(244,63,94,0.3)]"
+              : "bg-[#0c1524] border-blue-500/15 hover:border-rose-500/35"
           }`}
         >
-          <span className="text-[11px] font-mono font-semibold text-rose-600 uppercase tracking-wider">
+          <span className="text-[11px] font-mono font-semibold text-rose-400 uppercase tracking-wider">
             Em Atraso
           </span>
-          <p className="text-2xl font-bold font-mono text-rose-600 mt-1">
+          <p className="text-2xl font-bold font-mono text-rose-400 mt-1">
             {isLoading ? "—" : countAtrasadas}
           </p>
-          <span className="text-[10px] text-rose-600 font-medium">requer ação</span>
+          <span className="text-[10px] text-rose-400/80 font-medium">requer ação</span>
         </div>
 
         {/* % Cumprimento */}
-        <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-xs">
-          <span className="text-[11px] font-mono font-semibold text-blue-700 uppercase tracking-wider">
+        <div className="bg-[#0c1524] border border-blue-500/15 rounded-lg p-3.5">
+          <span className="text-[11px] font-mono font-semibold text-orange-400 uppercase tracking-wider">
             Cumprimento
           </span>
-          <p className="text-2xl font-bold font-mono text-slate-900 mt-1">
+          <p className="text-2xl font-bold font-mono text-white mt-1">
             {isLoading ? "—" : `${percCumprimento}%`}
           </p>
-          <span className="text-[10px] text-slate-500">meta do escopo</span>
+          <span className="text-[10px] text-slate-400">meta do escopo</span>
         </div>
 
         {/* Progresso Médio */}
-        <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-xs">
-          <span className="text-[11px] font-mono font-semibold text-blue-700 uppercase tracking-wider">
+        <div className="bg-[#0c1524] border border-blue-500/15 rounded-lg p-3.5">
+          <span className="text-[11px] font-mono font-semibold text-blue-300 uppercase tracking-wider">
             Progresso Médio
           </span>
-          <p className="text-2xl font-bold font-mono text-blue-700 mt-1">
+          <p className="text-2xl font-bold font-mono text-orange-400 mt-1">
             {isLoading ? "—" : `${progressoMedio}%`}
           </p>
-          <span className="text-[10px] text-slate-500">avanço global</span>
+          <span className="text-[10px] text-slate-400">avanço global</span>
         </div>
       </div>
 
       {/* 3 & 4. SEÇÕES GRÁFICAS (DISTRIBUIÇÃO OPERACIONAL) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Gráfico 1: Cumprimento da Programação */}
-        <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4 shadow-xs">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800">
+        <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 space-y-4 shadow-md">
+          <div className="flex justify-between items-center border-b border-blue-500/15 pb-2">
+            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
               Cumprimento da Programação
             </h2>
-            <span className="text-xs font-mono font-bold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded border border-blue-200">
+            <span className="text-xs font-mono font-bold text-orange-400 bg-[#070c14] px-2.5 py-0.5 rounded border border-orange-500/30">
               {isLoading ? "—" : `${percCumprimento}% realizado`}
             </span>
           </div>
@@ -494,23 +494,23 @@ export function DashboardView() {
             {/* Total Programado */}
             <div>
               <div className="flex justify-between text-xs mb-1 font-mono">
-                <span className="text-slate-600">Total no Período</span>
-                <span className="font-bold text-slate-900">{totalPeriod} frentes</span>
+                <span className="text-slate-400">Total no Período</span>
+                <span className="font-bold text-slate-200">{totalPeriod} frentes</span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 border border-slate-200 overflow-hidden">
-                <div className="bg-slate-400 h-full w-full" />
+              <div className="w-full bg-[#070c14] rounded-full h-2.5 border border-blue-500/15 overflow-hidden">
+                <div className="bg-slate-600 h-full w-full" />
               </div>
             </div>
 
             {/* Concluídas */}
             <div>
               <div className="flex justify-between text-xs mb-1 font-mono">
-                <span className="text-emerald-700">Concluídas</span>
-                <span className="font-bold text-emerald-700">
+                <span className="text-emerald-400">Concluídas</span>
+                <span className="font-bold text-emerald-400">
                   {countConcluidas} ({totalPeriod > 0 ? Math.round((countConcluidas / totalPeriod) * 100) : 0}%)
                 </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 border border-slate-200 overflow-hidden">
+              <div className="w-full bg-[#070c14] rounded-full h-2.5 border border-blue-500/15 overflow-hidden">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${totalPeriod > 0 ? (countConcluidas / totalPeriod) * 100 : 0}%` }}
@@ -521,12 +521,12 @@ export function DashboardView() {
             {/* Em Andamento */}
             <div>
               <div className="flex justify-between text-xs mb-1 font-mono">
-                <span className="text-orange-700">Em Andamento</span>
-                <span className="font-bold text-orange-700">
+                <span className="text-orange-400">Em Andamento</span>
+                <span className="font-bold text-orange-400">
                   {countEmAndamento} ({totalPeriod > 0 ? Math.round((countEmAndamento / totalPeriod) * 100) : 0}%)
                 </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 border border-slate-200 overflow-hidden">
+              <div className="w-full bg-[#070c14] rounded-full h-2.5 border border-blue-500/15 overflow-hidden">
                 <div
                   className="bg-orange-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${totalPeriod > 0 ? (countEmAndamento / totalPeriod) * 100 : 0}%` }}
@@ -537,12 +537,12 @@ export function DashboardView() {
             {/* Em Atraso */}
             <div>
               <div className="flex justify-between text-xs mb-1 font-mono">
-                <span className="text-rose-700">Em Atraso</span>
-                <span className="font-bold text-rose-700">
+                <span className="text-rose-400">Em Atraso</span>
+                <span className="font-bold text-rose-400">
                   {countAtrasadas} ({totalPeriod > 0 ? Math.round((countAtrasadas / totalPeriod) * 100) : 0}%)
                 </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2.5 border border-slate-200 overflow-hidden">
+              <div className="w-full bg-[#070c14] rounded-full h-2.5 border border-blue-500/15 overflow-hidden">
                 <div
                   className="bg-rose-500 h-full rounded-full transition-all duration-500"
                   style={{ width: `${totalPeriod > 0 ? (countAtrasadas / totalPeriod) * 100 : 0}%` }}
@@ -553,16 +553,16 @@ export function DashboardView() {
         </div>
 
         {/* Gráfico 2: Distribuição por Status */}
-        <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4 shadow-xs">
-          <div className="border-b border-slate-100 pb-2">
-            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800">
+        <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 space-y-4 shadow-md">
+          <div className="border-b border-blue-500/15 pb-2">
+            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
               Distribuição Operacional por Status
             </h2>
           </div>
 
           <div className="space-y-4">
             {/* Barra segmentada */}
-            <div className="w-full bg-slate-100 rounded-lg h-6 flex overflow-hidden border border-slate-200">
+            <div className="w-full bg-[#070c14] rounded-lg h-6 flex overflow-hidden border border-blue-500/15">
               {countConcluidas > 0 && (
                 <div
                   style={{ width: `${(countConcluidas / (totalPeriod || 1)) * 100}%` }}
@@ -605,40 +605,40 @@ export function DashboardView() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
               <div className="flex items-center gap-1.5 font-mono">
                 <span className="w-2.5 h-2.5 rounded bg-emerald-600 shrink-0" />
-                <span className="text-slate-600">Concluídas: <strong className="text-slate-900">{countConcluidas}</strong></span>
+                <span className="text-slate-400">Concluídas: <strong className="text-slate-200">{countConcluidas}</strong></span>
               </div>
               <div className="flex items-center gap-1.5 font-mono">
                 <span className="w-2.5 h-2.5 rounded bg-orange-500 shrink-0" />
-                <span className="text-slate-600">Andamento: <strong className="text-slate-900">{countEmAndamento}</strong></span>
+                <span className="text-slate-400">Andamento: <strong className="text-slate-200">{countEmAndamento}</strong></span>
               </div>
               <div className="flex items-center gap-1.5 font-mono">
                 <span className="w-2.5 h-2.5 rounded bg-blue-600 shrink-0" />
-                <span className="text-slate-600">Programadas: <strong className="text-slate-900">{countProgramadas}</strong></span>
+                <span className="text-slate-400">Programadas: <strong className="text-slate-200">{countProgramadas}</strong></span>
               </div>
               <div className="flex items-center gap-1.5 font-mono">
                 <span className="w-2.5 h-2.5 rounded bg-rose-600 shrink-0" />
-                <span className="text-slate-600">Atrasadas: <strong className="text-slate-900">{countAtrasadas}</strong></span>
+                <span className="text-slate-400">Atrasadas: <strong className="text-slate-200">{countAtrasadas}</strong></span>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-              Progresso médio consolidado: <strong className="text-blue-700 font-mono">{progressoMedio}%</strong>
+            <p className="text-[11px] text-slate-400 pt-2 border-t border-blue-500/10">
+              Progresso médio consolidado: <strong className="text-orange-400 font-mono">{progressoMedio}%</strong>
             </p>
           </div>
         </div>
       </div>
 
       {/* 5. SEÇÃO: REQUER ATENÇÃO */}
-      <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-3 shadow-xs">
-        <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 space-y-3 shadow-md">
+        <div className="flex justify-between items-center border-b border-blue-500/15 pb-2">
+          <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-white flex items-center gap-2">
             <span>🚨</span> Requer Atenção Operacional ({attentionItems.length})
           </h2>
-          <span className="text-[11px] text-slate-500">Ações imediatas e preventivas de prazos e estoque</span>
+          <span className="text-[11px] text-slate-400">Ações imediatas e preventivas de prazos e estoque</span>
         </div>
 
         {attentionItems.length === 0 ? (
-          <p className="text-xs text-slate-500 py-3 text-center font-mono">
+          <p className="text-xs text-slate-400 py-3 text-center font-mono">
             Nenhuma inconsistência de prazo, atraso ou estoque crítico detectada no momento.
           </p>
         ) : (
@@ -646,29 +646,29 @@ export function DashboardView() {
             {attentionItems.map((item) => (
               <div
                 key={item.id}
-                className="bg-slate-50 border border-slate-200 rounded-md p-3.5 flex flex-col justify-between space-y-2"
+                className="bg-[#070c14] border border-blue-500/20 rounded-md p-3.5 flex flex-col justify-between space-y-2"
               >
                 <div>
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-xs font-bold text-slate-900 leading-snug">{item.title}</h3>
+                    <h3 className="text-xs font-bold text-white leading-snug">{item.title}</h3>
                     <span
                       className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase shrink-0 ${
                         item.type === "atraso"
-                          ? "bg-rose-50 text-rose-700 border border-rose-200"
+                          ? "bg-rose-500/10 text-rose-300 border border-rose-500/30"
                           : item.type === "prazo_proximo"
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
-                          : "bg-rose-50 text-rose-700 border border-rose-200"
+                          ? "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                          : "bg-rose-500/10 text-rose-300 border border-rose-500/30"
                       }`}
                     >
                       {item.type === "atraso" ? "🔴 Atraso" : item.type === "prazo_proximo" ? "🟡 Prazo Próximo" : "🔴 Estoque Crítico"}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">{item.desc}</p>
+                  <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">{item.desc}</p>
                 </div>
-                <div className="pt-2 border-t border-slate-200 flex justify-end">
+                <div className="pt-2 border-t border-blue-500/10 flex justify-end">
                   <Link
                     href={item.linkHref}
-                    className="text-xs font-bold text-blue-700 hover:text-blue-900 transition-colors"
+                    className="text-xs font-bold text-orange-400 hover:text-orange-300 transition-colors"
                   >
                     {item.actionText} →
                   </Link>
@@ -682,40 +682,40 @@ export function DashboardView() {
       {/* 6 & 7. PRÓXIMAS ATIVIDADES & SITUAÇÃO DO ESTOQUE */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 6. Próximas Atividades */}
-        <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-3 shadow-xs">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800">
+        <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 space-y-3 shadow-md">
+          <div className="flex justify-between items-center border-b border-blue-500/15 pb-2">
+            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
               Próximas Atividades Programadas
             </h2>
-            <Link href="/pintura/atividades" className="text-xs font-bold text-blue-600 hover:underline">
+            <Link href="/pintura/atividades" className="text-xs font-bold text-orange-400 hover:underline">
               Ver todas →
             </Link>
           </div>
 
           {upcomingActivities.length === 0 ? (
-            <p className="text-xs text-slate-400 py-6 text-center font-mono">Nenhuma atividade programada cadastrada.</p>
+            <p className="text-xs text-slate-500 py-6 text-center font-mono">Nenhuma atividade programada cadastrada.</p>
           ) : (
-            <div className="divide-y divide-slate-100 text-xs">
+            <div className="divide-y divide-blue-500/10 text-xs">
               {upcomingActivities.map((act) => (
                 <div
                   key={act.id}
                   onClick={() => setSelectedActivity(act)}
-                  className="py-2.5 flex items-center justify-between hover:bg-slate-50 cursor-pointer px-2 rounded transition-colors"
+                  className="py-2.5 flex items-center justify-between hover:bg-blue-500/10 cursor-pointer px-2 rounded transition-colors"
                 >
                   <div className="space-y-0.5 max-w-[70%]">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono font-bold text-blue-700">{act.orderNumber}</span>
-                      <span className="text-slate-400">•</span>
-                      <span className="text-slate-500 font-mono text-[11px]">
+                      <span className="font-mono font-bold text-blue-400">{act.orderNumber}</span>
+                      <span className="text-slate-500">•</span>
+                      <span className="text-slate-400 font-mono text-[11px]">
                         {act.schedule.plannedStartDate} até {act.schedule.plannedEndDate}
                       </span>
                     </div>
-                    <p className="font-semibold text-slate-900 truncate">{act.name}</p>
-                    <p className="text-[11px] text-slate-500">{act.location?.area || "Área geral"}</p>
+                    <p className="font-semibold text-white truncate">{act.name}</p>
+                    <p className="text-[11px] text-slate-400">{act.location?.area || "Área geral"}</p>
                   </div>
                   <div className="text-right space-y-1">
                     <ActivityStatusBadge status={act.status} />
-                    <span className="block text-[11px] font-mono font-bold text-blue-700">
+                    <span className="block text-[11px] font-mono font-bold text-orange-400">
                       {act.progressPercentage}%
                     </span>
                   </div>
@@ -726,45 +726,45 @@ export function DashboardView() {
         </div>
 
         {/* 7. Situação do Estoque */}
-        <div className="bg-white border border-slate-200 rounded-lg p-5 space-y-4 shadow-xs">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-800">
+        <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 space-y-4 shadow-md">
+          <div className="flex justify-between items-center border-b border-blue-500/15 pb-2">
+            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200">
               Situação dos Materiais & Estoque
             </h2>
-            <Link href="/pintura/materiais-estoque" className="text-xs font-bold text-blue-600 hover:underline">
+            <Link href="/pintura/materiais-estoque" className="text-xs font-bold text-orange-400 hover:underline">
               Catálogo completo →
             </Link>
           </div>
 
           {/* Mini-Cards de Resumo */}
           <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-slate-50 border border-slate-200 rounded p-2">
-              <span className="text-[10px] font-mono text-slate-500 uppercase block">Total</span>
-              <span className="text-sm font-bold font-mono text-slate-900">{stockSummary.total}</span>
+            <div className="bg-[#070c14] border border-blue-500/15 rounded p-2">
+              <span className="text-[10px] font-mono text-slate-400 uppercase block">Total</span>
+              <span className="text-sm font-bold font-mono text-white">{stockSummary.total}</span>
             </div>
-            <div className="bg-emerald-50 border border-emerald-200 rounded p-2">
-              <span className="text-[10px] font-mono text-emerald-700 uppercase block">Adequados</span>
-              <span className="text-sm font-bold font-mono text-emerald-700">{stockSummary.adequados}</span>
+            <div className="bg-[#070c14] border border-emerald-500/30 rounded p-2">
+              <span className="text-[10px] font-mono text-emerald-400 uppercase block">Adequados</span>
+              <span className="text-sm font-bold font-mono text-emerald-400">{stockSummary.adequados}</span>
             </div>
-            <div className="bg-amber-50 border border-amber-200 rounded p-2">
-              <span className="text-[10px] font-mono text-amber-700 uppercase block">Atenção</span>
-              <span className="text-sm font-bold font-mono text-amber-700">{stockSummary.atencao}</span>
+            <div className="bg-[#070c14] border border-amber-500/30 rounded p-2">
+              <span className="text-[10px] font-mono text-amber-400 uppercase block">Atenção</span>
+              <span className="text-sm font-bold font-mono text-amber-400">{stockSummary.atencao}</span>
             </div>
-            <div className="bg-rose-50 border border-rose-200 rounded p-2">
-              <span className="text-[10px] font-mono text-rose-700 uppercase block">Críticos</span>
-              <span className="text-sm font-bold font-mono text-rose-700">{stockSummary.criticos}</span>
+            <div className="bg-[#070c14] border border-rose-500/30 rounded p-2">
+              <span className="text-[10px] font-mono text-rose-400 uppercase block">Críticos</span>
+              <span className="text-sm font-bold font-mono text-rose-400">{stockSummary.criticos}</span>
             </div>
           </div>
 
           {/* Tabela de Insumos Críticos */}
           {criticalMaterials.length === 0 ? (
-            <p className="text-xs text-slate-500 py-4 text-center font-mono">
+            <p className="text-xs text-slate-400 py-4 text-center font-mono">
               Todos os materiais cadastrados estão com saldo adequado.
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-xs">
-                <thead className="text-[10px] uppercase font-mono font-bold text-slate-600 border-b border-slate-200">
+                <thead className="text-[10px] uppercase font-mono font-bold text-slate-400 border-b border-blue-500/15">
                   <tr>
                     <th className="pb-2">Material</th>
                     <th className="pb-2">Saldo Atual</th>
@@ -772,24 +772,24 @@ export function DashboardView() {
                     <th className="pb-2">Situação</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-blue-500/10">
                   {criticalMaterials.map((mat) => (
-                    <tr key={mat.id} className="py-2 hover:bg-slate-50">
-                      <td className="py-2.5 font-semibold text-slate-900 pr-2 max-w-[160px] truncate" title={mat.name}>
+                    <tr key={mat.id} className="py-2 hover:bg-blue-500/10">
+                      <td className="py-2.5 font-semibold text-white pr-2 max-w-[160px] truncate" title={mat.name}>
                         {mat.name}
                       </td>
-                      <td className="py-2.5 font-mono font-bold text-slate-800">
+                      <td className="py-2.5 font-mono font-bold text-slate-200">
                         {mat.currentStock} {mat.unit}
                       </td>
-                      <td className="py-2.5 font-mono text-slate-500">
+                      <td className="py-2.5 font-mono text-slate-400">
                         {mat.minimumStock} {mat.unit}
                       </td>
                       <td className="py-2.5">
                         <span
                           className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase ${
                             mat.status === "critico"
-                              ? "bg-rose-50 text-rose-700 border border-rose-200"
-                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                              ? "bg-rose-500/15 text-rose-400 border border-rose-500/30"
+                              : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                           }`}
                         >
                           {mat.status}

@@ -13,7 +13,7 @@ export default function PinturaLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex antialiased">
+    <div className="min-h-screen bg-[#070c14] text-white flex antialiased">
       {/* 1. SIDEBAR DE NAVEGAÇÃO */}
       <AppSidebar />
 
