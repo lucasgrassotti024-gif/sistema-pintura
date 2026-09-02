@@ -32,11 +32,11 @@ export function ActivityFilters({
   availableAreas,
 }: ActivityFiltersProps) {
   return (
-    <div className="bg-[#0c1524] border border-blue-500/15 rounded-lg p-4 space-y-4 shadow-sm">
+    <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-4 shadow-xs">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Campo de Busca */}
         <div className="md:col-span-1">
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs font-mono font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
             Buscar (Nota, Nome, Tag, Resp.)
           </label>
           <div className="relative">
@@ -45,20 +45,20 @@ export function ActivityFilters({
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Filtrar frentes de trabalho..."
-              className="w-full text-xs bg-[#070c14] border border-blue-500/20 rounded-md px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors"
+              className="w-full text-xs bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
             />
           </div>
         </div>
 
         {/* Filtro por Status */}
         <div>
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs font-mono font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
             Status
           </label>
           <select
             value={statusFilter}
             onChange={(e) => onStatusChange(e.target.value)}
-            className="w-full text-xs bg-[#070c14] border border-blue-500/20 rounded-md px-3 py-2 text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors"
+            className="w-full text-xs bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
           >
             <option value="todos">Todos os Status</option>
             <option value="programada">Programada</option>
@@ -72,13 +72,13 @@ export function ActivityFilters({
 
         {/* Filtro por Área */}
         <div>
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs font-mono font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
             Área Operacional
           </label>
           <select
             value={areaFilter}
             onChange={(e) => onAreaChange(e.target.value)}
-            className="w-full text-xs bg-[#070c14] border border-blue-500/20 rounded-md px-3 py-2 text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors"
+            className="w-full text-xs bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
           >
             <option value="todas">Todas as Áreas</option>
             {availableAreas.map((area) => (
@@ -91,28 +91,28 @@ export function ActivityFilters({
       </div>
 
       {/* Período Planejado e Ordenação */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-3 border-t border-blue-500/10 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 gap-4 pt-3 border-t border-slate-100 items-end">
         <div>
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs font-mono font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
             Data Inicial
           </label>
           <input
             type="date"
             value={startDate}
             onChange={(e) => onStartDateChange(e.target.value)}
-            className="w-full text-xs bg-[#070c14] border border-blue-500/20 rounded-md px-3 py-2 text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors"
+            className="w-full text-xs bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-xs font-mono text-slate-400 mb-1.5 uppercase tracking-wide">
+          <label className="block text-xs font-mono font-semibold text-slate-600 mb-1.5 uppercase tracking-wide">
             Data Término
           </label>
           <input
             type="date"
             value={endDate}
             onChange={(e) => onEndDateChange(e.target.value)}
-            className="w-full text-xs bg-[#070c14] border border-blue-500/20 rounded-md px-3 py-2 text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors"
+            className="w-full text-xs bg-white border border-slate-300 rounded-md px-3 py-2 text-slate-900 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
           />
         </div>
 
@@ -120,10 +120,10 @@ export function ActivityFilters({
           <button
             type="button"
             onClick={onSortOrderToggle}
-            className="w-full flex items-center justify-center gap-2 text-xs font-semibold px-3 py-2 bg-[#070c14] hover:bg-blue-500/10 text-slate-200 border border-blue-500/20 hover:border-blue-500/40 rounded-md transition-colors"
+            className="w-full flex items-center justify-center gap-2 text-xs font-semibold px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-md transition-colors"
           >
             <span>Ordem:</span>
-            <span className="font-mono text-orange-400">
+            <span className="font-mono text-blue-700">
               {sortOrder === "asc" ? "Mais Antigas ↑" : "Mais Recentes ↓"}
             </span>
           </button>
@@ -140,7 +140,7 @@ export function ActivityFilters({
                 onStartDateChange("");
                 onEndDateChange("");
               }}
-              className="w-full text-xs font-medium text-slate-400 hover:text-white hover:bg-blue-500/10 py-2 px-3 rounded-md transition-colors"
+              className="w-full text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 py-2 px-3 rounded-md transition-colors"
             >
               Limpar Filtros ✕
             </button>

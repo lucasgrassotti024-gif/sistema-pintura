@@ -66,17 +66,17 @@ export function ActivityDetails({
 
   return (
     <div
-      className={`bg-[#0c1524] border rounded-lg p-5 space-y-4 shadow-xl transition-all ${
-        isCancelled ? "border-rose-500/30 bg-[#0c1524]" : "border-blue-500/20"
+      className={`bg-white border rounded-lg p-5 space-y-4 shadow-sm transition-all ${
+        isCancelled ? "border-rose-200 bg-rose-50/20" : "border-slate-200"
       }`}
     >
       {/* 1. CABEÇALHO */}
       <div className="flex justify-between items-start">
         <div className="space-y-1">
-          <span className="text-xs font-mono font-bold text-blue-400 tracking-wider">
+          <span className="text-xs font-mono font-bold text-blue-700 tracking-wider">
             {activity.orderNumber}
           </span>
-          <h3 className="text-base font-bold text-white mt-0.5 leading-snug">
+          <h3 className="text-base font-bold text-slate-900 mt-0.5 leading-snug">
             {activity.name}
           </h3>
         </div>
@@ -86,7 +86,7 @@ export function ActivityDetails({
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-xs px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 rounded border border-blue-500/20 transition-colors"
+            className="text-slate-500 hover:text-slate-800 text-xs px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 transition-colors"
           >
             Fechar
           </button>
@@ -94,14 +94,14 @@ export function ActivityDetails({
       </div>
 
       {/* 2. ÁREA DE AÇÕES */}
-      <div className="flex items-center gap-2 flex-wrap border-b border-blue-500/15 pb-3 pt-1">
+      <div className="flex items-center gap-2 flex-wrap border-b border-slate-100 pb-3 pt-1">
         {/* Editar Atividade */}
         {editable && !isCompleted && onStartEdit && (
           <PermissionGate permission="atividades.editar">
             <button
               type="button"
               onClick={() => onStartEdit(activity)}
-              className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-slate-200 rounded border border-blue-500/20 hover:border-blue-500/40 transition-colors"
+              className="text-xs font-semibold px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded border border-slate-300 transition-colors"
             >
               Editar
             </button>
@@ -114,7 +114,7 @@ export function ActivityDetails({
             <button
               type="button"
               onClick={() => setIsArchiving(true)}
-              className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-slate-300 rounded border border-blue-500/20 hover:border-blue-500/40 transition-colors"
+              className="text-xs font-semibold px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded border border-slate-300 transition-colors"
             >
               Arquivar
             </button>
@@ -127,7 +127,7 @@ export function ActivityDetails({
             <button
               type="button"
               onClick={() => setIsDeletingPermanently(true)}
-              className="text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 rounded border border-rose-500/30 hover:border-rose-500/50 transition-colors"
+              className="text-xs font-semibold px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200 transition-colors"
             >
               Excluir definitivamente
             </button>
@@ -138,7 +138,7 @@ export function ActivityDetails({
         <button
           type="button"
           onClick={() => setIsGeneratingPdf(true)}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-[#070c14] hover:bg-blue-500/15 text-blue-400 rounded border border-blue-500/30 hover:border-blue-500/50 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded border border-blue-200 transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -150,7 +150,7 @@ export function ActivityDetails({
       {/* 3. STATUS E PRIORIDADE */}
       <div className="flex items-center gap-2 flex-wrap">
         {isArchived ? (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider bg-[#070c14] text-slate-300 border border-blue-500/20 select-none cursor-default">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider bg-slate-100 text-slate-600 border border-slate-200 select-none cursor-default">
             <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
             Arquivada
           </span>
@@ -159,33 +159,33 @@ export function ActivityDetails({
         )}
         <ActivityPriorityBadge priority={activity.priority} />
         {delayed && !isArchived && !isCompleted && !isCancelled && (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/30 font-medium select-none cursor-default">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 font-medium select-none cursor-default">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             Em Atraso
           </span>
         )}
       </div>
 
       {/* 4. INFORMAÇÕES PRINCIPAIS */}
-      <div className="bg-[#070c14] border border-blue-500/15 rounded-md p-3.5 space-y-2 text-xs">
-        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
-          <span className="text-slate-400 font-mono">Área:</span>
-          <span className="font-semibold text-slate-200">{activity.location.area || "-"}</span>
+      <div className="bg-slate-50 border border-slate-200 rounded-md p-3.5 space-y-2 text-xs">
+        <div className="flex justify-between items-center py-0.5 border-b border-slate-200">
+          <span className="text-slate-500 font-mono">Área:</span>
+          <span className="font-semibold text-slate-800">{activity.location.area || "-"}</span>
         </div>
-        <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
-          <span className="text-slate-400 font-mono">Local específico:</span>
-          <span className="font-semibold text-slate-200">{activity.location.local || "-"}</span>
+        <div className="flex justify-between items-center py-0.5 border-b border-slate-200">
+          <span className="text-slate-500 font-mono">Local específico:</span>
+          <span className="font-semibold text-slate-800">{activity.location.local || "-"}</span>
         </div>
         {activity.location.equipment && (
-          <div className="flex justify-between items-center py-0.5 border-b border-blue-500/10">
-            <span className="text-slate-400 font-mono">Equipamento:</span>
-            <span className="font-semibold text-slate-200">{activity.location.equipment}</span>
+          <div className="flex justify-between items-center py-0.5 border-b border-slate-200">
+            <span className="text-slate-500 font-mono">Equipamento:</span>
+            <span className="font-semibold text-slate-800">{activity.location.equipment}</span>
           </div>
         )}
         {activity.assignedTo && (
           <div className="flex justify-between items-center py-0.5">
-            <span className="text-slate-400 font-mono">Responsável:</span>
-            <span className="font-semibold text-slate-200">{activity.assignedTo}</span>
+            <span className="text-slate-500 font-mono">Responsável:</span>
+            <span className="font-semibold text-slate-800">{activity.assignedTo}</span>
           </div>
         )}
       </div>
@@ -195,14 +195,14 @@ export function ActivityDetails({
         <ActivityProgress currentProgress={activity.progressPercentage} />
       </div>
 
-      {/* 6. AÇÃO OPERACIONAL PRINCIPAL (Atualizar em Laranja RSS3) */}
+      {/* 6. AÇÃO OPERACIONAL PRINCIPAL */}
       {editable && (
         <div className="pt-2">
           <PermissionGate permission={["atividades.atualizar_progresso", "atividades.registrar_consumo"]}>
             <button
               type="button"
               onClick={() => setIsUpdating(true)}
-              className="w-full text-xs font-bold py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] transition-all active:scale-[0.99]"
+              className="w-full text-xs font-bold py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md shadow-xs transition-all active:scale-[0.99]"
             >
               Atualizar Progresso / Apontamentos
             </button>

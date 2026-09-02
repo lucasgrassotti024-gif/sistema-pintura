@@ -46,12 +46,12 @@ export function ChatView() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Rolagem automática ao receber novas mensagens
+  // Rolagem automática
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Manipulação de preview de imagem selecionada
+  // Preview de imagem
   useEffect(() => {
     if (!selectedImageFile) {
       setImagePreviewUrl(null);
@@ -63,7 +63,6 @@ export function ChatView() {
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedImageFile]);
 
-  // Inserção de Emoji mantendo o cursor
   const handleSelectEmoji = (emoji: string) => {
     if (textareaRef.current) {
       const textarea = textareaRef.current;
@@ -83,7 +82,6 @@ export function ChatView() {
     setIsEmojiPickerOpen(false);
   };
 
-  // Seleção de Arquivo de Foto
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
     if (e.target.files && e.target.files[0]) {
@@ -110,7 +108,6 @@ export function ChatView() {
     }
   };
 
-  // Envio Geral de Mensagem
   const handleSendMessage = async () => {
     const trimmed = inputContent.trim();
     if ((!trimmed && !selectedImageFile) || isSending || isUploadingImage) return;
@@ -148,7 +145,7 @@ export function ChatView() {
       setImagePreviewUrl(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch {
-      // Erro tratado pelo hook
+      // Tratado pelo hook
     }
   };
 
@@ -160,7 +157,7 @@ export function ChatView() {
       });
       setInputContent("");
     } catch {
-      // Erro tratado pelo hook
+      // Tratado pelo hook
     }
   };
 
@@ -172,7 +169,7 @@ export function ChatView() {
       });
       setInputContent("");
     } catch {
-      // Erro tratado pelo hook
+      // Tratado pelo hook
     }
   };
 
@@ -200,48 +197,48 @@ export function ChatView() {
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[calc(100dvh-7rem)] sm:h-[calc(100vh-6.5rem)] w-full mx-auto">
       {/* 1. PAINEL PRINCIPAL DO CHAT */}
-      <div className="flex-1 flex flex-col bg-[#0c1524] border border-blue-500/20 rounded-xl shadow-xl overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden min-w-0">
         {/* Cabeçalho Técnico da Sala */}
-        <div className="px-5 py-3.5 border-b border-blue-500/15 bg-[#08101d]/90 flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-orange-500/15 border border-orange-500/35 flex items-center justify-center text-orange-400 font-bold text-sm shadow-[0_0_12px_rgba(249,115,22,0.2)]">
+            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-800 border border-blue-200 flex items-center justify-center font-bold text-sm">
               💬
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-white tracking-tight">
+                <h1 className="text-sm font-bold text-slate-900 tracking-tight">
                   Chat da Operação
                 </h1>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
                   Sala Operacional RSS3
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-slate-500 mt-0.5">
                 Comunicação em tempo real entre operadores, inspetores e coordenação de pintura.
               </p>
             </div>
           </div>
 
           {/* Indicador de Presença */}
-          <div className="flex items-center gap-2 bg-[#070c14] border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
-            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_6px_rgba(249,115,22,0.8)]" />
-            <span className="font-bold text-white">{onlineUsers.length}</span>
-            <span className="text-slate-400">online</span>
+          <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-700 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+            <span className="font-bold text-slate-900">{onlineUsers.length}</span>
+            <span className="text-slate-500">online</span>
           </div>
         </div>
 
         {/* Área de Rolagem das Mensagens */}
-        <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#070c14]/70 scrollbar-thin">
+        <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-slate-50/50">
           {isLoading ? (
             <div className="h-full flex items-center justify-center text-xs font-mono text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping mr-2" />
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping mr-2" />
               Sincronizando mensagens da operação...
             </div>
           ) : messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 font-mono text-xs">
               <span className="text-3xl mb-2">💬</span>
-              <span className="text-slate-300 font-medium">Nenhuma mensagem enviada ainda.</span>
-              <span className="mt-1 text-slate-500">Inicie a conversa, envie uma foto ou anexe uma OS/Material.</span>
+              <span className="text-slate-700 font-medium">Nenhuma mensagem enviada ainda.</span>
+              <span className="mt-1 text-slate-400">Inicie a conversa, envie uma foto ou anexe uma OS/Material.</span>
             </div>
           ) : (
             messages.map((msg) => {
@@ -256,15 +253,15 @@ export function ChatView() {
                   <div className="flex items-center gap-2 mb-1 px-1 text-[10px] font-mono">
                     <span
                       className={`font-bold ${
-                        isMine ? "text-orange-400" : "text-blue-300"
+                        isMine ? "text-blue-700" : "text-slate-700"
                       }`}
                     >
                       {isMine ? "Você" : msg.user.fullName}
                     </span>
-                    <span className="text-slate-400 uppercase px-1.5 py-0.2 bg-[#070c14] rounded border border-blue-500/15">
+                    <span className="text-slate-500 uppercase px-1.5 py-0.2 bg-slate-100 rounded border border-slate-200">
                       {msg.user.role}
                     </span>
-                    <span className="text-slate-500">
+                    <span className="text-slate-400">
                       {new Date(msg.createdAt).toLocaleTimeString("pt-BR", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -277,7 +274,7 @@ export function ChatView() {
                         type="button"
                         onClick={() => deleteMessage(msg.id)}
                         title="Excluir minha mensagem"
-                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition-opacity ml-1 p-0.5"
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition-opacity ml-1 p-0.5"
                       >
                         ✕
                       </button>
@@ -292,7 +289,7 @@ export function ChatView() {
                         src={msg.imageUrl}
                         alt={msg.imageName || "Foto da operação"}
                         onClick={() => setLightboxImage({ url: msg.imageUrl!, name: msg.imageName || undefined })}
-                        className="rounded-lg max-h-64 object-cover border border-blue-500/20 hover:border-orange-500/50 cursor-pointer transition-all shadow-md hover:scale-[1.01]"
+                        className="rounded-lg max-h-64 object-cover border border-slate-300 hover:border-blue-500 cursor-pointer transition-all shadow-xs hover:scale-[1.01]"
                       />
                     </div>
                   )}
@@ -302,8 +299,8 @@ export function ChatView() {
                     <div
                       className={`rounded-xl px-4 py-2.5 text-xs leading-relaxed max-w-[85%] break-words border shadow-xs ${
                         isMine
-                          ? "bg-orange-500/20 border-orange-500/40 text-white ring-1 ring-orange-500/20"
-                          : "bg-[#0c1524] border-blue-500/20 text-slate-200"
+                          ? "bg-blue-600 border-blue-600 text-white"
+                          : "bg-white border-slate-200 text-slate-800"
                       }`}
                     >
                       {msg.content}
@@ -339,12 +336,12 @@ export function ChatView() {
 
         {/* Barra de Erro */}
         {activeError && (
-          <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-xs text-rose-300 flex items-center justify-between shrink-0 font-mono">
+          <div className="px-4 py-2 bg-rose-50 border-t border-rose-200 text-xs text-rose-700 flex items-center justify-between shrink-0 font-mono">
             <span>⚠️ {activeError}</span>
             <button
               type="button"
               onClick={() => setUploadError(null)}
-              className="text-[11px] underline hover:text-rose-200"
+              className="text-[11px] underline hover:text-rose-900"
             >
               Fechar
             </button>
@@ -352,21 +349,21 @@ export function ChatView() {
         )}
 
         {/* Rodapé: Ações de Anexo + Preview de Imagem + Campo de Entrada */}
-        <div className="p-3.5 bg-[#0c1524] border-t border-blue-500/15 space-y-3 shrink-0 relative">
+        <div className="p-3.5 bg-white border-t border-slate-200 space-y-3 shrink-0 relative">
           {/* Prévia da Imagem Selecionada */}
           {imagePreviewUrl && (
-            <div className="flex items-center gap-3 p-2 bg-[#070c14] border border-blue-500/20 rounded-lg max-w-sm animate-in fade-in">
+            <div className="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-lg max-w-sm animate-in fade-in">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imagePreviewUrl}
                 alt="Prévia da foto"
-                className="w-14 h-14 object-cover rounded-md border border-blue-500/20"
+                className="w-14 h-14 object-cover rounded-md border border-slate-300"
               />
               <div className="flex-1 min-w-0">
-                <span className="text-xs text-slate-200 font-medium block truncate">
+                <span className="text-xs text-slate-800 font-medium block truncate">
                   {selectedImageFile?.name}
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-[10px] font-mono text-slate-500">
                   {selectedImageFile ? (selectedImageFile.size / 1024).toFixed(1) + " KB" : ""}
                 </span>
               </div>
@@ -374,7 +371,7 @@ export function ChatView() {
                 type="button"
                 onClick={handleRemoveSelectedImage}
                 title="Remover foto"
-                className="p-1 text-slate-400 hover:text-rose-400 hover:bg-white/5 rounded transition-colors text-sm"
+                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-slate-100 rounded transition-colors text-sm"
               >
                 ✕
               </button>
@@ -388,10 +385,10 @@ export function ChatView() {
               <button
                 type="button"
                 onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#070c14] border text-sm transition-colors ${
+                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg bg-slate-50 border text-sm transition-colors ${
                   isEmojiPickerOpen
-                    ? "border-orange-500 text-orange-400 bg-orange-500/10"
-                    : "border-blue-500/20 hover:border-orange-500/30 text-slate-300 hover:text-orange-400"
+                    ? "border-blue-500 text-blue-600 bg-blue-50"
+                    : "border-slate-300 hover:border-blue-400 text-slate-600 hover:text-blue-600"
                 }`}
                 title="Inserir Emoji"
               >
@@ -416,20 +413,20 @@ export function ChatView() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 hover:border-slate-400 text-xs font-semibold transition-colors"
               title="Anexar Foto (JPG, PNG, WEBP)"
             >
               <span>📷</span>
               <span className="hidden sm:inline">Foto</span>
             </button>
 
-            <span className="text-white/10">|</span>
+            <span className="text-slate-300">|</span>
 
             {/* Botões de Vínculos */}
             <button
               type="button"
               onClick={() => setIsAttachingActivity(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 hover:border-slate-400 text-xs font-semibold transition-colors"
             >
               <span>+</span>
               <span>Atividade</span>
@@ -438,14 +435,14 @@ export function ChatView() {
             <button
               type="button"
               onClick={() => setIsAttachingMaterial(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 hover:border-slate-400 text-xs font-semibold transition-colors"
             >
               <span>+</span>
               <span>Material</span>
             </button>
           </div>
 
-          {/* Campo de Texto e Botão Enviar (Laranja RSS3) */}
+          {/* Campo de Texto e Botão Enviar */}
           <div className="flex items-end gap-2.5">
             <textarea
               ref={textareaRef}
@@ -459,14 +456,14 @@ export function ChatView() {
                   : "Escreva uma mensagem sobre a operação... (Enter para enviar)"
               }
               rows={2}
-              className="flex-1 bg-[#070c14] border border-blue-500/20 focus:border-orange-500/60 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-hidden resize-none transition-colors"
+              className="flex-1 bg-white border border-slate-300 focus:border-blue-600 rounded-lg p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden resize-none transition-colors"
             />
 
             <button
               type="button"
               onClick={handleSendMessage}
               disabled={(!inputContent.trim() && !selectedImageFile) || isSending || isUploadingImage}
-              className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] shrink-0 flex items-center gap-1.5 active:scale-95"
+              className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-xs shrink-0 flex items-center gap-1.5 active:scale-95"
             >
               {isSending || isUploadingImage ? (
                 <>
@@ -485,21 +482,21 @@ export function ChatView() {
       </div>
 
       {/* 2. PAINEL LATERAL DE CONTEXTO */}
-      <div className="hidden lg:flex flex-col w-72 bg-[#0c1524] border border-blue-500/20 rounded-xl shadow-xl overflow-hidden shrink-0">
+      <div className="hidden lg:flex flex-col w-72 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden shrink-0">
         {/* Topo do Painel */}
-        <div className="p-3.5 border-b border-blue-500/15 bg-[#08101d]/90">
-          <h2 className="text-xs font-bold text-white uppercase font-mono tracking-wider">
+        <div className="p-3.5 border-b border-slate-200 bg-slate-50">
+          <h2 className="text-xs font-bold text-slate-900 uppercase font-mono tracking-wider">
             Contexto da Operação
           </h2>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-[11px] text-slate-500 mt-0.5">
             Itens e operadores ativos na conversa
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-5 bg-[#070c14]/50 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-5 bg-white">
           {/* Usuários Online */}
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-orange-500" />
               Operadores Online ({onlineUsers.length}):
             </span>
@@ -507,12 +504,12 @@ export function ChatView() {
               {onlineUsers.map((u) => (
                 <div
                   key={u.userId}
-                  className="p-2 rounded bg-[#070c14] border border-blue-500/15 flex items-center justify-between"
+                  className="p-2 rounded bg-slate-50 border border-slate-200 flex items-center justify-between"
                 >
-                  <span className="text-xs text-white font-medium truncate">
+                  <span className="text-xs text-slate-800 font-medium truncate">
                     {u.fullName}
                   </span>
-                  <span className="text-[10px] font-mono text-blue-400 uppercase bg-blue-500/10 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] font-mono text-blue-700 uppercase bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
                     {u.role}
                   </span>
                 </div>
@@ -522,11 +519,11 @@ export function ChatView() {
 
           {/* Atividades Mencionadas */}
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
               Ordens de Serviço em Pauta ({roomContext.activities.length}):
             </span>
             {roomContext.activities.length === 0 ? (
-              <div className="text-[11px] text-slate-500 font-mono italic">
+              <div className="text-[11px] text-slate-400 font-mono italic">
                 Nenhuma OS anexada recentemente.
               </div>
             ) : (
@@ -536,17 +533,17 @@ export function ChatView() {
                     key={act.id}
                     type="button"
                     onClick={() => handleOpenActivityDetails(act.id)}
-                    className="w-full text-left p-2.5 rounded bg-[#070c14] hover:bg-blue-500/10 border border-blue-500/15 hover:border-blue-500/35 transition-all flex flex-col gap-1"
+                    className="w-full text-left p-2.5 rounded bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all flex flex-col gap-1"
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-mono font-bold text-blue-400">
+                      <span className="text-xs font-mono font-bold text-blue-700">
                         {act.orderNumber}
                       </span>
-                      <span className="text-[10px] font-mono text-orange-400 font-semibold">
+                      <span className="text-[10px] font-mono text-blue-700 font-semibold">
                         {act.progressPercentage}%
                       </span>
                     </div>
-                    <span className="text-xs text-white truncate">{act.name}</span>
+                    <span className="text-xs text-slate-800 truncate">{act.name}</span>
                   </button>
                 ))}
               </div>
@@ -555,11 +552,11 @@ export function ChatView() {
 
           {/* Materiais Mencionados */}
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
               Insumos em Pauta ({roomContext.materials.length}):
             </span>
             {roomContext.materials.length === 0 ? (
-              <div className="text-[11px] text-slate-500 font-mono italic">
+              <div className="text-[11px] text-slate-400 font-mono italic">
                 Nenhum material anexado recentemente.
               </div>
             ) : (
@@ -571,26 +568,26 @@ export function ChatView() {
                     onClick={() => {
                       window.location.href = "/pintura/materiais-estoque";
                     }}
-                    className="w-full text-left p-2.5 rounded bg-[#070c14] hover:bg-blue-500/10 border border-blue-500/15 hover:border-blue-500/35 transition-all flex flex-col gap-1"
+                    className="w-full text-left p-2.5 rounded bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 transition-all flex flex-col gap-1"
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-mono font-bold text-blue-400">
+                      <span className="text-xs font-mono font-bold text-blue-700">
                         {mat.code}
                       </span>
                       <span
                         className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border uppercase ${
                           mat.status === "critico"
-                            ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                            ? "bg-rose-50 text-rose-700 border-rose-200"
                             : mat.status === "atencao"
-                            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                            : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                            ? "bg-amber-50 text-amber-700 border-amber-200"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
                         }`}
                       >
                         {mat.status}
                       </span>
                     </div>
-                    <span className="text-xs text-white truncate">{mat.name}</span>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-xs text-slate-800 truncate">{mat.name}</span>
+                    <span className="text-[10px] font-mono text-slate-500">
                       Saldo: {mat.currentStock} {mat.unit}
                     </span>
                   </button>
@@ -616,7 +613,7 @@ export function ChatView() {
 
       {/* Modal de Detalhes da Atividade Clicada */}
       {selectedActivityDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
           <div className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <ActivityDetails
               activity={selectedActivityDetails}
@@ -636,7 +633,7 @@ export function ChatView() {
       )}
 
       {isLoadingActivityDetails && (
-        <div className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg bg-[#0c1524] border border-blue-500/30 text-xs font-mono text-white shadow-xl animate-pulse">
+        <div className="fixed bottom-4 right-4 z-50 px-4 py-2 rounded-lg bg-white border border-slate-300 text-xs font-mono text-slate-800 shadow-lg animate-pulse">
           Carregando dados da atividade...
         </div>
       )}

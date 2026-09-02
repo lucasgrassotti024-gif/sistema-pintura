@@ -96,18 +96,18 @@ export default function IAPage() {
   return (
     <div className="space-y-3 sm:space-y-4 max-w-5xl mx-auto flex flex-col h-[calc(100dvh-7rem)] sm:h-[calc(100vh-6.5rem)]">
       {/* 1. CABEÇALHO TÉCNICO */}
-      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-md shrink-0">
+      <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs shrink-0">
         <div>
           <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)] animate-pulse" />
-            <h1 className="text-base sm:text-lg font-bold text-white tracking-tight">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+            <h1 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
               Inteligência Operacional RSS3
             </h1>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
               Read-Only • Gemini 3.6 Flash
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Assistente técnico da operação de pintura para análises de ordens de serviço, cronograma e insumos.
           </p>
         </div>
@@ -117,7 +117,7 @@ export default function IAPage() {
             type="button"
             onClick={clearChat}
             disabled={isLoading || messages.length <= 1}
-            className="text-xs font-semibold px-3 py-1.5 bg-[#070c14] hover:bg-blue-500/15 disabled:opacity-30 text-slate-300 rounded border border-blue-500/20 hover:border-blue-500/40 transition-colors"
+            className="text-xs font-semibold px-3 py-1.5 bg-slate-50 hover:bg-slate-100 disabled:opacity-30 text-slate-700 rounded-md border border-slate-300 transition-colors"
           >
             Limpar Conversa
           </button>
@@ -125,8 +125,8 @@ export default function IAPage() {
       </div>
 
       {/* 2. SUGESTÕES RÁPIDAS */}
-      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg px-3.5 sm:px-4 py-2.5 space-y-2 shadow-xs shrink-0">
-        <span className="text-[10px] font-mono font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+      <div className="bg-white border border-slate-200 rounded-lg px-3.5 sm:px-4 py-2.5 space-y-2 shadow-xs shrink-0">
+        <span className="text-[10px] font-mono font-bold text-blue-700 uppercase tracking-wider flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
           Sugestões de Consulta Operacional:
         </span>
@@ -137,7 +137,7 @@ export default function IAPage() {
               type="button"
               onClick={() => handleSend(prompt)}
               disabled={isLoading}
-              className="text-xs bg-[#070c14] hover:bg-orange-500/15 hover:border-orange-500/40 border border-blue-500/20 disabled:opacity-50 px-3 py-1.5 rounded text-slate-200 hover:text-orange-400 transition-colors text-left font-medium"
+              className="text-xs bg-slate-50 hover:bg-blue-50 hover:border-blue-300 border border-slate-200 disabled:opacity-50 px-3 py-1.5 rounded-md text-slate-700 hover:text-blue-700 transition-colors text-left font-medium"
             >
               {prompt}
             </button>
@@ -146,11 +146,11 @@ export default function IAPage() {
       </div>
 
       {/* 3. JANELA DE CONVERSA PRINCIPAL */}
-      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg shadow-md flex flex-col flex-1 min-h-[250px] sm:min-h-[420px] overflow-hidden">
-        <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-[#070c14]/60">
+      <div className="bg-white border border-slate-200 rounded-lg shadow-xs flex flex-col flex-1 min-h-[250px] sm:min-h-[420px] overflow-hidden">
+        <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-slate-50/50">
           {isInitializing ? (
             <div className="h-full flex items-center justify-center text-xs text-slate-400 font-mono py-12">
-              <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping mr-2" />
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping mr-2" />
               Recuperando histórico da conversa...
             </div>
           ) : (
@@ -162,19 +162,19 @@ export default function IAPage() {
                 {/* Identificador */}
                 <div className="flex items-center gap-2 mb-1 px-1">
                   <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${
-                    msg.sender === "user" ? "text-orange-400" : "text-blue-400 flex items-center gap-1"
+                    msg.sender === "user" ? "text-blue-700" : "text-slate-600 flex items-center gap-1"
                   }`}>
                     {msg.sender === "user" ? "[Você]" : "● Assistente Operacional RSS3"}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-500">{msg.timestamp}</span>
+                  <span className="text-[10px] font-mono text-slate-400">{msg.timestamp}</span>
                 </div>
 
                 {/* Bolha de Mensagem */}
                 <div
                   className={`max-w-[95%] sm:max-w-[85%] rounded-lg p-3.5 sm:p-4 text-xs leading-relaxed border break-words overflow-x-auto ${
                     msg.sender === "user"
-                      ? "bg-[#0c1524] border-blue-500/30 text-white shadow-xs"
-                      : "bg-[#070c14] border-blue-500/20 text-slate-200 shadow-md ring-1 ring-blue-500/10"
+                      ? "bg-blue-600 border-blue-600 text-white shadow-xs"
+                      : "bg-white border-slate-200 text-slate-800 shadow-xs"
                   }`}
                 >
                   {msg.text ? (
@@ -185,8 +185,8 @@ export default function IAPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-slate-400 font-mono py-1">
-                      <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping" />
+                    <div className="flex items-center gap-2 text-slate-500 font-mono py-1">
+                      <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
                       Consultando dados operacionais da planta...
                     </div>
                   )}
@@ -199,12 +199,12 @@ export default function IAPage() {
         </div>
 
         {error && (
-          <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-xs text-rose-300 flex items-center justify-between shrink-0 font-mono">
+          <div className="px-4 py-2 bg-rose-50 border-t border-rose-200 text-xs text-rose-700 flex items-center justify-between shrink-0 font-mono">
             <span>{error}</span>
             <button
               type="button"
               onClick={() => clearChat()}
-              className="text-[11px] underline hover:text-rose-200 font-mono"
+              className="text-[11px] underline hover:text-rose-900 font-mono"
             >
               Reiniciar
             </button>
@@ -212,7 +212,7 @@ export default function IAPage() {
         )}
 
         {/* Barra Inferior de Entrada */}
-        <div className="p-3 sm:p-3.5 bg-[#0c1524] border-t border-blue-500/15 flex items-end gap-2 shrink-0">
+        <div className="p-3 sm:p-3.5 bg-white border-t border-slate-200 flex items-end gap-2 shrink-0">
           <textarea
             value={inputQuery}
             onChange={(e) => setInputQuery(e.target.value)}
@@ -220,14 +220,14 @@ export default function IAPage() {
             disabled={isLoading}
             placeholder="Pergunte sobre atividades, prazos, estoque ou uma OS..."
             rows={2}
-            className="flex-1 bg-[#070c14] border border-blue-500/20 focus:border-orange-500/60 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-hidden resize-none transition-colors"
+            className="flex-1 bg-white border border-slate-300 focus:border-blue-600 rounded-lg p-2.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden resize-none transition-colors"
           />
 
           {isLoading ? (
             <button
               type="button"
               onClick={stopGeneration}
-              className="px-3.5 sm:px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-lg transition-colors shadow-xs shrink-0"
+              className="px-3.5 sm:px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg transition-colors shadow-xs shrink-0"
             >
               Parar
             </button>
@@ -236,7 +236,7 @@ export default function IAPage() {
               type="button"
               onClick={() => handleSend()}
               disabled={!inputQuery.trim()}
-              className="px-3.5 sm:px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] shrink-0 active:scale-95"
+              className="px-3.5 sm:px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-xs shrink-0 active:scale-95"
             >
               Enviar
             </button>

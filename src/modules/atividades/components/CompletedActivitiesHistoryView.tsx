@@ -144,17 +144,17 @@ export function CompletedActivitiesHistoryView() {
   return (
     <div className="space-y-6">
       {/* 1. Cabeçalho do Histórico */}
-      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-md">
+      <div className="bg-white border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-white tracking-tight">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               Histórico Operacional de Atividades
             </h1>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
               Registros Consolidados RSS3
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Consulta e auditoria de atividades concluídas, canceladas e arquivadas.
           </p>
         </div>
@@ -162,7 +162,7 @@ export function CompletedActivitiesHistoryView() {
         <div className="flex items-center gap-2">
           <Link
             href="/pintura/atividades"
-            className="text-xs font-semibold px-3 py-1.5 bg-[#070c14] hover:bg-blue-500/15 text-slate-300 rounded border border-blue-500/20 transition-colors"
+            className="text-xs font-semibold px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-md border border-slate-300 transition-colors"
           >
             ← Frentes Ativas
           </Link>
@@ -170,7 +170,7 @@ export function CompletedActivitiesHistoryView() {
             type="button"
             onClick={loadData}
             title="Recarregar histórico"
-            className="p-1.5 bg-[#070c14] hover:bg-blue-500/15 text-slate-400 hover:text-white rounded border border-blue-500/20 transition-colors"
+            className="p-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-md border border-slate-300 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -181,7 +181,7 @@ export function CompletedActivitiesHistoryView() {
 
       {/* Diagnóstico de Erro Real (se houver) */}
       {error && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-xs text-rose-300 font-mono">
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-mono">
           {error}
         </div>
       )}
@@ -190,8 +190,8 @@ export function CompletedActivitiesHistoryView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className={selectedActivity ? "lg:col-span-2 space-y-4" : "lg:col-span-3 space-y-4"}>
           {/* Navegação por Abas */}
-          <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-2 flex items-center justify-between gap-3 shadow-md">
-            <div className="flex items-center gap-1.5 bg-[#070c14] p-1 rounded border border-blue-500/20 flex-wrap">
+          <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-md border border-slate-200 flex-wrap">
               <button
                 type="button"
                 onClick={() => {
@@ -200,8 +200,8 @@ export function CompletedActivitiesHistoryView() {
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
                   activeTab === "concluidas"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-emerald-700 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Concluídas ({countConcluidas})
@@ -214,8 +214,8 @@ export function CompletedActivitiesHistoryView() {
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
                   activeTab === "canceladas"
-                    ? "bg-rose-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-rose-700 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Canceladas ({countCanceladas})
@@ -228,8 +228,8 @@ export function CompletedActivitiesHistoryView() {
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
                   activeTab === "arquivadas"
-                    ? "bg-slate-700 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-slate-800 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 Arquivadas ({countArquivadas})
@@ -238,21 +238,21 @@ export function CompletedActivitiesHistoryView() {
           </div>
 
           {/* Filtros de Busca */}
-          <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs shadow-md">
+          <div className="bg-white border border-slate-200 rounded-lg p-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs shadow-xs">
             <div>
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Buscar OS, atividade, responsável..."
-                className="w-full bg-[#070c14] border border-blue-500/20 rounded px-2.5 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-hidden focus:border-orange-500"
+                className="w-full bg-white border border-slate-300 rounded px-2.5 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:border-blue-600"
               />
             </div>
             <div>
               <select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full bg-[#070c14] border border-blue-500/20 rounded px-2.5 py-2 text-xs text-slate-200 focus:outline-hidden focus:border-orange-500"
+                className="w-full bg-white border border-slate-300 rounded px-2.5 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-600"
               >
                 <option value="todas">Todas as Áreas</option>
                 {areasList.map((area) => (
@@ -266,7 +266,7 @@ export function CompletedActivitiesHistoryView() {
               <select
                 value={selectedResp}
                 onChange={(e) => setSelectedResp(e.target.value)}
-                className="w-full bg-[#070c14] border border-blue-500/20 rounded px-2.5 py-2 text-xs text-slate-200 focus:outline-hidden focus:border-orange-500"
+                className="w-full bg-white border border-slate-300 rounded px-2.5 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-blue-600"
               >
                 <option value="todos">Todos os Responsáveis</option>
                 {respList.map((resp) => (
@@ -281,11 +281,11 @@ export function CompletedActivitiesHistoryView() {
           {/* 1. VISUALIZAÇÃO EM CARDS (MOBILE < 768px) */}
           <div className="md:hidden space-y-3">
             {isLoading ? (
-              <div className="p-8 text-center text-slate-400 font-mono text-xs bg-[#0c1524] rounded-lg border border-blue-500/15">
+              <div className="p-8 text-center text-slate-400 font-mono text-xs bg-white rounded-lg border border-slate-200">
                 Carregando histórico do Supabase...
               </div>
             ) : filteredActivities.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 font-mono text-xs bg-[#0c1524] rounded-lg border border-blue-500/15">
+              <div className="p-8 text-center text-slate-400 font-mono text-xs bg-white rounded-lg border border-slate-200">
                 Nenhuma atividade encontrada nesta aba.
               </div>
             ) : (
@@ -293,18 +293,18 @@ export function CompletedActivitiesHistoryView() {
                 <div
                   key={act.id}
                   onClick={() => setSelectedActivity(act)}
-                  className={`p-3.5 rounded-lg border bg-[#0c1524] shadow-sm transition-all cursor-pointer space-y-2 ${
+                  className={`p-4 rounded-lg border bg-white shadow-xs transition-all cursor-pointer space-y-2 ${
                     selectedActivity?.id === act.id
-                      ? "border-orange-500/60 bg-orange-500/5 ring-1 ring-orange-500/30"
-                      : "border-blue-500/15 hover:border-blue-500/35"
+                      ? "border-blue-500 bg-blue-50/30 ring-1 ring-blue-400"
+                      : "border-slate-200 hover:border-blue-300"
                   }`}
                 >
                   <div className="flex justify-between items-start">
-                    <span className="font-mono font-bold text-blue-400 text-xs">{act.orderNumber}</span>
+                    <span className="font-mono font-bold text-blue-700 text-xs">{act.orderNumber}</span>
                     <ActivityStatusBadge status={act.status} />
                   </div>
-                  <p className="font-semibold text-white text-xs leading-snug">{act.name}</p>
-                  <div className="flex justify-between text-[11px] text-slate-400 pt-1 border-t border-blue-500/10">
+                  <p className="font-semibold text-slate-900 text-xs leading-snug">{act.name}</p>
+                  <div className="flex justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
                     <span>{act.location?.area || "—"}</span>
                     <span>Resp: {act.assignedTo || "—"}</span>
                   </div>
@@ -314,18 +314,18 @@ export function CompletedActivitiesHistoryView() {
           </div>
 
           {/* 2. VISUALIZAÇÃO EM TABELA TÉCNICA (DESKTOP >= 768px) */}
-          <div className="hidden md:block bg-[#0c1524] border border-blue-500/20 rounded-lg overflow-hidden shadow-md">
+          <div className="hidden md:block bg-white border border-slate-200 rounded-lg overflow-hidden shadow-xs">
             <table className="min-w-full text-left text-xs">
-              <thead className="text-[10px] uppercase font-mono font-bold text-slate-400 bg-[#070c14] border-b border-blue-500/15">
+              <thead className="text-[10px] uppercase font-mono font-bold text-slate-600 bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="py-2.5 px-3">OS</th>
-                  <th className="py-2.5 px-3">Atividade</th>
-                  <th className="py-2.5 px-3">Área / Local</th>
-                  <th className="py-2.5 px-3">Responsável</th>
-                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-3 px-4">OS</th>
+                  <th className="py-3 px-4">Atividade</th>
+                  <th className="py-3 px-4">Área / Local</th>
+                  <th className="py-3 px-4">Responsável</th>
+                  <th className="py-3 px-4">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-500/10">
+              <tbody className="divide-y divide-slate-100">
                 {isLoading ? (
                   <tr>
                     <td colSpan={5} className="py-8 text-center text-slate-400 font-mono">
@@ -343,23 +343,23 @@ export function CompletedActivitiesHistoryView() {
                     <tr
                       key={act.id}
                       onClick={() => setSelectedActivity(act)}
-                      className={`hover:bg-blue-500/[0.06] cursor-pointer transition-colors ${
-                        selectedActivity?.id === act.id ? "bg-blue-500/15" : ""
+                      className={`hover:bg-blue-50/40 cursor-pointer transition-colors ${
+                        selectedActivity?.id === act.id ? "bg-blue-50 font-medium" : ""
                       }`}
                     >
-                      <td className="py-2.5 px-3 font-mono font-bold text-blue-400">
+                      <td className="py-3 px-4 font-mono font-bold text-blue-700">
                         {act.orderNumber}
                       </td>
-                      <td className="py-2.5 px-3 font-semibold text-white max-w-[200px] truncate">
+                      <td className="py-3 px-4 font-semibold text-slate-900 max-w-[200px] truncate">
                         {act.name}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-400">
+                      <td className="py-3 px-4 text-slate-600">
                         {act.location?.area || "—"}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-300">
+                      <td className="py-3 px-4 text-slate-700">
                         {act.assignedTo || "—"}
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="py-3 px-4">
                         <ActivityStatusBadge status={act.status} />
                       </td>
                     </tr>

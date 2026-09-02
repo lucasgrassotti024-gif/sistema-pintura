@@ -1,141 +1,130 @@
 "use client";
 
 import React, { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const router = useRouter();
-  const supabase = createClient();
+  const [errorMsg, setErrorMsg] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const { refreshProfileAndPermissions } = useAuth();
+  const router = useRouter();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
-    setIsLoading(true);
+    setErrorMsg("");
+    setIsSubmitting(true);
 
     try {
+      const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email,
         password,
       });
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
-          setErrorMessage("E-mail ou senha incorretos. Verifique suas credenciais.");
-        } else if (error.message.includes("Email not confirmed")) {
-          setErrorMessage("E-mail ainda não confirmado no sistema.");
-        } else {
-          setErrorMessage(error.message);
-        }
-        setIsLoading(false);
-        return;
+        throw error;
       }
 
-      // Redirecionamento após autenticação bem-sucedida
-      router.push("/");
-      router.refresh();
-    } catch {
-      setErrorMessage("Ocorreu um erro inesperado ao tentar entrar. Tente novamente.");
-      setIsLoading(false);
+      await refreshProfileAndPermissions();
+      router.push("/pintura");
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setErrorMsg(err.message);
+      } else {
+        setErrorMsg("Falha na autenticação. Verifique os dados inseridos.");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-[#070c14] flex flex-col items-center justify-center p-4 sm:p-6 relative">
-      <div className="max-w-md w-full bg-[#0c1524] border border-blue-500/20 rounded-xl p-6 sm:p-8 space-y-6 shadow-2xl">
-        {/* Cabeçalho */}
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col justify-center items-center p-4">
+      {/* Container Principal do Card de Login */}
+      <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-8 shadow-sm space-y-6">
+        {/* Cabeçalho com Logotipo RSS3 Soluções Industriais */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center px-4 py-2 rounded-xl bg-orange-500/15 border border-orange-500/40 text-orange-500 font-extrabold text-xl mb-1 shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)]">
-            RSS3
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-orange-500 text-white font-mono font-bold text-xl shadow-xs mx-auto">
+            R3
           </div>
-          <h1 className="text-xl font-bold text-white tracking-tight">
-            SOLUÇÕES INDUSTRIAIS
-          </h1>
-          <p className="text-xs text-blue-400 font-mono uppercase tracking-wider">
-            Gestão Operacional de Pintura Industrial
+          <div className="pt-2">
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              RSS3 Soluções Industriais
+            </h1>
+            <p className="text-xs text-blue-600 font-semibold tracking-wider uppercase font-mono mt-0.5">
+              Sistema de Pintura Industrial
+            </p>
+          </div>
+          <p className="text-xs text-slate-500">
+            Acesso restrito para equipe operacional e gestão técnica.
           </p>
         </div>
 
-        {/* Mensagem de Erro */}
-        {errorMessage && (
-          <div className="p-3 text-xs bg-rose-500/10 text-rose-300 border border-rose-500/30 rounded-lg font-medium font-mono">
-            {errorMessage}
+        {/* Mensagem de Erro de Autenticação */}
+        {errorMsg && (
+          <div className="p-3 text-xs bg-rose-50 border border-rose-200 text-rose-700 rounded-md font-medium">
+            {errorMsg}
           </div>
         )}
 
-        {/* Formulário de Login */}
-        <form
-          id="login-form"
-          name="login"
-          method="post"
-          onSubmit={handleLogin}
-          className="space-y-4"
-        >
+        {/* Formulário de Autenticação */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label
-              htmlFor="email"
-              className="block text-xs font-semibold text-slate-200 mb-1"
-            >
-              E-mail de Acesso *
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase font-mono">
+              E-mail Corporativo
             </label>
             <input
-              id="email"
-              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="seu.email@rss3.com.br"
-              className="w-full text-sm bg-[#070c14] text-white border border-blue-500/25 rounded-lg px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 focus:outline-hidden transition-all placeholder:text-slate-500"
+              placeholder="operador@rss3.com.br"
+              className="w-full text-xs bg-white border border-slate-300 rounded-md px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
               required
-              disabled={isLoading}
-              autoComplete="username email"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-xs font-semibold text-slate-200 mb-1"
-            >
-              Senha *
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase font-mono">
+              Senha de Acesso
             </label>
             <input
-              id="password"
-              name="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full text-sm bg-[#070c14] text-white border border-blue-500/25 rounded-lg px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:border-orange-500 focus:outline-hidden transition-all placeholder:text-slate-500"
+              className="w-full text-xs bg-white border border-slate-300 rounded-md px-3 py-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 transition-colors"
               required
-              disabled={isLoading}
-              autoComplete="current-password"
             />
           </div>
 
           <button
             type="submit"
-            disabled={isLoading}
-            className={`w-full py-2.5 px-4 text-xs font-bold text-white rounded-lg transition-all shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] ${
-              isLoading
-                ? "bg-orange-500/50 cursor-not-allowed"
-                : "bg-orange-500 hover:bg-orange-600 active:scale-[0.99]"
-            }`}
+            disabled={isSubmitting}
+            className="w-full text-xs font-bold py-3 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded-md transition-colors shadow-xs active:scale-[0.99] flex items-center justify-center gap-2"
           >
-            {isLoading ? "Validando credenciais..." : "Entrar no Sistema"}
+            {isSubmitting ? (
+              <>
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Validando Acesso...</span>
+              </>
+            ) : (
+              <span>Entrar no Sistema</span>
+            )}
           </button>
         </form>
 
-        <div className="pt-2 text-center border-t border-blue-500/15">
-          <p className="text-[11px] text-slate-400 font-mono">
-            Acesso operacional protegido por autenticação segura RSS3.
-          </p>
+        {/* Rodapé do Card */}
+        <div className="text-center pt-2 border-t border-slate-100">
+          <span className="text-[11px] text-slate-400 font-mono">
+            Plataforma Operacional • RSS3 Engenharia
+          </span>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

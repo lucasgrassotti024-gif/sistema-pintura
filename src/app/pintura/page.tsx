@@ -5,364 +5,305 @@ import Link from "next/link";
 import { useActivities } from "@/modules/atividades/hooks/useActivities";
 import { useMaterials } from "@/modules/materiais/hooks/useMaterials";
 import { isActivityDelayed } from "@/modules/atividades/rules/activity.rules";
-import { ActivityStatusBadge } from "@/modules/atividades/components/ActivityStatusBadge";
 import { formatDateISO, getWeekInfo } from "@/modules/atividades/utils/week.utils";
+import { ActivityStatusBadge } from "@/modules/atividades/components/ActivityStatusBadge";
 
-export default function PinturaInicioPage() {
+export default function PinturaOverviewPage() {
   const { activities, isLoading: loadingActivities, error: errorActivities } = useActivities();
-  const { rawMaterials, isLoading: loadingMaterials, error: errorMaterials } = useMaterials();
+  const { materials, isLoading: loadingMaterials, error: errorMaterials } = useMaterials();
 
-  // Data atual real e Semana de Seg a Sex
   const todayISO = useMemo(() => formatDateISO(new Date()), []);
-  const todayFormatted = useMemo(() => {
-    const d = new Date();
-    return d.toLocaleDateString("pt-BR", {
-      weekday: "long",
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  }, []);
+  const currentWeek = useMemo(() => getWeekInfo(new Date(), false), []);
 
-  const weekInfo = useMemo(() => getWeekInfo(new Date(), false), []); // 5 dias úteis (Seg a Sex)
+  // Métricas de Atividades Reais
+  const totalActivities = activities.length;
+  const inProgressActivities = activities.filter((a) => a.status === "em_andamento");
+  const delayedActivities = activities.filter((a) => isActivityDelayed(a, todayISO));
+  const completedActivities = activities.filter((a) => a.status === "concluida");
 
-  // 1. Atividades de Hoje (reais)
-  const activitiesToday = useMemo(() => {
-    return activities.filter((act) => {
-      if (act.status === "cancelada") return false;
-      const isStartingToday = act.schedule.plannedStartDate === todayISO;
-      const isOngoingToday =
-        act.status === "em_andamento" &&
-        act.schedule.plannedStartDate <= todayISO &&
-        act.schedule.plannedEndDate >= todayISO;
-      return isStartingToday || isOngoingToday;
-    });
-  }, [activities, todayISO]);
-
-  // 2. Atividades Atrasadas (reais)
-  const delayedActivities = useMemo(() => {
-    return activities.filter((act) => isActivityDelayed(act, todayISO));
-  }, [activities, todayISO]);
-
-  // 3. Resumo Executivo das Atividades
-  const activeActivitiesCount = useMemo(() => {
-    return activities.filter((a) => a.status === "em_andamento" || a.status === "programada" || a.status === "planejada").length;
-  }, [activities]);
-
-  const progressoGeral = useMemo(() => {
-    if (activities.length === 0) return 0;
-    const total = activities.reduce((acc, curr) => acc + (Number(curr.progressPercentage) || 0), 0);
-    return Math.round(total / activities.length);
-  }, [activities]);
-
-  // 4. Resumo Executivo de Estoque (reais de public.materials)
-  const stockSummary = useMemo(() => {
-    const total = rawMaterials.length;
-    const criticos = rawMaterials.filter((m) => m.status === "critico").length;
-    const atencao = rawMaterials.filter((m) => m.status === "atencao").length;
-    const adequados = rawMaterials.filter((m) => m.status === "adequado").length;
-    return { total, criticos, atencao, adequados };
-  }, [rawMaterials]);
-
-  // 5. Contagem de frentes por dia da semana atual (Segunda a Sexta)
-  const weekDaysActivities = useMemo(() => {
-    return weekInfo.days.map((day) => {
-      const count = activities.filter((act) => {
-        if (act.status === "cancelada") return false;
-        return act.schedule.plannedStartDate <= day.date && act.schedule.plannedEndDate >= day.date;
-      }).length;
-
-      return {
-        ...day,
-        count,
-      };
-    });
-  }, [weekInfo, activities]);
-
-  // Atalhos Rápidos (rotas reais com contadores dinâmicos reais)
-  const shortcuts = useMemo(() => [
-    {
-      title: "Programação",
-      href: "/pintura/programacao",
-      badge: "Cronograma Semanal",
-      desc: "Distribuição dos 5 dias úteis",
-    },
-    {
-      title: "Atividades",
-      href: "/pintura/atividades",
-      badge: `${activities.length} cadastradas`,
-      desc: "Gestão operacional de frentes",
-    },
-    {
-      title: "Materiais & Estoque",
-      href: "/pintura/materiais-estoque",
-      badge: `${rawMaterials.length} insumos`,
-      desc: "Catálogo e movimentações",
-    },
-    {
-      title: "Assistente IA",
-      href: "/pintura/ia",
-      badge: "Apoio Técnico",
-      desc: "Consultas operacionais",
-    },
-    {
-      title: "Dashboard",
-      href: "/pintura/dashboard",
-      badge: "Indicadores & KPIs",
-      desc: "Análise profunda de desempenho",
-    },
-  ], [activities.length, rawMaterials.length]);
+  // Métricas de Materiais Reais
+  const criticalMaterials = materials.filter(
+    (m) => m.active && m.currentStock < m.minimumStock
+  );
 
   const isLoading = loadingActivities || loadingMaterials;
-  const error = errorActivities || errorMaterials;
+  const hasError = errorActivities || errorMaterials;
 
   return (
     <div className="space-y-6">
-      {/* 1. CABEÇALHO DA CENTRAL OPERACIONAL (Identidade RSS3 Azul / Laranja) */}
-      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-md">
+      {/* 1. CABEÇALHO DA VISÃO GERAL */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-white tracking-tight">
-              Visão Geral da Pintura
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Visão Geral da Pintura Industrial
             </h1>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-orange-500/15 text-orange-400 border border-orange-500/30">
-              Operação em Tempo Real
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200 uppercase tracking-wider">
+              Planta Ativa
             </span>
           </div>
-          <p className="text-xs text-blue-300/80 mt-1 capitalize font-mono">
-            {todayFormatted} • {weekInfo.label}
+          <p className="text-xs text-slate-500 mt-1">
+            Resumo consolidado em tempo real das ordens de serviço, cronograma semanal e estoque da RSS3.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+
+        {/* Ações Rápidas em Destaque */}
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Link
-            href="/pintura/programacao"
-            className="text-xs font-bold px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded transition-all shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)]"
+            href="/pintura/atividades"
+            className="text-xs font-bold px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md transition-colors shadow-xs flex items-center gap-1.5"
           >
-            Abrir Programação →
+            <span>+</span>
+            <span>Adicionar Atividade</span>
+          </Link>
+          <Link
+            href="/pintura/dashboard"
+            className="text-xs font-semibold px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-md border border-slate-300 transition-colors"
+          >
+            Ver Dashboard Completo →
           </Link>
         </div>
       </div>
 
-      {/* Diagnóstico de Erro Real (se houver) */}
-      {error && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-xs text-rose-300 font-mono">
-          {error}
+      {hasError && (
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-mono">
+          {hasError}
         </div>
       )}
 
-      {/* 2. RESUMO EXECUTIVO (4 Blocos com Paleta RSS3) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Atividades Ativas */}
-        <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] font-mono font-semibold text-blue-400 uppercase tracking-wider">
-            Frentes Ativas
+      {/* 2. CARDS DE RESUMO OPERACIONAL (KPIs) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Frentes em Andamento */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 font-mono">
+            <span>EM ANDAMENTO</span>
+            <span className="text-orange-500">●</span>
+          </div>
+          <div className="flex items-baseline gap-2 pt-1">
+            <span className="text-2xl font-bold font-mono text-slate-900">
+              {isLoading ? "—" : inProgressActivities.length}
+            </span>
+            <span className="text-xs text-slate-500">frentes ativas</span>
+          </div>
+          <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-100">
+            {totalActivities} cadastradas no total
           </span>
-          <p className="text-2xl font-bold font-mono text-white mt-1">
-            {isLoading ? "—" : activeActivitiesCount}
-          </p>
-          <span className="text-[10px] text-slate-400">em andamento / programadas</span>
         </div>
 
-        {/* Progresso Geral */}
-        <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] font-mono font-semibold text-orange-400 uppercase tracking-wider">
-            Progresso Geral
+        {/* Card 2: Frentes com Atraso */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 font-mono">
+            <span>EM ATRASO</span>
+            <span className="text-rose-500">●</span>
+          </div>
+          <div className="flex items-baseline gap-2 pt-1">
+            <span className="text-2xl font-bold font-mono text-rose-600">
+              {isLoading ? "—" : delayedActivities.length}
+            </span>
+            <span className="text-xs text-slate-500">requerem ação</span>
+          </div>
+          <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-100">
+            Data limite vencida
           </span>
-          <p className="text-2xl font-bold font-mono text-orange-400 mt-1">
-            {isLoading ? "—" : `${progressoGeral}%`}
-          </p>
-          <span className="text-[10px] text-slate-400">avanço médio de todas as OSs</span>
         </div>
 
-        {/* Atrasos Ativos */}
-        <div className="bg-[#0c1524] border border-rose-500/30 rounded-lg p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] font-mono font-semibold text-rose-400 uppercase tracking-wider">
-            Frentes Atrasadas
+        {/* Card 3: Concluídas */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 font-mono">
+            <span>CONCLUÍDAS</span>
+            <span className="text-emerald-500">●</span>
+          </div>
+          <div className="flex items-baseline gap-2 pt-1">
+            <span className="text-2xl font-bold font-mono text-emerald-600">
+              {isLoading ? "—" : completedActivities.length}
+            </span>
+            <span className="text-xs text-slate-500">finalizadas</span>
+          </div>
+          <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-100">
+            {totalActivities > 0 ? Math.round((completedActivities.length / totalActivities) * 100) : 0}% do escopo
           </span>
-          <p className="text-2xl font-bold font-mono text-rose-400 mt-1">
-            {isLoading ? "—" : delayedActivities.length}
-          </p>
-          <span className="text-[10px] text-rose-400/80">com prazo final vencido</span>
         </div>
 
-        {/* Estoque Crítico */}
-        <div className="bg-[#0c1524] border border-amber-500/30 rounded-lg p-3.5 flex flex-col justify-between">
-          <span className="text-[10px] font-mono font-semibold text-amber-400 uppercase tracking-wider">
-            Insumos em Atenção / Críticos
+        {/* Card 4: Insumos Críticos */}
+        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-xs space-y-1">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500 font-mono">
+            <span>ESTOQUE CRÍTICO</span>
+            <span className="text-amber-500">●</span>
+          </div>
+          <div className="flex items-baseline gap-2 pt-1">
+            <span className="text-2xl font-bold font-mono text-slate-900">
+              {isLoading ? "—" : criticalMaterials.length}
+            </span>
+            <span className="text-xs text-slate-500">materiais</span>
+          </div>
+          <span className="text-[11px] text-slate-400 block pt-1 border-t border-slate-100">
+            Abaixo do estoque mínimo
           </span>
-          <p className="text-2xl font-bold font-mono text-amber-400 mt-1">
-            {isLoading ? "—" : stockSummary.criticos + stockSummary.atencao}
-          </p>
-          <span className="text-[10px] text-slate-400">de {stockSummary.total} materiais cadastrados</span>
         </div>
       </div>
 
-      {/* 3. RESUMO DA PROGRAMAÇÃO DA SEMANA ATUAL (Segunda a Sexta) */}
-      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-4 sm:p-5 space-y-3 shadow-md">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-blue-500/15 pb-2 gap-1">
-          <div>
-            <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-white">
-              Programação da Semana ({weekInfo.startDate} a {weekInfo.endDate})
+      {/* 3. PROGRAMAÇÃO SEMANAL RESUMIDA */}
+      <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+        <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-slate-900 uppercase font-mono tracking-wider">
+              Programação da Semana
             </h2>
-            <p className="text-[11px] text-slate-400">Distribuição diária de frentes de trabalho</p>
+            <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+              {currentWeek.label}
+            </span>
           </div>
           <Link
             href="/pintura/programacao"
-            className="text-xs font-bold text-orange-400 hover:text-orange-300 transition-colors self-start sm:self-auto"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
           >
-            Ver grade completa →
+            Quadro Completo →
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 pt-1">
-          {weekDaysActivities.map((day) => (
-            <Link
-              key={day.date}
-              href="/pintura/programacao"
-              className={`p-3 rounded-lg border transition-all flex flex-col justify-between ${
-                day.isToday
-                  ? "bg-[#131f33] border-orange-500/60 shadow-[0_0_15px_-2px_rgba(249,115,22,0.3)] ring-1 ring-orange-500/40"
-                  : "bg-[#070c14] border-blue-500/15 hover:border-blue-500/35 hover:bg-[#131f33]/40"
-              }`}
-            >
-              <div className="flex justify-between items-center">
-                <span className={`text-xs font-bold ${day.isToday ? "text-orange-400 font-mono" : "text-slate-200"}`}>
-                  {day.dayOfWeek}
-                </span>
-                <span className="text-[10px] font-mono text-slate-400">{day.label}</span>
+        {/* Grid dos 5 Dias Úteis da Semana */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+          {currentWeek.days.map((day) => {
+            const dayActs = activities.filter(
+              (a) => a.schedule.plannedStartDate <= day.date && a.schedule.plannedEndDate >= day.date
+            );
+
+            return (
+              <div
+                key={day.date}
+                className={`p-3 rounded-lg border flex flex-col justify-between transition-all ${
+                  day.isToday
+                    ? "bg-blue-50/60 border-blue-400 shadow-xs ring-1 ring-blue-400"
+                    : "bg-slate-50 border-slate-200"
+                }`}
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={`text-xs font-bold ${day.isToday ? "text-blue-800" : "text-slate-800"}`}>
+                      {day.dayOfWeek}
+                    </span>
+                    {day.isToday && (
+                      <span className="text-[9px] uppercase font-bold bg-blue-600 text-white px-1.5 py-0.2 rounded font-mono">
+                        Hoje
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-500 font-mono block mb-2">{day.label}</span>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200/60 flex justify-between items-center text-xs font-mono">
+                  <span className="text-slate-500">Atividades:</span>
+                  <span className="font-bold text-slate-900">{dayActs.length}</span>
+                </div>
               </div>
-              <div className="mt-3">
-                <span className="text-xl font-bold font-mono text-white">{day.count}</span>
-                <span className="text-[10px] text-slate-400 block mt-0.5">
-                  {day.count === 1 ? "frente programada" : "frentes programadas"}
-                </span>
-              </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* 4. GRID OPERACIONAL: ATIVIDADES DE HOJE + ATIVIDADES ATRASADAS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Atividades de Hoje */}
-        <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-4 sm:p-5 space-y-3 shadow-md flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-center border-b border-blue-500/15 pb-2">
-              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                <span>📅</span> Atividades de Hoje ({activitiesToday.length})
-              </h2>
-              <Link href="/pintura/atividades" className="text-xs font-bold text-orange-400 hover:underline">
-                Gerenciar →
-              </Link>
-            </div>
-
-            {activitiesToday.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center font-mono">
-                Nenhuma atividade programada para hoje ({todayISO}).
-              </p>
-            ) : (
-              <div className="divide-y divide-blue-500/10 text-xs">
-                {activitiesToday.map((act) => (
-                  <div key={act.id} className="py-2.5 space-y-1">
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="font-mono font-bold text-blue-400">{act.orderNumber}</span>
-                      <ActivityStatusBadge status={act.status} />
-                    </div>
-                    <p className="font-semibold text-white leading-snug">{act.name}</p>
-                    <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
-                      <span className="truncate max-w-[200px]">{act.location?.area || "Área geral"} • Resp: {act.assignedTo || "—"}</span>
-                      <span className="font-mono font-bold text-orange-400 shrink-0">{act.progressPercentage}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="pt-2 border-t border-blue-500/15 text-right">
-            <Link
-              href="/pintura/programacao"
-              className="text-xs text-slate-400 hover:text-orange-400 transition-colors inline-flex items-center gap-1"
-            >
-              Ver na Programação Semanal →
-            </Link>
-          </div>
-        </div>
-
-        {/* Atividades Atrasadas */}
-        <div className="bg-[#0c1524] border border-rose-500/30 rounded-lg p-4 sm:p-5 space-y-3 shadow-md flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-center border-b border-rose-500/20 pb-2">
-              <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
-                <span>⚠️</span> Atividades Atrasadas ({delayedActivities.length})
-              </h2>
-              <Link href="/pintura/atividades" className="text-xs font-bold text-rose-400 hover:underline">
-                Ver todas →
-              </Link>
-            </div>
-
-            {delayedActivities.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center font-mono">
-                Nenhuma atividade em atraso no momento.
-              </p>
-            ) : (
-              <div className="divide-y divide-blue-500/10 text-xs">
-                {delayedActivities.map((act) => (
-                  <div key={act.id} className="py-2.5 space-y-1">
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="font-mono font-bold text-rose-400">{act.orderNumber}</span>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-300 border border-rose-500/30 shrink-0">
-                        Venceu em {act.schedule.plannedEndDate}
-                      </span>
-                    </div>
-                    <p className="font-semibold text-white leading-snug">{act.name}</p>
-                    <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
-                      <span>Progresso: {act.progressPercentage}%</span>
-                      <span className="truncate max-w-[150px]">{act.location?.area || "Área geral"}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="pt-2 border-t border-blue-500/15 text-right">
+      {/* 4. DUAS COLUNAS: FRENTES EM ANDAMENTO & ATALHOS RÁPIDOS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Coluna 1 e 2: Lista de Frentes em Andamento */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-4">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900 uppercase font-mono tracking-wider">
+              Frentes Operacionais Ativas ({inProgressActivities.length})
+            </h2>
             <Link
               href="/pintura/atividades"
-              className="text-xs text-slate-400 hover:text-rose-300 transition-colors inline-flex items-center gap-1"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
             >
-              Replanejar ou Atualizar Atividades →
+              Ver todas →
             </Link>
           </div>
-        </div>
-      </div>
 
-      {/* 5. ATALHOS RÁPIDOS (Padrão RSS3) */}
-      <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-4 sm:p-5 space-y-3 shadow-md">
-        <h2 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-200 border-b border-blue-500/15 pb-2">
-          Módulos & Acessos Rápidos RSS3
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {shortcuts.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="p-3.5 bg-[#070c14] border border-blue-500/15 rounded-lg hover:border-orange-500/50 hover:bg-[#131f33]/40 transition-all block group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white group-hover:text-orange-400 transition-colors block truncate">
-                  {s.title}
-                </span>
-                <span className="text-[10px] text-blue-400 font-mono group-hover:text-orange-400">→</span>
-              </div>
-              <span className="text-[10px] font-mono text-orange-400 block mt-1">
-                {s.badge}
-              </span>
-              <span className="text-[11px] text-slate-400 block mt-0.5 leading-snug">
-                {s.desc}
-              </span>
-            </Link>
-          ))}
+          {isLoading ? (
+            <div className="p-8 text-center text-xs text-slate-400 font-mono">
+              Carregando frentes operacionais...
+            </div>
+          ) : inProgressActivities.length === 0 ? (
+            <div className="p-8 text-center text-xs text-slate-500 font-mono">
+              Nenhuma frente de trabalho com status &ldquo;Em Andamento&rdquo; no momento.
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {inProgressActivities.slice(0, 5).map((act) => (
+                <div key={act.id} className="py-3 flex items-center justify-between hover:bg-slate-50 px-2 rounded transition-colors">
+                  <div className="space-y-0.5 max-w-[70%]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs text-blue-700">{act.orderNumber}</span>
+                      <span className="text-slate-300">•</span>
+                      <span className="text-xs text-slate-600 truncate">{act.location?.area || "Área geral"}</span>
+                    </div>
+                    <p className="font-medium text-slate-900 text-xs truncate">{act.name}</p>
+                  </div>
+                  <div className="text-right space-y-1">
+                    <ActivityStatusBadge status={act.status} />
+                    <span className="block text-[11px] font-mono font-bold text-slate-800">
+                      {act.progressPercentage}%
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Coluna 3: Acesso Rápido aos Módulos */}
+        <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-xs space-y-3 flex flex-col justify-between">
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold text-slate-900 uppercase font-mono tracking-wider border-b border-slate-100 pb-3">
+              Módulos do Sistema
+            </h2>
+
+            <div className="space-y-2">
+              <Link
+                href="/pintura/materiais-estoque"
+                className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 bg-slate-50 hover:bg-blue-50/50 flex items-center justify-between transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">📦</span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">Materiais & Estoque</span>
+                    <span className="text-[11px] text-slate-500">Saldo e projeção</span>
+                  </div>
+                </div>
+                <span className="text-xs text-blue-600 font-bold">→</span>
+              </Link>
+
+              <Link
+                href="/pintura/chat"
+                className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 bg-slate-50 hover:bg-blue-50/50 flex items-center justify-between transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">💬</span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">Chat da Operação</span>
+                    <span className="text-[11px] text-slate-500">Mensagens e fotos</span>
+                  </div>
+                </div>
+                <span className="text-xs text-blue-600 font-bold">→</span>
+              </Link>
+
+              <Link
+                href="/pintura/ia"
+                className="p-2.5 rounded-lg border border-slate-200 hover:border-blue-300 bg-slate-50 hover:bg-blue-50/50 flex items-center justify-between transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span className="text-base">🤖</span>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block">Assistente IA</span>
+                    <span className="text-[11px] text-slate-500">Consultas técnicas</span>
+                  </div>
+                </div>
+                <span className="text-xs text-blue-600 font-bold">→</span>
+              </Link>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 text-center text-[11px] font-mono text-slate-400">
+            RSS3 Soluções Industriais
+          </div>
         </div>
       </div>
     </div>

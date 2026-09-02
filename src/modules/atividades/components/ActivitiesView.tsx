@@ -1,19 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useActivities } from "../hooks/useActivities";
 import { ActivityList } from "./ActivityList";
 import { ActivityFilters } from "./ActivityFilters";
 import { ActivityDetails } from "./ActivityDetails";
 import { ActivityForm } from "./ActivityForm";
-import { PermissionGate } from "@/components/auth/PermissionGate";
 import { Activity } from "../types/activity.types";
+import { PermissionGate } from "@/components/auth/PermissionGate";
 
 export function ActivitiesView() {
   const {
     activities,
-    rawActivities,
     selectedActivity,
     setSelectedActivity,
     isLoading,
@@ -39,50 +37,40 @@ export function ActivitiesView() {
   const [isCreating, setIsCreating] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
 
-  const handleSaveActivity = async (activityToSave: Activity) => {
-    if (editingActivity) {
-      await updateActivity(activityToSave);
-      setEditingActivity(null);
-      setIsCreating(false);
-    } else {
-      await addActivity(activityToSave);
-      setIsCreating(false);
-    }
+  const handleSaveNew = async (activityData: Activity) => {
+    await addActivity(activityData);
+    setIsCreating(false);
   };
 
-  const handleStartEdit = (act: Activity) => {
-    setEditingActivity(act);
-    setIsCreating(true);
+  const handleStartEdit = (activity: Activity) => {
+    setEditingActivity(activity);
+  };
+
+  const handleSaveEdit = async (updated: Activity) => {
+    await updateActivity(updated);
+    setEditingActivity(null);
   };
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho da Seção */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-blue-500/15 pb-4">
+      {/* 1. CABEÇALHO DO MÓDULO */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-            <h1 className="text-xl font-bold text-white tracking-tight">
-              Atividades & Frentes de Trabalho
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+              Frentes de Trabalho & Ordens de Serviço
             </h1>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+              Operacional RSS3
+            </span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
-            Controle operacional, apontamentos e monitoramento de cronogramas de pintura industrial RSS3.
+          <p className="text-xs text-slate-500 mt-1">
+            Gestão operacional em tempo real de ordens de serviço, progresso e consumos na planta industrial.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
-          <Link
-            href="/pintura/historico"
-            className="text-xs font-semibold px-3 py-2 bg-[#0c1524] hover:bg-blue-500/10 text-slate-300 rounded-md border border-blue-500/20 hover:border-blue-500/40 transition-colors"
-          >
-            📋 Histórico Geral
-          </Link>
-          
-          <div className="text-xs font-mono px-3 py-2 bg-[#0c1524] text-slate-400 rounded-md border border-blue-500/20">
-            Total: <span className="text-white font-bold">{rawActivities.length}</span> | Filtradas: <span className="text-orange-400 font-bold">{activities.length}</span>
-          </div>
-
+        {/* Botão de Criação de Atividade */}
+        {!isCreating && !editingActivity && (
           <PermissionGate permission="atividades.criar">
             <button
               type="button"
@@ -90,36 +78,41 @@ export function ActivitiesView() {
                 setSelectedActivity(null);
                 setIsCreating(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-md shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] transition-all active:scale-95"
+              className="text-xs font-bold px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md shadow-xs transition-all active:scale-95 flex items-center gap-1.5 self-start sm:self-auto"
             >
-              <span>+</span> Adicionar atividade
+              <span>+</span>
+              <span>Adicionar atividade</span>
             </button>
           </PermissionGate>
-        </div>
+        )}
       </div>
 
+      {/* 2. DIAGNÓSTICO DE ERRO REAL (se houver) */}
       {error && (
-        <div className="bg-rose-500/10 border border-rose-500/25 text-rose-300 px-4 py-3 rounded-lg text-xs flex items-center justify-between font-mono">
-          <div className="flex items-center gap-2">
-            <span className="font-bold uppercase">Aviso do Banco:</span>
-            <span>{error}</span>
-          </div>
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-mono">
+          {error}
         </div>
       )}
 
-      {/* Formulário de Criação ou Edição de Atividade */}
+      {/* 3. FLUXO DE FORMULÁRIO (Criação / Edição) OU LISTA OPERACIONAL */}
       {isCreating ? (
-        <ActivityForm
-          initialActivity={editingActivity}
-          onSave={handleSaveActivity}
-          onCancel={() => {
-            setIsCreating(false);
-            setEditingActivity(null);
-          }}
-        />
+        <div className="py-2">
+          <ActivityForm
+            onSave={handleSaveNew}
+            onCancel={() => setIsCreating(false)}
+          />
+        </div>
+      ) : editingActivity ? (
+        <div className="py-2">
+          <ActivityForm
+            initialActivity={editingActivity}
+            onSave={handleSaveEdit}
+            onCancel={() => setEditingActivity(null)}
+          />
+        </div>
       ) : (
-        <>
-          {/* Painel de Filtros e Busca */}
+        <div className="space-y-4">
+          {/* Barra de Filtros Operacionais */}
           <ActivityFilters
             search={search}
             onSearchChange={setSearch}
@@ -136,29 +129,19 @@ export function ActivitiesView() {
             availableAreas={availableAreas}
           />
 
-          {/* Grid de Conteúdo Principal */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Grid Principal: Lista/Tabela + Painel Lateral de Detalhes */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             <div className={selectedActivity ? "lg:col-span-2" : "lg:col-span-3"}>
-              {isLoading ? (
-                <div className="p-12 text-center text-slate-400 bg-[#0c1524] border border-blue-500/15 rounded-lg flex flex-col items-center justify-center gap-3">
-                  <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs font-mono">Sincronizando atividades reais do Supabase...</span>
-                </div>
-              ) : (
-                <ActivityList
-                  activities={activities}
-                  onSelectActivity={(act) => {
-                    setIsCreating(false);
-                    setEditingActivity(null);
-                    setSelectedActivity(act);
-                  }}
-                />
-              )}
+              <ActivityList
+                activities={activities}
+                selectedActivity={selectedActivity}
+                onSelectActivity={setSelectedActivity}
+                isLoading={isLoading}
+              />
             </div>
 
-            {/* Painel de Detalhes Lateral (quando selecionado) */}
             {selectedActivity && (
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 sticky top-20">
                 <ActivityDetails
                   activity={selectedActivity}
                   onUpdateActivity={updateActivity}
@@ -169,7 +152,7 @@ export function ActivitiesView() {
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

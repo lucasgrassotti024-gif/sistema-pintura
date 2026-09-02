@@ -87,12 +87,12 @@ export default function MateriaisEstoquePage() {
   return (
     <div className="space-y-6">
       {/* 1. CABEÇALHO DA PÁGINA COM SELETOR DE PERÍODO E AÇÕES GERAIS */}
-      <div className="border-b border-blue-500/15 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="border-b border-slate-200 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <span>Planejamento & Estoque de Materiais</span>
           </h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Monitoramento de saldo físico, consumo real e projeção de disponibilidade por demanda operacional RSS3.
           </p>
         </div>
@@ -100,14 +100,14 @@ export default function MateriaisEstoquePage() {
         {/* Grupo de Controles: Seletor de Período + Botões de Cadastro/Entrada */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Seletor de Período de Planejamento */}
-          <div className="flex items-center bg-[#070c14] border border-blue-500/20 rounded-lg p-1 text-xs font-mono">
+          <div className="flex items-center bg-slate-100 border border-slate-200 rounded-lg p-1 text-xs font-mono">
             <button
               type="button"
               onClick={() => setPeriod("semana")}
               className={`px-3 py-1 rounded transition-colors ${
                 period === "semana"
-                  ? "bg-orange-500 text-white font-bold shadow-xs"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-white text-blue-700 font-bold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Esta Semana
@@ -117,8 +117,8 @@ export default function MateriaisEstoquePage() {
               onClick={() => setPeriod("mes")}
               className={`px-3 py-1 rounded transition-colors ${
                 period === "mes"
-                  ? "bg-orange-500 text-white font-bold shadow-xs"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-white text-blue-700 font-bold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Este Mês
@@ -128,8 +128,8 @@ export default function MateriaisEstoquePage() {
               onClick={() => setPeriod("todas")}
               className={`px-3 py-1 rounded transition-colors ${
                 period === "todas"
-                  ? "bg-orange-500 text-white font-bold shadow-xs"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-white text-blue-700 font-bold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
               }`}
             >
               Todas
@@ -145,7 +145,7 @@ export default function MateriaisEstoquePage() {
                 setEditingMaterial(null);
                 setIsCreatingMaterial(true);
               }}
-              className="text-xs font-semibold px-3 py-1.5 bg-[#070c14] hover:bg-blue-500/15 text-slate-200 rounded-md border border-blue-500/20 hover:border-blue-500/40 transition-colors"
+              className="text-xs font-semibold px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-md border border-slate-300 transition-colors shadow-xs"
             >
               + Novo Material
             </button>
@@ -156,7 +156,7 @@ export default function MateriaisEstoquePage() {
             <button
               type="button"
               onClick={() => setIsAddingStock(true)}
-              className="text-xs font-bold px-3.5 py-1.5 bg-orange-500 hover:bg-orange-600 text-white rounded-md shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] transition-all active:scale-95"
+              className="text-xs font-bold px-3.5 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-md shadow-xs transition-all active:scale-95"
             >
               + Adicionar Material
             </button>
@@ -165,7 +165,7 @@ export default function MateriaisEstoquePage() {
       </div>
 
       {error && (
-        <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-xs text-rose-300 font-mono">
+        <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 font-mono">
           {error}
         </div>
       )}
@@ -187,9 +187,9 @@ export default function MateriaisEstoquePage() {
           <MaterialPlanningSummaryCards summary={summary} />
 
           {/* 3. BARRA DE BUSCA E FILTROS DE SITUAÇÃO */}
-          <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 shadow-md">
+          <div className="bg-white border border-slate-200 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-3 gap-3 shadow-xs">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Buscar Insumo no Catálogo
               </label>
               <input
@@ -197,17 +197,17 @@ export default function MateriaisEstoquePage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Pesquisar por código, especificação técnica ou fabricante..."
-                className="w-full text-xs bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden"
+                className="w-full text-xs bg-white text-slate-900 border border-slate-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-600 focus:outline-hidden"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Situação Projetada do Estoque
               </label>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full text-xs bg-[#070c14] text-white border border-blue-500/20 rounded px-3 py-2 focus:ring-1 focus:ring-orange-500 focus:outline-hidden font-mono"
+                className="w-full text-xs bg-white text-slate-900 border border-slate-300 rounded px-3 py-2 focus:ring-1 focus:ring-blue-600 focus:outline-hidden font-mono"
               >
                 <option value="todos">Todas as Situações</option>
                 <option value="adequado">Adequado (Acima do Mínimo)</option>
@@ -222,11 +222,11 @@ export default function MateriaisEstoquePage() {
             {/* Listagem de Cards Operacionais */}
             <div className={selectedMetrics ? "lg:col-span-2 space-y-4" : "lg:col-span-3 space-y-4"}>
               {isLoading ? (
-                <div className="p-12 text-center text-slate-400 font-mono text-xs bg-[#0c1524] rounded-lg border border-blue-500/15">
+                <div className="p-12 text-center text-slate-400 font-mono text-xs bg-white rounded-lg border border-slate-200">
                   Calculando projeções de consumo e estoque do período...
                 </div>
               ) : planningMetricsList.length === 0 ? (
-                <div className="p-12 text-center text-slate-500 text-xs bg-[#0c1524] rounded-lg border border-blue-500/15">
+                <div className="p-12 text-center text-slate-500 text-xs bg-white rounded-lg border border-slate-200">
                   Nenhum material encontrado com os filtros aplicados.
                 </div>
               ) : (
@@ -245,7 +245,7 @@ export default function MateriaisEstoquePage() {
 
             {/* Painel Lateral de Detalhes da Demanda */}
             {selectedMetrics && (
-              <div className="lg:col-span-1 sticky top-6">
+              <div className="lg:col-span-1 sticky top-20">
                 <MaterialPlanningDetailPanel
                   metrics={selectedMetrics}
                   onClose={() => setSelectedMaterialId(null)}

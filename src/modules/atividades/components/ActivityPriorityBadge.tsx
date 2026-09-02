@@ -6,36 +6,37 @@ interface ActivityPriorityBadgeProps {
 }
 
 export function ActivityPriorityBadge({ priority }: ActivityPriorityBadgeProps) {
-  const priorityConfig: Record<ActivityPriority, { label: string; className: string }> = {
-    baixa: {
-      label: "Baixa",
-      className: "bg-[#070c14] text-slate-400 border-blue-500/15",
-    },
-    media: {
-      label: "Média",
-      className: "bg-[#070c14] text-blue-300 border-blue-500/25",
-    },
-    alta: {
-      label: "Alta",
-      className: "bg-orange-500/15 text-orange-400 border-orange-500/35",
-    },
-    urgente: {
-      label: "Urgente",
-      className: "bg-rose-500/15 text-rose-400 border-rose-500/35 font-semibold shadow-[0_0_10px_-2px_rgba(244,63,94,0.3)]",
-    },
-  };
+  switch (priority) {
+    case "alta":
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono font-medium uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200 select-none cursor-default">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+          Prioridade Alta
+        </span>
+      );
 
-  const current = priorityConfig[priority] || {
-    label: priority,
-    className: "bg-[#070c14] text-slate-400 border-blue-500/15",
-  };
+    case "media":
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono font-medium uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200 select-none cursor-default">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Prioridade Média
+        </span>
+      );
 
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider border select-none cursor-default ${current.className}`}
-    >
-      <span className="text-[9px] text-slate-400 mr-1 font-normal lowercase">prioridade:</span>
-      {current.label}
-    </span>
-  );
+    case "baixa":
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono font-medium uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 select-none cursor-default">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+          Prioridade Baixa
+        </span>
+      );
+
+    default:
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-mono uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200 select-none cursor-default">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+          {priority}
+        </span>
+      );
+  }
 }
