@@ -7,6 +7,8 @@ import {
   ActivityPlannedMaterial,
   ActivityHistoryEntry,
 } from "../types/activity.types";
+import { Material } from "@/modules/materiais/types/material.types";
+import { getMaterials } from "@/modules/materiais/services/material.service";
 
 interface ActivityFormProps {
   initialActivity?: Activity | null; // Quando fornecido, atua em modo de EDIÇÃO da atividade
@@ -115,12 +117,50 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   const [serviceUnit, setServiceUnit] = useState(initialActivity?.serviceUnit || "m²");
 
   // Materiais Planejados
+  const [catalogMaterials, setCatalogMaterials] = useState<Material[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
   const [plannedMaterials, setPlannedMaterials] = useState<ActivityPlannedMaterial[]>(
     initialActivity?.plannedMaterials || []
   );
-  const [matName, setMatName] = useState("");
+  const [selectedCatalogMaterial, setSelectedCatalogMaterial] = useState<Material | null>(null);
+  const [materialSearch, setMaterialSearch] = useState("");
+  const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const [matQty, setMatQty] = useState("");
   const [matUnit, setMatUnit] = useState("L");
+  const [editingPlannedId, setEditingPlannedId] = useState<string | null>(null);
+
+  // Carregar catálogo de materiais para seleção rápida
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCatalog() {
+      setLoadingCatalog(true);
+      try {
+        const data = await getMaterials();
+        if (isMounted) {
+          setCatalogMaterials(data.filter((m) => m.active));
+        }
+      } catch (err) {
+        console.error("Erro ao carregar catálogo de materiais para o formulário:", err);
+      } finally {
+        if (isMounted) setLoadingCatalog(false);
+      }
+    }
+    loadCatalog();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Filtragem dinâmica do catálogo para autocomplete
+  const filteredCatalog = catalogMaterials.filter((m) => {
+    if (!materialSearch.trim()) return true;
+    const term = materialSearch.toLowerCase();
+    return (
+      m.name.toLowerCase().includes(term) ||
+      m.code.toLowerCase().includes(term) ||
+      m.type.toLowerCase().includes(term)
+    );
+  });
 
   // Observações
   const [observations, setObservations] = useState(initialActivity?.observations || "");
@@ -141,24 +181,109 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
     setAdditionalTags(additionalTags.filter((_, i) => i !== index));
   };
 
+  const handleSelectMaterial = (mat: Material) => {
+    setSelectedCatalogMaterial(mat);
+    setMaterialSearch(`${mat.code} - ${mat.name}`);
+    setMatUnit(mat.unit || "L");
+    setIsSearchDropdownOpen(false);
+    setError(null);
+  };
+
   const handleAddPlannedMaterial = () => {
-    if (matName.trim() && parseFloat(matQty) > 0) {
-      setPlannedMaterials([
-        ...plannedMaterials,
-        {
-          id: `mat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          materialName: matName.trim(),
-          quantity: parseFloat(matQty),
-          unit: matUnit,
-        },
-      ]);
-      setMatName("");
-      setMatQty("");
+    if (!selectedCatalogMaterial) {
+      setError("Selecione um material válido do catálogo.");
+      return;
     }
+
+    const qtyNum = parseFloat(matQty);
+    if (isNaN(qtyNum) || qtyNum <= 0) {
+      setError("Informe uma quantidade válida maior que 0.");
+      return;
+    }
+
+    // Se estiver editando um item existente da lista
+    if (editingPlannedId) {
+      setPlannedMaterials((prev) =>
+        prev.map((item) =>
+          item.id === editingPlannedId
+            ? {
+                ...item,
+                materialId: selectedCatalogMaterial.id,
+                materialCode: selectedCatalogMaterial.code,
+                materialName: selectedCatalogMaterial.name,
+                quantity: qtyNum,
+                unit: matUnit,
+              }
+            : item
+        )
+      );
+      setEditingPlannedId(null);
+      setSelectedCatalogMaterial(null);
+      setMaterialSearch("");
+      setMatQty("");
+      setError(null);
+      return;
+    }
+
+    // Validação contra duplicação de material na mesma atividade
+    const isDuplicate = plannedMaterials.some(
+      (m) =>
+        m.materialId === selectedCatalogMaterial.id ||
+        m.materialName.trim().toLowerCase() === selectedCatalogMaterial.name.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      setError(
+        `O material "${selectedCatalogMaterial.name}" já está na lista. Edite a quantidade existente ou remova-o antes de adicionar novamente.`
+      );
+      return;
+    }
+
+    setPlannedMaterials([
+      ...plannedMaterials,
+      {
+        id: `mat-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        materialId: selectedCatalogMaterial.id,
+        materialCode: selectedCatalogMaterial.code,
+        materialName: selectedCatalogMaterial.name,
+        quantity: qtyNum,
+        unit: matUnit,
+      },
+    ]);
+
+    setSelectedCatalogMaterial(null);
+    setMaterialSearch("");
+    setMatQty("");
+    setError(null);
+  };
+
+  const handleStartEditPlannedMaterial = (item: ActivityPlannedMaterial) => {
+    setEditingPlannedId(item.id);
+    const foundMat = catalogMaterials.find(
+      (m) => m.id === item.materialId || m.name.toLowerCase() === item.materialName.toLowerCase()
+    );
+    if (foundMat) {
+      setSelectedCatalogMaterial(foundMat);
+      setMaterialSearch(`${foundMat.code} - ${foundMat.name}`);
+    } else {
+      setMaterialSearch(item.materialName);
+    }
+    setMatQty(String(item.quantity));
+    setMatUnit(item.unit);
+  };
+
+  const handleCancelEditPlanned = () => {
+    setEditingPlannedId(null);
+    setSelectedCatalogMaterial(null);
+    setMaterialSearch("");
+    setMatQty("");
   };
 
   const handleRemovePlannedMaterial = (id: string) => {
     setPlannedMaterials(plannedMaterials.filter((m) => m.id !== id));
+    if (editingPlannedId === id) {
+      handleCancelEditPlanned();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -710,24 +835,77 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
           </div>
         </div>
 
-        {/* Bloco 5: Materiais Planejados */}
+        {/* Bloco 5: Materiais Planejados (Seleção via Catálogo) */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">
-            5. Materiais Planejados (Insumos Estimados)
-          </h3>
+          <div className="flex justify-between items-center border-b pb-1">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              5. Materiais Planejados (Insumos do Catálogo)
+            </h3>
+            {loadingCatalog && (
+              <span className="text-[11px] text-slate-400 font-mono">Carregando catálogo...</span>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-            <div className="sm:col-span-6">
+            {/* Campo de Pesquisa / Autocomplete */}
+            <div className="sm:col-span-6 relative">
               <label className="block text-xs font-medium text-slate-700 mb-1">
-                Nome do Material
+                Pesquisar Material no Catálogo
               </label>
-              <input
-                type="text"
-                value={matName}
-                onChange={(e) => setMatName(e.target.value)}
-                placeholder="Ex.: Primer Epóxi Poliamida"
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  value={materialSearch}
+                  onChange={(e) => {
+                    setMaterialSearch(e.target.value);
+                    setIsSearchDropdownOpen(true);
+                    if (selectedCatalogMaterial && e.target.value !== `${selectedCatalogMaterial.code} - ${selectedCatalogMaterial.name}`) {
+                      setSelectedCatalogMaterial(null);
+                    }
+                  }}
+                  onFocus={() => setIsSearchDropdownOpen(true)}
+                  placeholder="Digite o código ou nome do material..."
+                  className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                />
+                {selectedCatalogMaterial && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCatalogMaterial(null);
+                      setMaterialSearch("");
+                    }}
+                    className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 font-bold"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdown de Autocomplete */}
+              {isSearchDropdownOpen && filteredCatalog.length > 0 && !selectedCatalogMaterial && (
+                <div className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-300 rounded-md shadow-lg divide-y text-xs">
+                  {filteredCatalog.map((mat) => (
+                    <button
+                      key={mat.id}
+                      type="button"
+                      onClick={() => handleSelectMaterial(mat)}
+                      className="w-full text-left p-2 hover:bg-slate-50 flex justify-between items-center transition-colors"
+                    >
+                      <div>
+                        <span className="font-mono font-bold text-blue-600 mr-2">{mat.code}</span>
+                        <span className="text-slate-800 font-medium">{mat.name}</span>
+                        <span className="text-slate-400 text-[10px] block">{mat.type}</span>
+                      </div>
+                      <span className="text-slate-500 font-mono text-[11px] px-1.5 py-0.5 bg-slate-100 rounded">
+                        Estoque: {mat.currentStock} {mat.unit}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Quantidade Estimada */}
             <div className="sm:col-span-3">
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Qtd. Estimada
@@ -735,13 +913,15 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <input
                 type="number"
                 step="0.1"
-                min="0"
+                min="0.1"
                 value={matQty}
                 onChange={(e) => setMatQty(e.target.value)}
-                placeholder="Ex.: 18"
+                placeholder="Ex.: 10"
                 className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
+
+            {/* Unidade (Automática do Material ou ajustável) */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-slate-700 mb-1">
                 Unidade
@@ -757,30 +937,64 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 <option value="un">Unidade</option>
               </select>
             </div>
-            <div className="sm:col-span-1">
+
+            {/* Botão de Adicionar / Salvar Edição */}
+            <div className="sm:col-span-1 flex gap-1">
               <button
                 type="button"
                 onClick={handleAddPlannedMaterial}
-                className="w-full py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-slate-700"
+                title={editingPlannedId ? "Atualizar item" : "Adicionar material"}
+                className={`w-full py-1.5 text-xs font-bold rounded text-white transition-colors ${
+                  editingPlannedId
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
               >
-                +
+                {editingPlannedId ? "✓" : "+"}
               </button>
+              {editingPlannedId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEditPlanned}
+                  title="Cancelar edição"
+                  className="py-1.5 px-2 text-xs font-bold bg-slate-200 hover:bg-slate-300 rounded text-slate-700"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
-          {plannedMaterials.length > 0 && (
+          {/* Lista de Materiais Adicionados */}
+          {plannedMaterials.length > 0 ? (
             <div className="border border-slate-200 rounded divide-y text-xs bg-slate-50">
               {plannedMaterials.map((m) => (
-                <div key={m.id} className="p-2 flex justify-between items-center">
-                  <span className="font-medium text-slate-800">{m.materialName}</span>
+                <div key={m.id} className="p-2.5 flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    {m.materialCode && (
+                      <span className="font-mono text-[11px] font-bold text-blue-600 px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded">
+                        {m.materialCode}
+                      </span>
+                    )}
+                    <span className="font-medium text-slate-800">{m.materialName}</span>
+                  </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-slate-600 font-mono">
+                    <span className="text-slate-700 font-mono font-semibold">
                       {m.quantity} {m.unit}
                     </span>
                     <button
                       type="button"
+                      onClick={() => handleStartEditPlannedMaterial(m)}
+                      title="Editar quantidade"
+                      className="text-blue-600 hover:text-blue-800 font-medium text-xs underline"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => handleRemovePlannedMaterial(m.id)}
-                      className="text-slate-400 hover:text-red-600 font-bold"
+                      title="Remover material"
+                      className="text-slate-400 hover:text-red-600 font-bold text-sm leading-none"
                     >
                       ×
                     </button>
@@ -788,6 +1002,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 </div>
               ))}
             </div>
+          ) : (
+            <p className="text-xs text-slate-400 italic">
+              Nenhum material planejado adicionado a esta atividade.
+            </p>
           )}
         </div>
 

@@ -38,10 +38,11 @@ interface SupabaseActivityRow {
   activity_tags: Array<{ id: string; tag_code: string; is_main: boolean }> | null;
   activity_planned_materials: Array<{
     id: string;
+    material_id?: string | null;
     custom_material_name: string;
     planned_quantity: number;
     unit: string;
-    materials: { name: string } | null;
+    materials: { id?: string; code?: string; name: string } | null;
   }> | null;
 }
 
@@ -79,6 +80,8 @@ function mapRowToActivity(row: SupabaseActivityRow): Activity {
     })),
     plannedMaterials: (row.activity_planned_materials || []).map((pm) => ({
       id: pm.id,
+      materialId: pm.material_id || pm.materials?.id || undefined,
+      materialCode: pm.materials?.code || undefined,
       materialName: pm.materials?.name || pm.custom_material_name,
       quantity: Number(pm.planned_quantity),
       unit: pm.unit,
@@ -146,10 +149,11 @@ export async function getActivities(preferRealData = true): Promise<Activity[]> 
       activity_tags (id, tag_code, is_main),
       activity_planned_materials (
         id,
+        material_id,
         custom_material_name,
         planned_quantity,
         unit,
-        materials (name)
+        materials (id, code, name)
       )
     `)
     .is("archived_at", null)
@@ -217,10 +221,11 @@ export async function getHistoryActivities(preferRealData = true): Promise<Activ
       activity_tags (id, tag_code, is_main),
       activity_planned_materials (
         id,
+        material_id,
         custom_material_name,
         planned_quantity,
         unit,
-        materials (name)
+        materials (id, code, name)
       )
     `)
     .order("updated_at", { ascending: false });
@@ -462,17 +467,19 @@ export async function createActivity(activity: Activity): Promise<Activity> {
       const plannedToInsert = [];
 
       for (const pm of activity.plannedMaterials) {
-        let materialId: string | null = null;
+        let materialId: string | null = pm.materialId || null;
 
-        // Tenta vincular ao catálogo se existir
-        const { data: matData } = await supabase
-          .from("materials")
-          .select("id")
-          .eq("name", pm.materialName)
-          .maybeSingle();
+        // Se não foi passado materialId, tenta vincular ao catálogo pelo nome
+        if (!materialId) {
+          const { data: matData } = await supabase
+            .from("materials")
+            .select("id")
+            .eq("name", pm.materialName)
+            .maybeSingle();
 
-        if (matData) {
-          materialId = matData.id;
+          if (matData) {
+            materialId = matData.id;
+          }
         }
 
         plannedToInsert.push({
@@ -684,14 +691,16 @@ export async function updateActivity(activity: Activity): Promise<Activity> {
 
       const plannedToInsert = [];
       for (const pm of activity.plannedMaterials) {
-        let materialId: string | null = null;
-        const { data: matData } = await supabase
-          .from("materials")
-          .select("id")
-          .eq("name", pm.materialName)
-          .maybeSingle();
+        let materialId: string | null = pm.materialId || null;
+        if (!materialId) {
+          const { data: matData } = await supabase
+            .from("materials")
+            .select("id")
+            .eq("name", pm.materialName)
+            .maybeSingle();
 
-        if (matData) materialId = matData.id;
+          if (matData) materialId = matData.id;
+        }
 
         plannedToInsert.push({
           activity_id: activity.id,

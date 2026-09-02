@@ -29,6 +29,8 @@ export interface ActivityConsumption {
 
 export interface ActivityPlannedMaterial {
   id: string;
+  materialId?: string;
+  materialCode?: string;
   materialName: string;
   quantity: number;
   unit: string;
