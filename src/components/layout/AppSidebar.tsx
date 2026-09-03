@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 
 interface NavItem {
   label: string;
@@ -27,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
 export function AppSidebar() {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [isOpenMobile, setIsOpenMobile] = useState(false);
 
   const isActive = (href: string) => {
@@ -64,19 +66,41 @@ export function AppSidebar() {
           isOpenMobile ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Topo / Logotipo do Sistema RSS3 */}
-        <div className="h-16 px-5 flex items-center gap-3 border-b border-slate-800 bg-[#0b1120]">
-          <div className="w-8 h-8 rounded-md bg-orange-500 flex items-center justify-center text-white font-mono font-bold text-sm shadow-sm">
-            R3
+        {/* Topo / Logotipo do Sistema RSS3 & Alternador de Tema */}
+        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800 bg-[#0b1120]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-md bg-orange-500 flex items-center justify-center text-white font-mono font-bold text-sm shadow-sm">
+              R3
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-mono font-bold text-white tracking-widest leading-none">
+                RSS3
+              </span>
+              <span className="text-[10px] text-blue-400 font-medium tracking-tight mt-0.5">
+                Soluções Industriais
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-mono font-bold text-white tracking-widest leading-none">
-              RSS3
-            </span>
-            <span className="text-[10px] text-blue-400 font-medium tracking-tight mt-0.5">
-              Soluções Industriais
-            </span>
-          </div>
+
+          {/* Botão de Alternância de Tema Claro / Escuro */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title={theme === "dark" ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono font-semibold transition-all border border-blue-500/20 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white"
+          >
+            {theme === "dark" ? (
+              <>
+                <span className="text-amber-400 text-sm">☀️</span>
+                <span className="text-[10px] text-slate-400 hidden sm:inline">Claro</span>
+              </>
+            ) : (
+              <>
+                <span className="text-sky-300 text-sm">🌙</span>
+                <span className="text-[10px] text-slate-400 hidden sm:inline">Escuro</span>
+              </>
+            )}
+          </button>
         </div>
 
         {/* Links de Navegação */}

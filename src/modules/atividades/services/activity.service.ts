@@ -725,23 +725,44 @@ export async function updateActivity(activity: Activity): Promise<Activity> {
   }
 
   try {
-    // 8. Atualizar Tags (substituição controlada)
-    if (activity.tags && activity.tags.length > 0) {
-      await supabase.from("activity_tags").delete().eq("activity_id", activity.id);
+    // 8. Atualizar Tags (substituição completa e incondicional)
+    const { error: deleteTagsError } = await supabase
+      .from("activity_tags")
+      .delete()
+      .eq("activity_id", activity.id);
 
+    if (deleteTagsError) {
+      throw new Error(`Erro ao remover tags anteriores da atividade: ${deleteTagsError.message}`);
+    }
+
+    if (activity.tags && activity.tags.length > 0) {
       const tagsToInsert = activity.tags.map((t, idx) => ({
         activity_id: activity.id,
         tag_code: t.code.toUpperCase().trim(),
         is_main: idx === 0,
       }));
 
-      await supabase.from("activity_tags").insert(tagsToInsert);
+      const { error: insertTagsError } = await supabase.from("activity_tags").insert(tagsToInsert);
+      if (insertTagsError) {
+        throw new Error(`Erro ao inserir tags atualizadas da atividade: ${insertTagsError.message}`);
+      }
     }
 
-    // 9. Atualizar Materiais Planejados
-    if (activity.plannedMaterials && activity.plannedMaterials.length > 0) {
-      await supabase.from("activity_planned_materials").delete().eq("activity_id", activity.id);
+    // 9. Atualizar Materiais Planejados (substituição completa e incondicional)
+    // Exclui sempre todos os registros planejados existentes para esta OS
+    const { error: deletePlannedError } = await supabase
+      .from("activity_planned_materials")
+      .delete()
+      .eq("activity_id", activity.id);
 
+    if (deletePlannedError) {
+      throw new Error(
+        `Erro ao sincronizar materiais planejados (falha ao remover anteriores): ${deletePlannedError.message}`
+      );
+    }
+
+    // Insere exatamente a nova lista (se houver itens)
+    if (activity.plannedMaterials && activity.plannedMaterials.length > 0) {
       const plannedToInsert = [];
       for (const pm of activity.plannedMaterials) {
         let materialId: string | null = pm.materialId || null;
@@ -764,7 +785,15 @@ export async function updateActivity(activity: Activity): Promise<Activity> {
         });
       }
 
-      await supabase.from("activity_planned_materials").insert(plannedToInsert);
+      const { error: insertPlannedError } = await supabase
+        .from("activity_planned_materials")
+        .insert(plannedToInsert);
+
+      if (insertPlannedError) {
+        throw new Error(
+          `Erro ao salvar novos materiais planejados da atividade: ${insertPlannedError.message}`
+        );
+      }
     }
 
     // 10. Registrar Log de Auditoria da Edição
@@ -779,14 +808,21 @@ export async function updateActivity(activity: Activity): Promise<Activity> {
         observation: activity.observations || "Atividade editada via formulário",
       });
     }
-  } catch (secondaryError) {
-    console.warn("Aviso durante atualização de entidades secundárias:", secondaryError);
-  }
 
-  return {
-    ...activity,
-    updatedAt: updatedActivityRow.updated_at.split("T")[0],
-  };
+    // 11. Recarregar estado real persistido no Supabase
+    const reloaded = await getActivityById(activity.id);
+    if (reloaded) {
+      return reloaded;
+    }
+
+    return {
+      ...activity,
+      updatedAt: updatedActivityRow.updated_at.split("T")[0],
+    };
+  } catch (syncError) {
+    console.error("Erro durante sincronização de entidades secundárias:", syncError);
+    throw syncError;
+  }
 }
 
 /**

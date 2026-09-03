@@ -13,7 +13,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [theme, setThemeState] = useState<Theme>("dark");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -23,9 +23,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setThemeState(savedTheme);
       applyTheme(savedTheme);
     } else {
-      // 2. Verificar preferência do sistema operacional do usuário
-      const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const initialTheme: Theme = systemPrefersDark ? "dark" : "light";
+      // 2. Por padrão, preservar a identidade DARK INDUSTRIAL RSS3 nativa
+      const initialTheme: Theme = "dark";
       setThemeState(initialTheme);
       applyTheme(initialTheme);
     }

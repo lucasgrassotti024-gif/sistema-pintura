@@ -119,9 +119,20 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   // Materiais Planejados
   const [catalogMaterials, setCatalogMaterials] = useState<Material[]>([]);
   const [loadingCatalog, setLoadingCatalog] = useState(false);
-  const [plannedMaterials, setPlannedMaterials] = useState<ActivityPlannedMaterial[]>(
-    initialActivity?.plannedMaterials || []
-  );
+  const [plannedMaterials, setPlannedMaterials] = useState<ActivityPlannedMaterial[]>(() => {
+    if (!initialActivity?.plannedMaterials) return [];
+    // Desduplicação defensiva profilática contra dados corrompidos preexistentes no banco
+    const seenKeys = new Set<string>();
+    const sanitized: ActivityPlannedMaterial[] = [];
+    for (const pm of initialActivity.plannedMaterials) {
+      const key = pm.materialId ? `id:${pm.materialId}` : `name:${pm.materialName.trim().toLowerCase()}`;
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key);
+        sanitized.push(pm);
+      }
+    }
+    return sanitized;
+  });
   const [selectedCatalogMaterial, setSelectedCatalogMaterial] = useState<Material | null>(null);
   const [materialSearch, setMaterialSearch] = useState("");
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);

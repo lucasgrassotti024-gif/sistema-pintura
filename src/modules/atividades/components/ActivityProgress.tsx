@@ -22,8 +22,8 @@ export function ActivityProgress({ currentProgress }: ActivityProgressProps) {
         </span>
       </div>
 
-      {/* Barra de Progresso Dark com Laranja RSS3 / Verde em 100% */}
-      <div className="w-full bg-[#070c14] rounded-full h-2 overflow-hidden border border-blue-500/15">
+      {/* Barra de Progresso com Laranja RSS3 / Verde em 100% */}
+      <div className="w-full bg-[var(--bg-base)] rounded-full h-2 overflow-hidden border border-[var(--border-subtle)]">
         <div
           className={`h-full rounded-full transition-all duration-300 ${
             isFull ? "bg-emerald-500" : "bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.5)]"
