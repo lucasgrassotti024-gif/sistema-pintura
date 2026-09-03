@@ -19,12 +19,12 @@ export interface ActivityLocation {
 
 export interface ActivityConsumption {
   id: string;
-  materialId: string;
+  materialId?: string;
   materialName: string;
   quantity: number;
   unit: string;
   registeredAt: string;
-  registeredBy: string;
+  registeredBy?: string;
 }
 
 export interface ActivityPlannedMaterial {

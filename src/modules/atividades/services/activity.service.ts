@@ -44,6 +44,17 @@ interface SupabaseActivityRow {
     unit: string;
     materials: { id?: string; code?: string; name: string } | null;
   }> | null;
+  activity_consumptions?: Array<{
+    id: string;
+    material_id?: string | null;
+    custom_material_name?: string | null;
+    quantity: number;
+    unit: string;
+    created_at?: string;
+    registered_by_user_id?: string | null;
+    materials?: { id?: string; code?: string; name: string } | null;
+    users?: { full_name?: string } | null;
+  }> | null;
 }
 
 /**
@@ -93,8 +104,16 @@ function mapRowToActivity(row: SupabaseActivityRow): Activity {
       actualEndDate: row.actual_end_date || undefined,
       teamName: row.teams?.name || undefined,
     },
-    consumptions: [], // Carregado separadamente quando a migration de consumos for aplicada
-    history: [],      // Carregado separadamente quando a migration de auditoria for aplicada
+    consumptions: (row.activity_consumptions || []).map((c) => ({
+      id: c.id,
+      materialId: c.material_id || c.materials?.id || undefined,
+      materialName: c.materials?.name || c.custom_material_name || "Insumo",
+      quantity: Number(c.quantity),
+      unit: c.unit,
+      registeredAt: c.created_at || "",
+      registeredBy: c.users?.full_name || undefined,
+    })),
+    history: [],      // Carregado sob demanda via getActivityAuditHistory
     archivedAt: row.archived_at || undefined,
     archivedBy: row.archived_by_user_id || undefined,
     archiveReason: row.archive_reason || undefined,
@@ -154,6 +173,17 @@ export async function getActivities(preferRealData = true): Promise<Activity[]> 
         planned_quantity,
         unit,
         materials (id, code, name)
+      ),
+      activity_consumptions (
+        id,
+        material_id,
+        custom_material_name,
+        quantity,
+        unit,
+        created_at,
+        registered_by_user_id,
+        materials (id, code, name),
+        users:users!activity_consumptions_registered_by_user_id_fkey (id, full_name)
       )
     `)
     .is("archived_at", null)
@@ -226,6 +256,17 @@ export async function getHistoryActivities(preferRealData = true): Promise<Activ
         planned_quantity,
         unit,
         materials (id, code, name)
+      ),
+      activity_consumptions (
+        id,
+        material_id,
+        custom_material_name,
+        quantity,
+        unit,
+        created_at,
+        registered_by_user_id,
+        materials (id, code, name),
+        users:users!activity_consumptions_registered_by_user_id_fkey (id, full_name)
       )
     `)
     .order("updated_at", { ascending: false });
@@ -288,10 +329,22 @@ export async function getActivityById(activityId: string): Promise<Activity | nu
       activity_tags (id, tag_code, is_main),
       activity_planned_materials (
         id,
+        material_id,
         custom_material_name,
         planned_quantity,
         unit,
-        materials (name)
+        materials (id, code, name)
+      ),
+      activity_consumptions (
+        id,
+        material_id,
+        custom_material_name,
+        quantity,
+        unit,
+        created_at,
+        registered_by_user_id,
+        materials (id, code, name),
+        users:users!activity_consumptions_registered_by_user_id_fkey (id, full_name)
       )
     `)
     .eq("id", activityId)

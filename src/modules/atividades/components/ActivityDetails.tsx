@@ -190,6 +190,51 @@ export function ActivityDetails({
         )}
       </div>
 
+      {/* 4.1. MATERIAIS PLANEJADOS & CONSUMO */}
+      {activity.plannedMaterials && activity.plannedMaterials.length > 0 && (
+        <div className="bg-[#070c14] border border-blue-500/15 rounded-md p-3.5 space-y-2 text-xs">
+          <div className="flex justify-between items-center border-b border-blue-500/10 pb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 font-mono">
+              Insumos & Consumo
+            </span>
+            <span className="text-[10px] text-slate-500 font-mono">
+              {activity.plannedMaterials.length} planejado(s)
+            </span>
+          </div>
+
+          <div className="space-y-1.5 pt-0.5">
+            {activity.plannedMaterials.map((pm, idx) => {
+              // Calcular consumo do material na atividade
+              const consumedQty = (activity.consumptions || []).reduce((acc, c) => {
+                const matchId = pm.materialId && c.materialId && pm.materialId === c.materialId;
+                const matchName = pm.materialName.trim().toLowerCase() === c.materialName.trim().toLowerCase();
+                return matchId || matchName ? acc + Number(c.quantity) : acc;
+              }, 0);
+
+              return (
+                <div
+                  key={pm.id || idx}
+                  className="flex justify-between items-center text-[11px] py-1 border-b border-white/5 last:border-0"
+                >
+                  <span className="font-medium text-slate-300 truncate max-w-[150px]" title={pm.materialName}>
+                    {pm.materialName}
+                  </span>
+                  <div className="font-mono text-right space-x-1.5">
+                    <span className="text-orange-400 font-bold">
+                      {consumedQty.toFixed(1)}
+                    </span>
+                    <span className="text-slate-500">/</span>
+                    <span className="text-slate-400">
+                      {pm.quantity} {pm.unit}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 5. PROGRESSO */}
       <div className="space-y-2 pt-1">
         <ActivityProgress currentProgress={activity.progressPercentage} />
