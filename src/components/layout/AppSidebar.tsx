@@ -62,18 +62,30 @@ export function AppSidebar() {
 
       {/* Sidebar Lateral */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-200 ease-in-out md:translate-x-0 shadow-sm ${
-          isOpenMobile ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 border-r flex flex-col transition-colors duration-200 ease-in-out md:translate-x-0 shadow-sm ${
+          theme === "light"
+            ? "bg-[#e9eef5] border-[#cbd5e1]"
+            : "bg-[#0f172a] border-[#1e293b]"
+        } ${isOpenMobile ? "translate-x-0" : "-translate-x-full"}`}
       >
         {/* Topo / Logotipo do Sistema RSS3 & Alternador de Tema */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-[var(--sidebar-border)] bg-[var(--sidebar-header-bg)] transition-colors duration-200">
+        <div
+          className={`h-16 px-4 flex items-center justify-between border-b transition-colors duration-200 ${
+            theme === "light"
+              ? "bg-[#dde5f0] border-[#cbd5e1]"
+              : "bg-[#0b1120] border-[#1e293b]"
+          }`}
+        >
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-md bg-orange-500 flex items-center justify-center text-white font-mono font-bold text-sm shadow-xs">
               R3
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-mono font-bold text-[var(--sidebar-text-title)] tracking-widest leading-none">
+              <span
+                className={`text-xs font-mono font-bold tracking-widest leading-none ${
+                  theme === "light" ? "text-[#0f172a]" : "text-white"
+                }`}
+              >
                 RSS3
               </span>
               <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium tracking-tight mt-0.5">
@@ -87,7 +99,11 @@ export function AppSidebar() {
             type="button"
             onClick={toggleTheme}
             title={theme === "dark" ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-semibold transition-all border border-[var(--sidebar-border)] bg-[var(--sidebar-footer-card)] hover:bg-[var(--sidebar-item-hover)] text-[var(--sidebar-text-primary)] shadow-xs cursor-pointer active:scale-95"
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-semibold transition-all border shadow-xs cursor-pointer active:scale-95 ${
+              theme === "light"
+                ? "border-[#cbd5e1] bg-[#eef2f7] hover:bg-[#e2e8f0] text-[#1e293b]"
+                : "border-blue-500/20 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white"
+            }`}
           >
             {theme === "dark" ? (
               <>
@@ -112,10 +128,12 @@ export function AppSidebar() {
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpenMobile(false)}
-                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group relative ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs transition-all group relative ${
                   active
-                    ? "bg-[var(--sidebar-item-active-bg)] text-white font-semibold border border-[var(--sidebar-item-active-border)] shadow-xs"
-                    : "text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text-title)] hover:bg-[var(--sidebar-item-hover)]"
+                    ? "bg-[#2563eb] text-white font-semibold border border-[#1d4ed8] shadow-xs"
+                    : theme === "light"
+                    ? "text-[#475569] font-medium hover:text-[#0f172a] hover:bg-[#dbe4f0]"
+                    : "text-[#94a3b8] font-medium hover:text-white hover:bg-slate-800/60"
                 }`}
               >
                 {/* Indicador lateral do item ativo em Laranja RSS3 */}
@@ -131,13 +149,33 @@ export function AppSidebar() {
         </nav>
 
         {/* Rodapé da Sidebar: Informações de Sessão & Logout */}
-        <div className="p-3 border-t border-[var(--sidebar-border)] bg-[var(--sidebar-header-bg)] transition-colors duration-200">
-          <div className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--sidebar-footer-card)] border border-[var(--sidebar-border)] shadow-xs">
+        <div
+          className={`p-3 border-t transition-colors duration-200 ${
+            theme === "light"
+              ? "bg-[#dde5f0] border-[#cbd5e1]"
+              : "bg-[#0b1120] border-[#1e293b]"
+          }`}
+        >
+          <div
+            className={`flex items-center justify-between p-2.5 rounded-lg border shadow-xs ${
+              theme === "light"
+                ? "bg-[#eef2f7] border-[#cbd5e1]"
+                : "bg-[#0b1120] border-[#1e293b]"
+            }`}
+          >
             <div className="flex flex-col min-w-0 pr-2">
-              <span className="text-xs font-semibold text-[var(--sidebar-text-title)] truncate">
+              <span
+                className={`text-xs font-semibold truncate ${
+                  theme === "light" ? "text-[#0f172a]" : "text-white"
+                }`}
+              >
                 {profile?.fullName || "Operador"}
               </span>
-              <span className="text-[10px] text-[var(--sidebar-text-muted)] uppercase font-mono">
+              <span
+                className={`text-[10px] uppercase font-mono ${
+                  theme === "light" ? "text-[#64748b]" : "text-slate-400"
+                }`}
+              >
                 {profile?.role || "Acesso"}
               </span>
             </div>
@@ -145,7 +183,11 @@ export function AppSidebar() {
               type="button"
               onClick={signOut}
               title="Encerrar Sessão"
-              className="p-1.5 text-[var(--sidebar-text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
+              className={`p-1.5 rounded transition-colors cursor-pointer ${
+                theme === "light"
+                  ? "text-[#64748b] hover:text-rose-600 hover:bg-rose-50"
+                  : "text-slate-400 hover:text-rose-500 hover:bg-rose-500/10"
+              }`}
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
