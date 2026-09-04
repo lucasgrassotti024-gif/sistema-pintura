@@ -26,11 +26,11 @@ export function ImageLightboxModal({ imageUrl, imageName, onClose }: ImageLightb
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative max-w-4xl max-h-[90vh] flex flex-col items-center bg-[#0f172a] border border-white/10 rounded-xl overflow-hidden shadow-2xl"
+        className="relative max-w-4xl max-h-[90vh] flex flex-col items-center bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-xl overflow-hidden shadow-2xl"
       >
         {/* Barra Superior */}
-        <div className="w-full flex items-center justify-between px-4 py-2.5 bg-[#090d16] border-b border-white/10 text-xs font-mono text-slate-300">
-          <span className="truncate max-w-md font-medium text-slate-200">
+        <div className="w-full flex items-center justify-between px-4 py-2.5 bg-[var(--bg-surface-raised)] border-b border-[var(--border-subtle)] text-xs font-mono text-[var(--text-secondary)]">
+          <span className="truncate max-w-md font-medium text-[var(--text-primary)]">
             {imageName || "Foto da Operação"}
           </span>
           <div className="flex items-center gap-3">
@@ -38,14 +38,14 @@ export function ImageLightboxModal({ imageUrl, imageName, onClose }: ImageLightb
               href={imageUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-emerald-400 hover:text-emerald-300 hover:underline"
+              className="text-blue-600 dark:text-emerald-400 hover:underline font-semibold"
             >
               Abrir Original ↗
             </a>
             <button
               type="button"
               onClick={onClose}
-              className="w-6 h-6 rounded flex items-center justify-center hover:bg-white/10 text-slate-400 hover:text-slate-100 transition-colors"
+              className="w-6 h-6 rounded flex items-center justify-center hover:bg-[var(--bg-surface-highlight)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             >
               ✕
             </button>
@@ -53,7 +53,7 @@ export function ImageLightboxModal({ imageUrl, imageName, onClose }: ImageLightb
         </div>
 
         {/* Container da Imagem */}
-        <div className="p-2 flex items-center justify-center overflow-auto max-h-[calc(90vh-4rem)]">
+        <div className="p-2 flex items-center justify-center overflow-auto max-h-[calc(90vh-4rem)] bg-[var(--bg-base)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}

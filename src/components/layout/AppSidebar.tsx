@@ -87,7 +87,7 @@ export function AppSidebar() {
             type="button"
             onClick={toggleTheme}
             title={theme === "dark" ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-semibold transition-all border border-blue-500/20 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white shadow-xs cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-semibold transition-all border border-[var(--sidebar-border)] bg-[var(--sidebar-footer-card)] hover:bg-[var(--sidebar-item-hover)] text-[var(--sidebar-text-primary)] shadow-xs cursor-pointer active:scale-95"
           >
             {theme === "dark" ? (
               <>
@@ -96,8 +96,8 @@ export function AppSidebar() {
               </>
             ) : (
               <>
-                <span className="text-sky-300 text-sm">🌙</span>
-                <span className="text-[10px] text-slate-300 hidden sm:inline">Escuro</span>
+                <span className="text-blue-600 text-sm">🌙</span>
+                <span className="text-[10px] text-slate-700 hidden sm:inline">Escuro</span>
               </>
             )}
           </button>
@@ -114,7 +114,7 @@ export function AppSidebar() {
                 onClick={() => setIsOpenMobile(false)}
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group relative ${
                   active
-                    ? "bg-[var(--sidebar-item-active-bg)] text-[var(--sidebar-item-active-text)] font-semibold border border-[var(--sidebar-item-active-border)] shadow-xs"
+                    ? "bg-[var(--sidebar-item-active-bg)] text-white font-semibold border border-[var(--sidebar-item-active-border)] shadow-xs"
                     : "text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text-title)] hover:bg-[var(--sidebar-item-hover)]"
                 }`}
               >

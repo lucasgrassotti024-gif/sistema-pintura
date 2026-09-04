@@ -121,14 +121,34 @@
     border-color: #f1f5f9 !important;
   }
 
-  /* Textos no modo claro */
-  :root:not(.dark) .text-white {
+  /* Textos no modo claro (exceto em botões primários, badges sólidos e sidebar escura) */
+  :root:not(.dark) .text-white:not(button):not(button *):not(.bg-orange-500):not(.bg-orange-600):not(.bg-blue-600):not(.bg-blue-500):not(.bg-rose-600):not(.bg-emerald-600):not(aside *):not([class*="bg-orange"]):not([class*="bg-blue-600"]):not([class*="bg-rose"]) {
     color: #0f172a !important;
+  }
+
+  /* Proteção explícita de texto claro em botões com fundo sólido */
+  :root:not(.dark) aside .text-white.text-white-force,
+  :root:not(.dark) button.bg-orange-500,
+  :root:not(.dark) button.bg-orange-600,
+  :root:not(.dark) button.bg-blue-600,
+  :root:not(.dark) button.bg-rose-600,
+  :root:not(.dark) .bg-orange-500 .text-white,
+  :root:not(.dark) .bg-blue-600 .text-white {
+    color: #ffffff !important;
   }
 
   :root:not(.dark) .text-slate-200,
   :root:not(.dark) .text-slate-300 {
     color: #1e293b !important;
+  }
+
+  :root:not(.dark) aside .text-slate-200,
+  :root:not(.dark) aside .text-slate-300 {
+    color: #1e293b !important;
+  }
+
+  :root:not(.dark) aside .text-slate-400 {
+    color: #475569 !important;
   }
 
   :root:not(.dark) .text-slate-400 {
@@ -192,22 +212,25 @@
 
   /* ---------------------------------------------------------------------------
      TOKENS DA SIDEBAR (DARK & LIGHT INDUSTRIAL RSS3)
-     No Modo Claro: Mantém base corporativa azul-marinho profundo (#0f172a / #0b1120)
-     criando contraste estrutural marcante contra o fundo cinza-azulado (#f1f5f9).
-     No Modo Escuro: Integrado com a paleta grafite/marinho original (#0f172a).
+     No Modo Claro: Design limpo e estruturado em cinza/azul suave (#eef2f6),
+     claramente diferente do fundo geral (#f1f5f9) e do card branco (#ffffff).
+     Hierarquia rica: cabeçalho e rodapé em superfície destacada (#e2e8f0 / #f8fafc),
+     item ativo em azul RSS3 vibrante (#2563eb) com texto branco e borda sutil,
+     hover contrastante e tipografia escura com legibilidade perfeita.
+     No Modo Escuro: Mantém intacta a identidade DARK INDUSTRIAL RSS3 (#0f172a / #0b1120).
   --------------------------------------------------------------------------- */
   :root:not(.dark) {
-    --sidebar-bg: #0f172a;
-    --sidebar-header-bg: #0b1120;
-    --sidebar-border: #1e293b;
-    --sidebar-text-title: #ffffff;
-    --sidebar-text-primary: #cbd5e1;
-    --sidebar-text-muted: #94a3b8;
-    --sidebar-item-hover: rgba(30, 41, 59, 0.7);
-    --sidebar-item-active-bg: rgba(37, 99, 235, 0.25);
-    --sidebar-item-active-text: #ffffff;
-    --sidebar-item-active-border: #3b82f6;
-    --sidebar-footer-card: #0b1120;
+    --sidebar-bg: #e9eef5;                 /* Fundo da Sidebar: cinza/azul muito claro, distinto do fundo principal */
+    --sidebar-header-bg: #dde5f0;          /* Branding RSS3 / Topo: superfície ligeiramente mais contrastada */
+    --sidebar-border: #cbd5e1;            /* Divisória sutil e elegante */
+    --sidebar-text-title: #0f172a;         /* Título e branding: ardósia escura de alto contraste */
+    --sidebar-text-primary: #1e293b;       /* Texto regular da navegação */
+    --sidebar-text-muted: #475569;         /* Itens inativos e legendas: contraste nítido (WCAG AAA) */
+    --sidebar-item-hover: #dbe4f0;         /* Hover: tonalidade perceptível e agradável */
+    --sidebar-item-active-bg: #2563eb;     /* Item ativo: Azul RSS3 de alta distinção */
+    --sidebar-item-active-text: #ffffff;   /* Texto do item ativo: branco nítido */
+    --sidebar-item-active-border: #1d4ed8; /* Borda do item ativo */
+    --sidebar-footer-card: #dde5f0;        /* Rodapé / Card do usuário: superfície própria */
   }
 
   .dark {

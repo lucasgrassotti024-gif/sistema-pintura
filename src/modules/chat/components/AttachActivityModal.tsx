@@ -33,44 +33,44 @@ export function AttachActivityModal({ isOpen, onClose, onSelect }: AttachActivit
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#0f172a] border border-white/10 rounded-xl max-w-xl w-full flex flex-col max-h-[85vh] shadow-2xl overflow-hidden">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-xl max-w-xl w-full flex flex-col max-h-[85vh] shadow-2xl overflow-hidden transition-colors duration-200">
         {/* Cabeçalho */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
+        <div className="p-4 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <h2 className="text-sm font-bold text-slate-100 uppercase font-mono tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <h2 className="text-sm font-bold text-[var(--text-primary)] uppercase font-mono tracking-wider">
               Anexar Ordem de Serviço à Conversa
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-white/5 transition-colors"
+            className="p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-highlight)] transition-colors cursor-pointer"
           >
             ✕
           </button>
         </div>
 
         {/* Campo de Busca */}
-        <div className="p-3 border-b border-white/10 bg-[#090d16]/50">
+        <div className="p-3 border-b border-[var(--border-subtle)] bg-[var(--bg-base)]">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="🔎 Buscar por OS (ex: OS-1002), nome, área ou responsável..."
-            className="w-full bg-[#090d16] border border-white/10 focus:border-emerald-500/50 rounded-lg px-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-hidden"
+            className="w-full bg-[var(--bg-input)] border border-[var(--border-medium)] focus:border-blue-500 dark:focus:border-emerald-500 rounded-lg px-3 py-2 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-hidden shadow-xs"
             autoFocus
           />
         </div>
 
         {/* Lista de Atividades Selecionáveis */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-[var(--bg-surface)]">
           {isLoading ? (
-            <div className="p-6 text-center text-xs text-slate-400 font-mono">
+            <div className="p-6 text-center text-xs text-[var(--text-muted)] font-mono">
               Carregando atividades operacionais...
             </div>
           ) : filteredActivities.length === 0 ? (
-            <div className="p-6 text-center text-xs text-slate-500 font-mono">
+            <div className="p-6 text-center text-xs text-[var(--text-muted)] font-mono">
               Nenhuma atividade encontrada com o termo pesquisado.
             </div>
           ) : (
@@ -82,21 +82,21 @@ export function AttachActivityModal({ isOpen, onClose, onSelect }: AttachActivit
                   onSelect(act);
                   onClose();
                 }}
-                className="w-full text-left p-3 rounded-lg bg-[#090d16] hover:bg-emerald-500/5 border border-white/5 hover:border-emerald-500/30 transition-all flex flex-col gap-1.5 group"
+                className="w-full text-left p-3 rounded-lg bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] border border-[var(--border-subtle)] hover:border-blue-500/40 transition-all flex flex-col gap-1.5 group cursor-pointer"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-emerald-400 group-hover:text-emerald-300">
+                    <span className="text-xs font-mono font-bold text-blue-600 dark:text-emerald-400 group-hover:text-blue-700 dark:group-hover:text-emerald-300">
                       {act.orderNumber}
                     </span>
-                    <span className="text-xs font-medium text-slate-200 truncate max-w-[280px]">
+                    <span className="text-xs font-medium text-[var(--text-primary)] truncate max-w-[280px]">
                       {act.name}
                     </span>
                   </div>
                   <ActivityStatusBadge status={act.status} />
                 </div>
 
-                <div className="flex items-center gap-3 text-[11px] text-slate-400 font-mono">
+                <div className="flex items-center gap-3 text-[11px] text-[var(--text-muted)] font-mono">
                   <span>Progresso: {act.progressPercentage}%</span>
                   <span>•</span>
                   <span>Área: {act.location?.area || "—"}</span>
@@ -109,11 +109,11 @@ export function AttachActivityModal({ isOpen, onClose, onSelect }: AttachActivit
         </div>
 
         {/* Rodapé */}
-        <div className="p-3 border-t border-white/10 bg-[#090d16] flex justify-end">
+        <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] flex justify-end">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded border border-white/10 transition-colors"
+            className="px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-medium)] transition-colors cursor-pointer"
           >
             Cancelar
           </button>

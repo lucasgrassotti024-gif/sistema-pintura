@@ -197,48 +197,48 @@ export function ChatView() {
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[calc(100dvh-7rem)] sm:h-[calc(100vh-6.5rem)] w-full mx-auto">
       {/* 1. PAINEL PRINCIPAL DO CHAT */}
-      <div className="flex-1 flex flex-col bg-[#0c1524] border border-blue-500/20 rounded-xl shadow-xl overflow-hidden min-w-0">
+      <div className="flex-1 flex flex-col bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-xl overflow-hidden min-w-0 transition-colors duration-200">
         {/* Cabeçalho Técnico da Sala */}
-        <div className="px-5 py-3.5 border-b border-blue-500/15 bg-[#08101d] flex items-center justify-between shrink-0">
+        <div className="px-5 py-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] flex items-center justify-between shrink-0 transition-colors duration-200">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-sm">
+            <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 flex items-center justify-center font-bold text-sm">
               💬
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-white tracking-tight">
+                <h1 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
                   Chat da Operação
                 </h1>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30">
                   Sala Operacional RSS3
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
                 Comunicação em tempo real entre operadores, inspetores e coordenação de pintura.
               </p>
             </div>
           </div>
 
           {/* Indicador de Presença */}
-          <div className="flex items-center gap-2 bg-[#070c14] border border-blue-500/20 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300">
+          <div className="flex items-center gap-2 bg-[var(--bg-base)] border border-[var(--border-medium)] px-3 py-1.5 rounded-lg text-xs font-mono text-[var(--text-secondary)]">
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-            <span className="font-bold text-white">{onlineUsers.length}</span>
-            <span className="text-slate-400">online</span>
+            <span className="font-bold text-[var(--text-primary)]">{onlineUsers.length}</span>
+            <span className="text-[var(--text-muted)]">online</span>
           </div>
         </div>
 
         {/* Área de Rolagem das Mensagens */}
-        <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[#070c14]/60">
+        <div className="flex-1 p-5 overflow-y-auto space-y-4 bg-[var(--bg-base)] transition-colors duration-200">
           {isLoading ? (
-            <div className="h-full flex items-center justify-center text-xs font-mono text-slate-400">
+            <div className="h-full flex items-center justify-center text-xs font-mono text-[var(--text-muted)]">
               <span className="w-2 h-2 rounded-full bg-orange-500 animate-ping mr-2" />
               Sincronizando mensagens da operação...
             </div>
           ) : messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-500 font-mono text-xs">
+            <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[var(--text-muted)] font-mono text-xs">
               <span className="text-3xl mb-2">💬</span>
-              <span className="text-slate-300 font-medium">Nenhuma mensagem enviada ainda.</span>
-              <span className="mt-1 text-slate-500">Inicie a conversa, envie uma foto ou anexe uma OS/Material.</span>
+              <span className="text-[var(--text-secondary)] font-medium">Nenhuma mensagem enviada ainda.</span>
+              <span className="mt-1 text-[var(--text-muted)]">Inicie a conversa, envie uma foto ou anexe uma OS/Material.</span>
             </div>
           ) : (
             messages.map((msg) => {
@@ -253,15 +253,15 @@ export function ChatView() {
                   <div className="flex items-center gap-2 mb-1 px-1 text-[10px] font-mono">
                     <span
                       className={`font-bold ${
-                        isMine ? "text-orange-400" : "text-blue-400"
+                        isMine ? "text-orange-500 dark:text-orange-400" : "text-blue-600 dark:text-blue-400"
                       }`}
                     >
                       {isMine ? "Você" : msg.user.fullName}
                     </span>
-                    <span className="text-slate-400 uppercase px-1.5 py-0.2 bg-slate-800/80 rounded border border-blue-500/10">
+                    <span className="text-[var(--text-muted)] uppercase px-1.5 py-0.2 bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-subtle)]">
                       {msg.user.role}
                     </span>
-                    <span className="text-slate-500">
+                    <span className="text-[var(--text-muted)]">
                       {new Date(msg.createdAt).toLocaleTimeString("pt-BR", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -274,7 +274,7 @@ export function ChatView() {
                         type="button"
                         onClick={() => deleteMessage(msg.id)}
                         title="Excluir minha mensagem"
-                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition-opacity ml-1 p-0.5"
+                        className="opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-rose-500 transition-opacity ml-1 p-0.5 cursor-pointer"
                       >
                         ✕
                       </button>
@@ -289,7 +289,7 @@ export function ChatView() {
                         src={msg.imageUrl}
                         alt={msg.imageName || "Foto da operação"}
                         onClick={() => setLightboxImage({ url: msg.imageUrl!, name: msg.imageName || undefined })}
-                        className="rounded-lg max-h-64 object-cover border border-blue-500/20 hover:border-orange-500 cursor-pointer transition-all shadow-md hover:scale-[1.01]"
+                        className="rounded-lg max-h-64 object-cover border border-[var(--border-medium)] hover:border-orange-500 cursor-pointer transition-all shadow-md hover:scale-[1.01]"
                       />
                     </div>
                   )}
@@ -299,8 +299,8 @@ export function ChatView() {
                     <div
                       className={`rounded-xl px-4 py-2.5 text-xs leading-relaxed max-w-[85%] break-words border shadow-sm ${
                         isMine
-                          ? "bg-blue-600/30 border-blue-500/40 text-white shadow-[0_0_10px_rgba(37,99,235,0.2)]"
-                          : "bg-[#0c1524] border-blue-500/20 text-slate-200"
+                          ? "bg-blue-600 text-white border-blue-500 shadow-sm"
+                          : "bg-[var(--bg-surface)] border-[var(--border-medium)] text-[var(--text-primary)]"
                       }`}
                     >
                       {msg.content}
@@ -336,12 +336,12 @@ export function ChatView() {
 
         {/* Barra de Erro */}
         {activeError && (
-          <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-xs text-rose-300 flex items-center justify-between shrink-0 font-mono">
+          <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-xs text-rose-600 dark:text-rose-300 flex items-center justify-between shrink-0 font-mono">
             <span>⚠️ {activeError}</span>
             <button
               type="button"
               onClick={() => setUploadError(null)}
-              className="text-[11px] underline hover:text-rose-100"
+              className="text-[11px] underline hover:opacity-80 cursor-pointer"
             >
               Fechar
             </button>
@@ -349,21 +349,21 @@ export function ChatView() {
         )}
 
         {/* Rodapé: Ações de Anexo + Preview de Imagem + Campo de Entrada */}
-        <div className="p-3.5 bg-[#08101d] border-t border-blue-500/15 space-y-3 shrink-0 relative">
+        <div className="p-3.5 bg-[var(--bg-surface-raised)] border-t border-[var(--border-subtle)] space-y-3 shrink-0 relative transition-colors duration-200">
           {/* Prévia da Imagem Selecionada */}
           {imagePreviewUrl && (
-            <div className="flex items-center gap-3 p-2 bg-[#070c14] border border-blue-500/20 rounded-lg max-w-sm animate-in fade-in">
+            <div className="flex items-center gap-3 p-2 bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-lg max-w-sm animate-in fade-in">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={imagePreviewUrl}
                 alt="Prévia da foto"
-                className="w-14 h-14 object-cover rounded-md border border-blue-500/30"
+                className="w-14 h-14 object-cover rounded-md border border-[var(--border-medium)]"
               />
               <div className="flex-1 min-w-0">
-                <span className="text-xs text-white font-medium block truncate">
+                <span className="text-xs text-[var(--text-primary)] font-medium block truncate">
                   {selectedImageFile?.name}
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-[10px] font-mono text-[var(--text-muted)]">
                   {selectedImageFile ? (selectedImageFile.size / 1024).toFixed(1) + " KB" : ""}
                 </span>
               </div>
@@ -371,7 +371,7 @@ export function ChatView() {
                 type="button"
                 onClick={handleRemoveSelectedImage}
                 title="Remover foto"
-                className="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors text-sm"
+                className="p-1 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded transition-colors text-sm cursor-pointer"
               >
                 ✕
               </button>
@@ -385,10 +385,10 @@ export function ChatView() {
               <button
                 type="button"
                 onClick={() => setIsEmojiPickerOpen((prev) => !prev)}
-                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[#070c14] border text-sm transition-colors ${
+                className={`inline-flex items-center justify-center w-8 h-8 rounded-lg bg-[var(--bg-surface)] border text-sm transition-colors cursor-pointer ${
                   isEmojiPickerOpen
-                    ? "border-orange-500 text-orange-400 bg-orange-500/10"
-                    : "border-blue-500/20 hover:border-blue-500/40 text-slate-300 hover:text-white"
+                    ? "border-orange-500 text-orange-500 bg-orange-500/10"
+                    : "border-[var(--border-medium)] hover:border-blue-500/40 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 }`}
                 title="Inserir Emoji"
               >
@@ -413,20 +413,20 @@ export function ChatView() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-highlight)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-medium)] text-xs font-semibold transition-colors cursor-pointer"
               title="Anexar Foto (JPG, PNG, WEBP)"
             >
               <span>📷</span>
               <span className="hidden sm:inline">Foto</span>
             </button>
 
-            <span className="text-slate-700">|</span>
+            <span className="text-[var(--border-medium)]">|</span>
 
             {/* Botões de Vínculos */}
             <button
               type="button"
               onClick={() => setIsAttachingActivity(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-highlight)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-medium)] text-xs font-semibold transition-colors cursor-pointer"
             >
               <span>+</span>
               <span>Atividade</span>
@@ -435,7 +435,7 @@ export function ChatView() {
             <button
               type="button"
               onClick={() => setIsAttachingMaterial(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#070c14] hover:bg-blue-500/15 text-slate-300 hover:text-white border border-blue-500/20 hover:border-blue-500/40 text-xs font-semibold transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-highlight)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-medium)] text-xs font-semibold transition-colors cursor-pointer"
             >
               <span>+</span>
               <span>Material</span>
@@ -456,14 +456,14 @@ export function ChatView() {
                   : "Escreva uma mensagem sobre a operação... (Enter para enviar)"
               }
               rows={2}
-              className="flex-1 bg-[#070c14] border border-blue-500/20 focus:border-orange-500 rounded-lg p-2.5 text-xs text-white placeholder:text-slate-500 focus:outline-hidden resize-none transition-colors"
+              className="flex-1 bg-[var(--bg-input)] border border-[var(--border-medium)] focus:border-blue-500 dark:focus:border-orange-500 rounded-lg p-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-hidden resize-none transition-colors shadow-xs"
             />
 
             <button
               type="button"
               onClick={handleSendMessage}
               disabled={(!inputContent.trim() && !selectedImageFile) || isSending || isUploadingImage}
-              className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-[0_0_15px_-3px_rgba(249,115,22,0.4)] shrink-0 flex items-center gap-1.5 active:scale-95"
+              className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-bold rounded-lg transition-colors shadow-md shrink-0 flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               {isSending || isUploadingImage ? (
                 <>
@@ -482,21 +482,21 @@ export function ChatView() {
       </div>
 
       {/* 2. PAINEL LATERAL DE CONTEXTO */}
-      <div className="hidden lg:flex flex-col w-72 bg-[#0c1524] border border-blue-500/20 rounded-xl shadow-xl overflow-hidden shrink-0">
+      <div className="hidden lg:flex flex-col w-72 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl shadow-xl overflow-hidden shrink-0 transition-colors duration-200">
         {/* Topo do Painel */}
-        <div className="p-3.5 border-b border-blue-500/15 bg-[#08101d]">
-          <h2 className="text-xs font-bold text-white uppercase font-mono tracking-wider">
+        <div className="p-3.5 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)] transition-colors duration-200">
+          <h2 className="text-xs font-bold text-[var(--text-primary)] uppercase font-mono tracking-wider">
             Contexto da Operação
           </h2>
-          <p className="text-[11px] text-slate-400 mt-0.5">
+          <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
             Itens e operadores ativos na conversa
           </p>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-5 bg-[#0c1524]">
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-5 bg-[var(--bg-surface)]">
           {/* Usuários Online */}
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-orange-500" />
               Operadores Online ({onlineUsers.length}):
             </span>
@@ -504,12 +504,12 @@ export function ChatView() {
               {onlineUsers.map((u) => (
                 <div
                   key={u.userId}
-                  className="p-2 rounded bg-[#070c14] border border-blue-500/15 flex items-center justify-between"
+                  className="p-2 rounded bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] flex items-center justify-between"
                 >
-                  <span className="text-xs text-slate-200 font-medium truncate">
+                  <span className="text-xs text-[var(--text-primary)] font-medium truncate">
                     {u.fullName}
                   </span>
-                  <span className="text-[10px] font-mono text-blue-400 uppercase bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                  <span className="text-[10px] font-mono text-blue-600 dark:text-blue-400 uppercase bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
                     {u.role}
                   </span>
                 </div>
@@ -519,11 +519,11 @@ export function ChatView() {
 
           {/* Atividades Mencionadas */}
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Ordens de Serviço em Pauta ({roomContext.activities.length}):
             </span>
             {roomContext.activities.length === 0 ? (
-              <div className="text-[11px] text-slate-500 font-mono italic">
+              <div className="text-[11px] text-[var(--text-muted)] font-mono italic">
                 Nenhuma OS anexada recentemente.
               </div>
             ) : (
@@ -533,17 +533,17 @@ export function ChatView() {
                     key={act.id}
                     type="button"
                     onClick={() => handleOpenActivityDetails(act.id)}
-                    className="w-full text-left p-2.5 rounded bg-[#070c14] hover:bg-blue-500/15 border border-blue-500/15 hover:border-blue-500/35 transition-all flex flex-col gap-1"
+                    className="w-full text-left p-2.5 rounded bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] border border-[var(--border-subtle)] hover:border-blue-500/40 transition-all flex flex-col gap-1 cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-mono font-bold text-blue-400">
+                      <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
                         {act.orderNumber}
                       </span>
-                      <span className="text-[10px] font-mono text-orange-400 font-semibold">
+                      <span className="text-[10px] font-mono text-orange-500 dark:text-orange-400 font-semibold">
                         {act.progressPercentage}%
                       </span>
                     </div>
-                    <span className="text-xs text-white truncate">{act.name}</span>
+                    <span className="text-xs text-[var(--text-primary)] truncate">{act.name}</span>
                   </button>
                 ))}
               </div>
@@ -552,11 +552,11 @@ export function ChatView() {
 
           {/* Materiais Mencionados */}
           <div className="space-y-2">
-            <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[10px] font-mono font-bold text-[var(--text-muted)] uppercase tracking-wider">
               Insumos em Pauta ({roomContext.materials.length}):
             </span>
             {roomContext.materials.length === 0 ? (
-              <div className="text-[11px] text-slate-500 font-mono italic">
+              <div className="text-[11px] text-[var(--text-muted)] font-mono italic">
                 Nenhum material anexado recentemente.
               </div>
             ) : (
@@ -568,26 +568,26 @@ export function ChatView() {
                     onClick={() => {
                       window.location.href = "/pintura/materiais-estoque";
                     }}
-                    className="w-full text-left p-2.5 rounded bg-[#070c14] hover:bg-blue-500/15 border border-blue-500/15 hover:border-blue-500/35 transition-all flex flex-col gap-1"
+                    className="w-full text-left p-2.5 rounded bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] border border-[var(--border-subtle)] hover:border-blue-500/40 transition-all flex flex-col gap-1 cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-1">
-                      <span className="text-xs font-mono font-bold text-blue-400">
+                      <span className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400">
                         {mat.code}
                       </span>
                       <span
                         className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded border uppercase ${
                           mat.status === "critico"
-                            ? "bg-rose-500/15 text-rose-400 border-rose-500/30"
+                            ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
                             : mat.status === "atencao"
-                            ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                            : "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                            : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
                         }`}
                       >
                         {mat.status}
                       </span>
                     </div>
-                    <span className="text-xs text-white truncate">{mat.name}</span>
-                    <span className="text-[10px] font-mono text-slate-400">
+                    <span className="text-xs text-[var(--text-primary)] truncate">{mat.name}</span>
+                    <span className="text-[10px] font-mono text-[var(--text-muted)]">
                       Saldo: {mat.currentStock} {mat.unit}
                     </span>
                   </button>
