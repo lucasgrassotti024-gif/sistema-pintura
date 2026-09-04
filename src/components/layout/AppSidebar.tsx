@@ -62,21 +62,21 @@ export function AppSidebar() {
 
       {/* Sidebar Lateral */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-[#0f172a] border-r border-slate-800 flex flex-col transition-transform duration-200 ease-in-out md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-[var(--sidebar-bg)] border-r border-[var(--sidebar-border)] flex flex-col transition-all duration-200 ease-in-out md:translate-x-0 shadow-sm ${
           isOpenMobile ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Topo / Logotipo do Sistema RSS3 & Alternador de Tema */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-slate-800 bg-[#0b1120]">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-[var(--sidebar-border)] bg-[var(--sidebar-header-bg)] transition-colors duration-200">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-md bg-orange-500 flex items-center justify-center text-white font-mono font-bold text-sm shadow-sm">
+            <div className="w-8 h-8 rounded-md bg-orange-500 flex items-center justify-center text-white font-mono font-bold text-sm shadow-xs">
               R3
             </div>
             <div className="flex flex-col">
-              <span className="text-xs font-mono font-bold text-white tracking-widest leading-none">
+              <span className="text-xs font-mono font-bold text-[var(--sidebar-text-title)] tracking-widest leading-none">
                 RSS3
               </span>
-              <span className="text-[10px] text-blue-400 font-medium tracking-tight mt-0.5">
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-medium tracking-tight mt-0.5">
                 Soluções Industriais
               </span>
             </div>
@@ -87,17 +87,17 @@ export function AppSidebar() {
             type="button"
             onClick={toggleTheme}
             title={theme === "dark" ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
-            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-mono font-semibold transition-all border border-blue-500/20 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono font-semibold transition-all border border-blue-500/20 bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white shadow-xs cursor-pointer active:scale-95"
           >
             {theme === "dark" ? (
               <>
                 <span className="text-amber-400 text-sm">☀️</span>
-                <span className="text-[10px] text-slate-400 hidden sm:inline">Claro</span>
+                <span className="text-[10px] text-slate-300 hidden sm:inline">Claro</span>
               </>
             ) : (
               <>
                 <span className="text-sky-300 text-sm">🌙</span>
-                <span className="text-[10px] text-slate-400 hidden sm:inline">Escuro</span>
+                <span className="text-[10px] text-slate-300 hidden sm:inline">Escuro</span>
               </>
             )}
           </button>
@@ -114,13 +114,13 @@ export function AppSidebar() {
                 onClick={() => setIsOpenMobile(false)}
                 className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group relative ${
                   active
-                    ? "bg-blue-600/20 text-white font-semibold border border-blue-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                    ? "bg-[var(--sidebar-item-active-bg)] text-[var(--sidebar-item-active-text)] font-semibold border border-[var(--sidebar-item-active-border)] shadow-xs"
+                    : "text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text-title)] hover:bg-[var(--sidebar-item-hover)]"
                 }`}
               >
-                {/* Indicador lateral do item ativo */}
+                {/* Indicador lateral do item ativo em Laranja RSS3 */}
                 {active && (
-                  <span className="absolute left-0 top-2 bottom-2 w-1 bg-orange-500 rounded-r" />
+                  <span className="absolute left-0 top-2 bottom-2 w-1 bg-orange-500 rounded-r shadow-xs" />
                 )}
 
                 <span className="text-sm shrink-0">{item.icon}</span>
@@ -131,13 +131,13 @@ export function AppSidebar() {
         </nav>
 
         {/* Rodapé da Sidebar: Informações de Sessão & Logout */}
-        <div className="p-3 border-t border-slate-800 bg-[#0b1120]/70">
-          <div className="flex items-center justify-between p-2 rounded-lg bg-slate-900/80 border border-slate-800">
+        <div className="p-3 border-t border-[var(--sidebar-border)] bg-[var(--sidebar-header-bg)] transition-colors duration-200">
+          <div className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--sidebar-footer-card)] border border-[var(--sidebar-border)] shadow-xs">
             <div className="flex flex-col min-w-0 pr-2">
-              <span className="text-xs font-semibold text-white truncate">
+              <span className="text-xs font-semibold text-[var(--sidebar-text-title)] truncate">
                 {profile?.fullName || "Operador"}
               </span>
-              <span className="text-[10px] text-slate-400 uppercase font-mono">
+              <span className="text-[10px] text-[var(--sidebar-text-muted)] uppercase font-mono">
                 {profile?.role || "Acesso"}
               </span>
             </div>
@@ -145,7 +145,7 @@ export function AppSidebar() {
               type="button"
               onClick={signOut}
               title="Encerrar Sessão"
-              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+              className="p-1.5 text-[var(--sidebar-text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

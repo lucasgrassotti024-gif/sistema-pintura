@@ -218,8 +218,8 @@ export default function ProgramacaoPage() {
 
       {/* Modal de Edição de Atividade */}
       {editingActivity && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#0c1524] border border-blue-500/20 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-xl p-4 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-colors duration-200">
             <ActivityForm
               initialActivity={editingActivity}
               onSave={handleSaveEdit}

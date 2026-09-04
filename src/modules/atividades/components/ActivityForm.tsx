@@ -465,13 +465,13 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   };
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-6 shadow-sm max-w-4xl mx-auto">
-      <div className="flex justify-between items-center border-b border-slate-200 pb-3">
+    <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-6 space-y-6 shadow-sm max-w-4xl mx-auto transition-colors duration-200">
+      <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
         <div>
-          <h2 className="text-lg font-bold text-slate-900">
+          <h2 className="text-lg font-bold text-[var(--text-primary)]">
             {isEditing ? `Editar Atividade: ${initialActivity?.orderNumber}` : "Cadastrar Nova Atividade"}
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-[var(--text-muted)] mt-0.5">
             {isEditing
               ? "Altere os dados operacionais ou datas da atividade. O identificador, progresso físico e consumos serão preservados."
               : "Preencha os dados operacionais. A atividade iniciará com status PROGRAMADA e 0% de progresso."}
@@ -480,14 +480,14 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
         <button
           type="button"
           onClick={onCancel}
-          className="text-xs text-slate-500 hover:text-slate-800 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 rounded border border-slate-200 transition-colors"
+          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-3 py-1.5 bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-subtle)] transition-colors cursor-pointer"
         >
           Cancelar
         </button>
       </div>
 
       {error && (
-        <div className="p-3 text-xs bg-rose-50 text-rose-700 border border-rose-200 rounded-md font-medium font-mono">
+        <div className="p-3 text-xs bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/30 rounded-md font-medium font-mono">
           {error}
         </div>
       )}
@@ -495,12 +495,12 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Bloco 1: Identificação Básica */}
         <div className="space-y-3">
-          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-700 border-b border-slate-200 pb-1">
+          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 border-b border-[var(--border-subtle)] pb-1">
             1. Identificação da Atividade
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Nota (Ordem de Serviço) *
               </label>
               <input
@@ -508,24 +508,24 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
                 disabled={isEditing} // Regra: Nota é imutável em edição para preservar a identidade da OS
-                className={`w-full text-sm border border-slate-300 rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
-                  isEditing ? "bg-slate-100 text-slate-600 cursor-not-allowed" : ""
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  isEditing ? "opacity-60 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
                 }`}
                 required
               />
               {isEditing && (
-                <span className="text-[10px] text-slate-400 mt-0.5 block">Identificador fixo da atividade</span>
+                <span className="text-[10px] text-[var(--text-muted)] mt-0.5 block">Identificador fixo da atividade</span>
               )}
             </div>
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Nome da Atividade *
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
             </div>
@@ -533,13 +533,13 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Tipo de Serviço
               </label>
               <select
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 {PRESET_SERVICE_TYPES.map((st) => (
                   <option key={st} value={st}>
@@ -549,46 +549,46 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Origem / Referência
               </label>
               <input
                 type="text"
                 value={originReference}
                 onChange={(e) => setOriginReference(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
               Descrição Detalhada do Serviço
             </label>
             <textarea
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+              className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
             />
           </div>
         </div>
 
         {/* Bloco 2: Localização Física com Opção 'Outro' */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">
+          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 border-b border-[var(--border-subtle)] pb-1">
             2. Localização Física
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Área */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Área *
               </label>
               <select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 {PRESET_AREAS.map((a) => (
                   <option key={a} value={a}>
@@ -602,7 +602,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customArea}
                   onChange={(e) => setCustomArea(e.target.value)}
-                  className="mt-1.5 w-full text-xs border border-slate-300 rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                   required
                 />
               )}
@@ -610,13 +610,13 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
             {/* Local */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Local
               </label>
               <select
                 value={selectedLocal}
                 onChange={(e) => setSelectedLocal(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 {PRESET_LOCALS.map((l) => (
                   <option key={l} value={l}>
@@ -630,20 +630,20 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customLocal}
                   onChange={(e) => setCustomLocal(e.target.value)}
-                  className="mt-1.5 w-full text-xs border border-slate-300 rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
               )}
             </div>
 
             {/* Equipamento / Estrutura */}
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Equipamento / Estrutura
               </label>
               <select
                 value={selectedEquipment}
                 onChange={(e) => setSelectedEquipment(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 {PRESET_EQUIPMENTS.map((eq) => (
                   <option key={eq} value={eq}>
@@ -657,7 +657,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customEquipment}
                   onChange={(e) => setCustomEquipment(e.target.value)}
-                  className="mt-1.5 w-full text-xs border border-slate-300 rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
               )}
             </div>
@@ -666,24 +666,24 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
         {/* Bloco 3: Tags (Principal e Adicionais) */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">
+          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 border-b border-[var(--border-subtle)] pb-1">
             3. Identificadores de Campo (Tags)
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Tag Principal
               </label>
               <input
                 type="text"
                 value={mainTag}
                 onChange={(e) => setMainTag(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Tags Adicionais (Opcionais)
               </label>
               <div className="flex gap-2">
@@ -691,12 +691,12 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={newAdditionalTag}
                   onChange={(e) => setNewAdditionalTag(e.target.value)}
-                  className="flex-1 text-sm border border-slate-300 rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="flex-1 text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
                 <button
                   type="button"
                   onClick={handleAddAdditionalTag}
-                  className="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-slate-700"
+                  className="px-3 py-1.5 text-xs font-semibold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] border border-[var(--border-medium)] rounded text-[var(--text-primary)] transition-colors cursor-pointer"
                 >
                   + Adicionar
                 </button>
@@ -706,13 +706,13 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   {additionalTags.map((tag, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 text-xs font-mono bg-slate-100 border border-slate-300 px-2 py-0.5 rounded text-slate-800"
+                      className="inline-flex items-center gap-1 text-xs font-mono bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-[var(--text-primary)]"
                     >
                       {tag}
                       <button
                         type="button"
                         onClick={() => handleRemoveAdditionalTag(idx)}
-                        className="text-slate-400 hover:text-red-600 font-bold ml-1"
+                        className="text-[var(--text-muted)] hover:text-rose-500 font-bold ml-1 cursor-pointer"
                       >
                         ×
                       </button>
@@ -726,44 +726,44 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
         {/* Bloco 4: Programação, Responsabilidade e Prioridade */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 border-b pb-1">
+          <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 border-b border-[var(--border-subtle)] pb-1">
             4. Programação e Responsabilidade
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Data Inicial Planejada *
               </label>
               <input
                 type="date"
                 value={plannedStartDate}
                 onChange={(e) => setPlannedStartDate(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Data Término Planejada *
               </label>
               <input
                 type="date"
                 value={plannedEndDate}
                 onChange={(e) => setPlannedEndDate(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Prioridade
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as ActivityPriority)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 <option value="baixa">Baixa</option>
                 <option value="media">Média</option>
@@ -773,27 +773,27 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Responsável
               </label>
               <input
                 type="text"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Equipe Alocada
               </label>
               <select
                 value={team}
                 onChange={(e) => setTeam(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 {PRESET_TEAMS.map((t) => (
                   <option key={t} value={t}>
@@ -804,7 +804,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Qtd. Estimada do Serviço
               </label>
               <input
@@ -813,18 +813,18 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 min="0"
                 value={serviceQuantity}
                 onChange={(e) => setServiceQuantity(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Unidade do Serviço
               </label>
               <select
                 value={serviceUnit}
                 onChange={(e) => setServiceUnit(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 <option value="m²">m² (Metros quadrados)</option>
                 <option value="m">m (Metros lineares)</option>
@@ -837,19 +837,19 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
         {/* Bloco 5: Materiais Planejados (Seleção via Catálogo) */}
         <div className="space-y-3">
-          <div className="flex justify-between items-center border-b pb-1">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-1">
+            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
               5. Materiais Planejados (Insumos do Catálogo)
             </h3>
             {loadingCatalog && (
-              <span className="text-[11px] text-slate-400 font-mono">Carregando catálogo...</span>
+              <span className="text-[11px] text-[var(--text-muted)] font-mono">Carregando catálogo...</span>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
             {/* Campo de Pesquisa / Autocomplete */}
             <div className="sm:col-span-6 relative">
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Pesquisar Material no Catálogo
               </label>
               <div className="relative">
@@ -864,7 +864,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                     }
                   }}
                   onFocus={() => setIsSearchDropdownOpen(true)}
-                  className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
                 />
                 {selectedCatalogMaterial && (
                   <button
@@ -873,7 +873,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                       setSelectedCatalogMaterial(null);
                       setMaterialSearch("");
                     }}
-                    className="absolute right-2.5 top-2 text-xs text-slate-400 hover:text-slate-600 font-bold"
+                    className="absolute right-2.5 top-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold cursor-pointer"
                   >
                     ×
                   </button>
@@ -882,20 +882,20 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
               {/* Dropdown de Autocomplete */}
               {isSearchDropdownOpen && filteredCatalog.length > 0 && !selectedCatalogMaterial && (
-                <div className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-300 rounded-md shadow-lg divide-y text-xs">
+                <div className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-md shadow-lg divide-y divide-[var(--border-subtle)] text-xs">
                   {filteredCatalog.map((mat) => (
                     <button
                       key={mat.id}
                       type="button"
                       onClick={() => handleSelectMaterial(mat)}
-                      className="w-full text-left p-2 hover:bg-slate-50 flex justify-between items-center transition-colors"
+                      className="w-full text-left p-2.5 hover:bg-[var(--bg-surface-raised)] flex justify-between items-center transition-colors cursor-pointer"
                     >
                       <div>
-                        <span className="font-mono font-bold text-blue-600 mr-2">{mat.code}</span>
-                        <span className="text-slate-800 font-medium">{mat.name}</span>
-                        <span className="text-slate-400 text-[10px] block">{mat.type}</span>
+                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 mr-2">{mat.code}</span>
+                        <span className="text-[var(--text-primary)] font-medium">{mat.name}</span>
+                        <span className="text-[var(--text-muted)] text-[10px] block">{mat.type}</span>
                       </div>
-                      <span className="text-slate-500 font-mono text-[11px] px-1.5 py-0.5 bg-slate-100 rounded">
+                      <span className="text-[var(--text-secondary)] font-mono text-[11px] px-1.5 py-0.5 bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] rounded">
                         Estoque: {mat.currentStock} {mat.unit}
                       </span>
                     </button>
@@ -906,7 +906,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
             {/* Quantidade Estimada */}
             <div className="sm:col-span-3">
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Qtd. Estimada
               </label>
               <input
@@ -915,19 +915,19 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 min="0.1"
                 value={matQty}
                 onChange={(e) => setMatQty(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               />
             </div>
 
-            {/* Unidade (Automática do Material ou ajustável) */}
+            {/* Unidade */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Unidade
               </label>
               <select
                 value={matUnit}
                 onChange={(e) => setMatUnit(e.target.value)}
-                className="w-full text-sm border border-slate-300 rounded px-2 py-1.5 bg-white focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                className="w-full text-sm border border-[var(--border-medium)] rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
               >
                 <option value="L">L (Litros)</option>
                 <option value="kg">kg</option>
@@ -942,7 +942,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="button"
                 onClick={handleAddPlannedMaterial}
                 title={editingPlannedId ? "Atualizar item" : "Adicionar material"}
-                className={`w-full py-1.5 text-xs font-bold rounded text-white transition-colors ${
+                className={`w-full py-1.5 text-xs font-bold rounded text-white transition-colors cursor-pointer ${
                   editingPlannedId
                     ? "bg-emerald-600 hover:bg-emerald-700"
                     : "bg-blue-600 hover:bg-blue-700"
@@ -955,7 +955,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="button"
                   onClick={handleCancelEditPlanned}
                   title="Cancelar edição"
-                  className="py-1.5 px-2 text-xs font-bold bg-slate-200 hover:bg-slate-300 rounded text-slate-700"
+                  className="py-1.5 px-2 text-xs font-bold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-pointer"
                 >
                   ✕
                 </button>
@@ -965,26 +965,26 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
           {/* Lista de Materiais Adicionados */}
           {plannedMaterials.length > 0 ? (
-            <div className="border border-slate-200 rounded divide-y text-xs bg-slate-50">
+            <div className="border border-[var(--border-subtle)] rounded divide-y divide-[var(--border-subtle)] text-xs bg-[var(--bg-surface-raised)]">
               {plannedMaterials.map((m) => (
                 <div key={m.id} className="p-2.5 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     {m.materialCode && (
-                      <span className="font-mono text-[11px] font-bold text-blue-600 px-1.5 py-0.5 bg-blue-50 border border-blue-200 rounded">
+                      <span className="font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded">
                         {m.materialCode}
                       </span>
                     )}
-                    <span className="font-medium text-slate-800">{m.materialName}</span>
+                    <span className="font-medium text-[var(--text-primary)]">{m.materialName}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-slate-700 font-mono font-semibold">
+                    <span className="text-[var(--text-secondary)] font-mono font-semibold">
                       {m.quantity} {m.unit}
                     </span>
                     <button
                       type="button"
                       onClick={() => handleStartEditPlannedMaterial(m)}
                       title="Editar quantidade"
-                      className="text-blue-600 hover:text-blue-800 font-medium text-xs underline"
+                      className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs cursor-pointer"
                     >
                       Editar
                     </button>
@@ -992,7 +992,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                       type="button"
                       onClick={() => handleRemovePlannedMaterial(m.id)}
                       title="Remover material"
-                      className="text-slate-400 hover:text-red-600 font-bold text-sm leading-none"
+                      className="text-[var(--text-muted)] hover:text-rose-500 font-bold text-sm leading-none cursor-pointer"
                     >
                       ×
                     </button>
@@ -1001,7 +1001,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               ))}
             </div>
           ) : (
-            <p className="text-xs text-slate-400 italic">
+            <p className="text-xs text-[var(--text-muted)] italic">
               Nenhum material planejado adicionado a esta atividade.
             </p>
           )}
@@ -1009,24 +1009,24 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
         {/* Bloco 6: Observações */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-slate-700">
+          <label className="block text-xs font-medium text-[var(--text-secondary)]">
             Observações Operacionais
           </label>
           <textarea
             rows={2}
             value={observations}
             onChange={(e) => setObservations(e.target.value)}
-            className="w-full text-sm border border-slate-300 rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
           />
         </div>
 
         {/* Ações do Formulário */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
           <button
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-subtle)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancelar
           </button>

@@ -190,23 +190,38 @@
     background-color: #f1f5f9 !important;
   }
 
-  /* Preservação da Sidebar Escura Corporativa no Modo Claro */
-  aside,
-  aside * {
-    /* Mantém elementos textuais específicos da sidebar com suas cores industriais */
+  /* ---------------------------------------------------------------------------
+     TOKENS DA SIDEBAR (DARK & LIGHT INDUSTRIAL RSS3)
+     No Modo Claro: Mantém base corporativa azul-marinho profundo (#0f172a / #0b1120)
+     criando contraste estrutural marcante contra o fundo cinza-azulado (#f1f5f9).
+     No Modo Escuro: Integrado com a paleta grafite/marinho original (#0f172a).
+  --------------------------------------------------------------------------- */
+  :root:not(.dark) {
+    --sidebar-bg: #0f172a;
+    --sidebar-header-bg: #0b1120;
+    --sidebar-border: #1e293b;
+    --sidebar-text-title: #ffffff;
+    --sidebar-text-primary: #cbd5e1;
+    --sidebar-text-muted: #94a3b8;
+    --sidebar-item-hover: rgba(30, 41, 59, 0.7);
+    --sidebar-item-active-bg: rgba(37, 99, 235, 0.25);
+    --sidebar-item-active-text: #ffffff;
+    --sidebar-item-active-border: #3b82f6;
+    --sidebar-footer-card: #0b1120;
   }
-  :root:not(.dark) aside {
-    background-color: #0f172a !important;
-    border-color: #1e293b !important;
-  }
-  :root:not(.dark) aside .text-white {
-    color: #ffffff !important;
-  }
-  :root:not(.dark) aside .text-slate-400 {
-    color: #94a3b8 !important;
-  }
-  :root:not(.dark) aside .bg-\[\#0b1120\] {
-    background-color: #0b1120 !important;
+
+  .dark {
+    --sidebar-bg: #0f172a;
+    --sidebar-header-bg: #0b1120;
+    --sidebar-border: #1e293b;
+    --sidebar-text-title: #ffffff;
+    --sidebar-text-primary: #cbd5e1;
+    --sidebar-text-muted: #94a3b8;
+    --sidebar-item-hover: rgba(30, 41, 59, 0.6);
+    --sidebar-item-active-bg: rgba(37, 99, 235, 0.2);
+    --sidebar-item-active-text: #ffffff;
+    --sidebar-item-active-border: rgba(59, 130, 246, 0.3);
+    --sidebar-footer-card: rgba(11, 17, 32, 0.9);
   }
 
   /* ---------------------------------------------------------------------------
