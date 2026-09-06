@@ -37,6 +37,8 @@ export interface AiToolExecutionLog {
   error?: string;
 }
 
+import { AttachedActivityData, AttachedMaterialData } from "@/modules/chat/types/chat.types";
+
 /**
  * Mensagem do chat de IA para tráfego client-server.
  */
@@ -46,4 +48,8 @@ export interface AiChatMessage {
   text: string;
   timestamp: string;
   isStreaming?: boolean;
+  activity?: AttachedActivityData | null;
+  material?: AttachedMaterialData | null;
+  activities?: AttachedActivityData[];
+  materials?: AttachedMaterialData[];
 }

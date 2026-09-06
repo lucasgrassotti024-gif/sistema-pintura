@@ -32,12 +32,18 @@ export interface IaDbMessage {
   createdAt: string;
 }
 
+import { AttachedActivityData, AttachedMaterialData } from "@/modules/chat/types/chat.types";
+
 export interface IaChatMessage {
   id: string;
   sender: "user" | "ia";
   text: string;
   timestamp: string;
   isStreaming?: boolean;
+  activity?: AttachedActivityData | null;
+  material?: AttachedMaterialData | null;
+  activities?: AttachedActivityData[];
+  materials?: AttachedMaterialData[];
 }
 
 export interface ActivitySnapshotItem {

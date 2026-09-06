@@ -129,3 +129,21 @@ export async function saveIaMessage(
     createdAt: data.created_at,
   };
 }
+
+/**
+ * Exclui uma mensagem da conversa da IA (protegido por RLS do usuário).
+ */
+export async function deleteIaMessage(
+  supabase: SupabaseClient,
+  messageId: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("ia_messages")
+    .delete()
+    .eq("id", messageId);
+
+  if (error) {
+    console.error("[IaConversationService] Erro ao excluir mensagem de IA:", error);
+    throw new Error(`Falha ao excluir mensagem: ${error.message}`);
+  }
+}

@@ -1,6 +1,7 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { GoogleGenAI, Content, Part } from "@google/genai";
 import { AiSessionContext, AiToolExecutionLog } from "../types/ai.types";
+import { AttachedActivityData, AttachedMaterialData } from "@/modules/chat/types/chat.types";
 import { OPERATIONAL_AI_SYSTEM_PROMPT } from "../prompts/system.prompt";
 import { ALL_AI_TOOL_DECLARATIONS, dispatchAiTool } from "../tools";
 import { getFastPathGreeting } from "./ia-fast-path";
@@ -236,6 +237,8 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
     let geminiApiCallCount = 0;
     const executionLogs: AiToolExecutionLog[] = [];
     let finalText = "";
+    const collectedActivities: AttachedActivityData[] = [];
+    const collectedMaterials: AttachedMaterialData[] = [];
 
     try {
       while (iteration < MAX_TOOL_ITERATIONS) {
@@ -279,6 +282,62 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
           const { output, log } = await dispatchAiTool(toolName, toolArgs, supabase);
           executionLogs.push(log);
 
+          // Coleta entidades reais retornadas pelas tools para alimentar os cards do chat
+          try {
+            const outAny = output as any;
+            if (toolName === "obterDetalhesAtividade" && outAny?.encontrada && outAny?.atividade) {
+              const act = outAny.atividade;
+              if (!collectedActivities.some((a) => a.id === act.id)) {
+                collectedActivities.push({
+                  id: act.id,
+                  orderNumber: act.order_number,
+                  name: act.name,
+                  status: act.status,
+                  priority: act.priority,
+                  progressPercentage: Number(act.progress_percentage || 0),
+                  plannedEndDate: act.planned_end_date,
+                  areaName: act.area || undefined,
+                  assignedTo: act.responsible || undefined,
+                });
+              }
+            } else if (toolName === "buscarAtividades" && Array.isArray(outAny?.atividades)) {
+              // Se a busca retornou poucas atividades (<= 3), adiciona aos cards
+              for (const act of outAny.atividades.slice(0, 3)) {
+                if (!collectedActivities.some((a) => a.id === act.id)) {
+                  collectedActivities.push({
+                    id: act.id,
+                    orderNumber: act.order_number,
+                    name: act.name,
+                    status: act.status,
+                    priority: act.priority,
+                    progressPercentage: Number(act.progress_percentage || 0),
+                    plannedEndDate: act.planned_end_date,
+                    areaName: act.area || undefined,
+                    assignedTo: act.responsible || undefined,
+                  });
+                }
+              }
+            } else if (toolName === "consultarEstoqueMateriais" && Array.isArray(outAny?.materiais)) {
+              // Adiciona até 3 materiais citados
+              for (const mat of outAny.materiais.slice(0, 3)) {
+                if (!collectedMaterials.some((m) => m.id === mat.id)) {
+                  collectedMaterials.push({
+                    id: mat.id,
+                    code: mat.code,
+                    name: mat.name,
+                    type: mat.type,
+                    unit: mat.unit,
+                    currentStock: Number(mat.current_stock || 0),
+                    minimumStock: Number(mat.minimum_stock || 0),
+                    status: mat.situacao_estoque,
+                  });
+                }
+              }
+            }
+          } catch {
+            // Não bloqueia a execução da tool caso a extração de card falhe
+          }
+
           toolResponseParts.push({
             functionResponse: {
               name: toolName,
@@ -303,9 +362,19 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
         } | Duração Total: ${totalDuration}ms`
       );
 
-      // 7. O Gemini JÁ gerou o texto final no loop. Streaming local sem nenhuma chamada de rede extra!
+      // 7. O Gemini JÁ gerou o texto final no loop.
+      // Se houver referências coletadas reais, empacotamos no final do texto para o cliente decodificar
       if (finalText) {
-        return createLocalStreamingResponse(finalText);
+        let payloadWithEntities = finalText;
+        if (collectedActivities.length > 0 || collectedMaterials.length > 0) {
+          const refsJson = JSON.stringify({
+            activities: collectedActivities,
+            materials: collectedMaterials,
+          });
+          payloadWithEntities = `${finalText}\n<!--REFERENCES:${refsJson}-->`;
+        }
+
+        return createLocalStreamingResponse(payloadWithEntities);
       }
 
       // Se porventura o texto vier vazio (caso atípico), retorna aviso técnico

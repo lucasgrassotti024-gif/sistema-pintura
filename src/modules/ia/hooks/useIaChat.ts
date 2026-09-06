@@ -2,12 +2,14 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { IaChatMessage, IaConversation } from "../types/ia.types";
+import { AttachedActivityData, AttachedMaterialData } from "@/modules/chat/types/chat.types";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
 import {
   getLatestActiveConversation,
   createConversation,
   saveIaMessage,
+  deleteIaMessage,
 } from "../services/ia-conversation.service";
 
 const INITIAL_WELCOME_MESSAGE: IaChatMessage = {
@@ -16,6 +18,33 @@ const INITIAL_WELCOME_MESSAGE: IaChatMessage = {
   text: "Olá! Sou o Assistente Operacional de Engenharia do Sistema de Pintura Industrial. Estou conectado aos dados reais da planta para apoiar análises de frentes ativas, atrasos, demandas de insumos, riscos de cronograma e ordens de serviço. Como posso auxiliar seu turno hoje?",
   timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
 };
+
+/**
+ * Decodifica o conteúdo bruto da mensagem extraindo referências visuais
+ * estruturadas embutidas em <!--REFERENCES:...-->
+ */
+function parseMessageContent(rawContent: string): {
+  cleanText: string;
+  activities?: AttachedActivityData[];
+  materials?: AttachedMaterialData[];
+} {
+  const match = rawContent.match(/<!--REFERENCES:([\s\S]*?)-->/);
+  if (!match) {
+    return { cleanText: rawContent };
+  }
+
+  const cleanText = rawContent.replace(match[0], "").trim();
+  try {
+    const parsed = JSON.parse(match[1]);
+    return {
+      cleanText,
+      activities: Array.isArray(parsed.activities) ? parsed.activities : undefined,
+      materials: Array.isArray(parsed.materials) ? parsed.materials : undefined,
+    };
+  } catch {
+    return { cleanText };
+  }
+}
 
 export function useIaChat() {
   const { user } = useAuth();
@@ -58,12 +87,18 @@ export function useIaChat() {
             ? ""
             : dateObj.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
+          const { cleanText, activities, materials } = parseMessageContent(m.content);
+
           return {
             id: m.id,
             sender: m.sender,
-            text: m.content,
+            text: cleanText,
             timestamp: timeStr,
             isStreaming: false,
+            activity: activities && activities.length === 1 ? activities[0] : null,
+            activities: activities && activities.length > 1 ? activities : undefined,
+            material: materials && materials.length === 1 ? materials[0] : null,
+            materials: materials && materials.length > 1 ? materials : undefined,
           };
         });
 
@@ -87,12 +122,17 @@ export function useIaChat() {
   }, [loadActiveConversation]);
 
   /**
-   * 2. Enviar mensagem com persistência imediata e streaming
+   * 2. Enviar mensagem com suporte a anexo de OS/Material, persistência e streaming
    */
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      attachment?: { activity?: AttachedActivityData | null; material?: AttachedMaterialData | null }
+    ) => {
       const trimmed = text.trim();
-      if (!trimmed || isLoading || !user) return;
+      const hasAttachment = Boolean(attachment?.activity || attachment?.material);
+
+      if ((!trimmed && !hasAttachment) || isLoading || !user) return;
 
       setError(null);
       const userMsgId = `user-${Date.now()}`;
@@ -104,6 +144,8 @@ export function useIaChat() {
         sender: "user",
         text: trimmed,
         timestamp: timeNow,
+        activity: attachment?.activity || null,
+        material: attachment?.material || null,
       };
 
       const initialIaMsg: IaChatMessage = {
@@ -124,22 +166,42 @@ export function useIaChat() {
         // Garantir que existe uma conversa ativa no banco
         let currentConv = activeConversationRef.current;
         if (!currentConv) {
-          const initialTitle = trimmed.length > 45 ? `${trimmed.substring(0, 42)}...` : trimmed;
+          const titleBase = trimmed || (attachment?.activity ? `OS ${attachment.activity.orderNumber}` : "Material");
+          const initialTitle = titleBase.length > 45 ? `${titleBase.substring(0, 42)}...` : titleBase;
           currentConv = await createConversation(supabase, user.id, initialTitle);
           setActiveConversation(currentConv);
           activeConversationRef.current = currentConv;
         }
 
+        // Serializa com metadados de anexo caso exista para salvar no banco
+        let contentToPersist = trimmed;
+        if (hasAttachment) {
+          const refsJson = JSON.stringify({
+            activities: attachment?.activity ? [attachment.activity] : undefined,
+            materials: attachment?.material ? [attachment.material] : undefined,
+          });
+          contentToPersist = `${trimmed ? `${trimmed}\n` : ""}<!--REFERENCES:${refsJson}-->`;
+        }
+
         // Persistir a mensagem do usuário no banco em background
-        saveIaMessage(supabase, currentConv.id, "user", trimmed).catch((err) => {
+        saveIaMessage(supabase, currentConv.id, "user", contentToPersist).catch((err) => {
           console.error("[useIaChat] Falha ao persistir mensagem do usuário:", err);
         });
 
         // Montar histórico recente para envio ao Gemini (últimas 10 mensagens)
-        const payloadMessages = [...messages, newUserMsg].slice(-10).map((m) => ({
-          sender: m.sender,
-          text: m.text,
-        }));
+        // Se houver anexo, enriquecemos o texto enviado ao modelo com o contexto estruturado da OS ou Material
+        const payloadMessages = [...messages, newUserMsg].slice(-10).map((m) => {
+          let promptText = m.text;
+          if (m.activity) {
+            promptText = `[Atividade Anexada pelo Usuário: OS ${m.activity.orderNumber} - "${m.activity.name}", Status: ${m.activity.status}, Progresso: ${m.activity.progressPercentage}%, Prazo: ${m.activity.plannedEndDate}${m.activity.assignedTo ? `, Responsável: ${m.activity.assignedTo}` : ""}]\n${promptText}`;
+          } else if (m.material) {
+            promptText = `[Material Anexado pelo Usuário: ${m.material.code} - "${m.material.name}", Saldo Físico: ${m.material.currentStock} ${m.material.unit}, Mínimo: ${m.material.minimumStock} ${m.material.unit}, Status: ${m.material.status}]\n${promptText}`;
+          }
+          return {
+            sender: m.sender,
+            text: promptText,
+          };
+        });
 
         const response = await fetch("/api/ia/chat", {
           method: "POST",
@@ -179,21 +241,45 @@ export function useIaChat() {
           const chunk = decoder.decode(value, { stream: true });
           accumulatedText += chunk;
 
+          const { cleanText, activities, materials } = parseMessageContent(accumulatedText);
+
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === iaMsgId ? { ...msg, text: accumulatedText, isStreaming: true } : msg
+              msg.id === iaMsgId
+                ? {
+                    ...msg,
+                    text: cleanText,
+                    isStreaming: true,
+                    activity: activities && activities.length === 1 ? activities[0] : null,
+                    activities: activities && activities.length > 1 ? activities : undefined,
+                    material: materials && materials.length === 1 ? materials[0] : null,
+                    materials: materials && materials.length > 1 ? materials : undefined,
+                  }
+                : msg
             )
           );
         }
 
-        // Finaliza o streaming na interface
+        // Finaliza o streaming na interface decodificando o texto e as entidades
+        const finalParsed = parseMessageContent(accumulatedText);
+
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === iaMsgId ? { ...msg, text: accumulatedText, isStreaming: false } : msg
+            msg.id === iaMsgId
+              ? {
+                  ...msg,
+                  text: finalParsed.cleanText,
+                  isStreaming: false,
+                  activity: finalParsed.activities && finalParsed.activities.length === 1 ? finalParsed.activities[0] : null,
+                  activities: finalParsed.activities && finalParsed.activities.length > 1 ? finalParsed.activities : undefined,
+                  material: finalParsed.materials && finalParsed.materials.length === 1 ? finalParsed.materials[0] : null,
+                  materials: finalParsed.materials && finalParsed.materials.length > 1 ? finalParsed.materials : undefined,
+                }
+              : msg
           )
         );
 
-        // Persistir a resposta gerada pela IA no banco
+        // Persistir a resposta gerada pela IA no banco preservando o payload completo com metadados
         if (accumulatedText.trim() && currentConv) {
           await saveIaMessage(supabase, currentConv.id, "ia", accumulatedText);
         }
@@ -233,7 +319,24 @@ export function useIaChat() {
   };
 
   /**
-   * 3. Iniciar Nova Conversa
+   * 3. Excluir Mensagem Específica da Conversa
+   */
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      // Remove otimista da UI
+      setMessages((prev) => prev.filter((m) => m.id !== messageId));
+
+      try {
+        await deleteIaMessage(supabase, messageId);
+      } catch (err) {
+        console.error("[useIaChat] Erro ao deletar mensagem no banco:", err);
+      }
+    },
+    [supabase]
+  );
+
+  /**
+   * 4. Iniciar Nova Conversa
    */
   const clearChat = async () => {
     if (!user) return;
@@ -266,6 +369,8 @@ export function useIaChat() {
     activeConversation,
     sendMessage,
     stopGeneration,
+    deleteMessage,
     clearChat,
   };
 }
+
