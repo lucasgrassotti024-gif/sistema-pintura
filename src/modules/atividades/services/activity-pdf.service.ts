@@ -52,7 +52,11 @@ function formatPriority(priority: string): string {
 /**
  * Cores discretas para os badges de Status
  */
-function getStatusBadgeColors(status: string): { bg: [number, number, number]; text: [number, number, number]; border: [number, number, number] } {
+function getStatusBadgeColors(status: string): {
+  bg: [number, number, number];
+  text: [number, number, number];
+  border: [number, number, number];
+} {
   switch (status) {
     case "planejada":
     case "programada":
@@ -71,7 +75,11 @@ function getStatusBadgeColors(status: string): { bg: [number, number, number]; t
 /**
  * Cores discretas para os badges de Prioridade
  */
-function getPriorityBadgeColors(priority: string): { bg: [number, number, number]; text: [number, number, number]; border: [number, number, number] } {
+function getPriorityBadgeColors(priority: string): {
+  bg: [number, number, number];
+  text: [number, number, number];
+  border: [number, number, number];
+} {
   switch (priority) {
     case "urgente":
       return { bg: [254, 226, 226], text: [185, 28, 28], border: [254, 202, 202] }; // Vermelho discreto
@@ -94,19 +102,15 @@ function sanitizeFileName(orderNumber: string): string {
 }
 
 /**
- * Gera e realiza o download do relatório profissional corporativo da atividade em PDF
- * com a identidade visual da RSS3 Soluções Industriais.
+ * Renderiza o conteúdo completo de uma atividade individual em um documento jsPDF.
+ * Garante que a atividade comece em uma nova página (exceto na primeira página limpa)
+ * e compartilha 100% da identidade visual corporativa RSS3.
  */
-export async function generateActivityPdf(
+function renderActivityContent(
+  doc: jsPDF,
   activity: Activity,
-  _options?: GeneratePdfOptions
-): Promise<void> {
-  const doc = new jsPDF({
-    orientation: "portrait",
-    unit: "mm",
-    format: "a4",
-  });
-
+  pageStartInfo: { activityStartPage: number; isFirstActivity: boolean }
+): { startPage: number; endPage: number } {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginLeft = 14;
@@ -114,6 +118,12 @@ export async function generateActivityPdf(
   const contentWidth = pageWidth - marginLeft - marginRight;
   const marginBottom = 16;
 
+  // Se não for a primeira atividade, adiciona uma nova página obrigatória
+  if (!pageStartInfo.isFirstActivity) {
+    doc.addPage();
+  }
+
+  const actStartPage = doc.getNumberOfPages();
   let currentY = 0;
 
   // Helper para checar necessidade de quebra de página
@@ -130,18 +140,16 @@ export async function generateActivityPdf(
   const renderSectionHeader = (title: string): void => {
     checkPageBreak(12);
 
-    // Barra de fundo suave
     doc.setFillColor(241, 245, 249); // #f1f5f9
     doc.roundedRect(marginLeft, currentY, contentWidth, 6.5, 1, 1, "F");
 
-    // Acento lateral esquerdo: Azul escuro industrial (#0B1F3A) + Laranja (#F97316)
+    // Acento lateral: Azul escuro (#0B1F3A) + Laranja (#F97316)
     doc.setFillColor(11, 31, 58);
     doc.rect(marginLeft, currentY, 2.5, 6.5, "F");
 
     doc.setFillColor(249, 115, 22);
     doc.rect(marginLeft + 2.5, currentY, 1.2, 6.5, "F");
 
-    // Texto do título
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(11, 31, 58);
@@ -159,21 +167,19 @@ export async function generateActivityPdf(
     label: string,
     value: string
   ): void => {
-    doc.setFillColor(248, 250, 252); // #f8fafc
-    doc.setDrawColor(226, 232, 240); // #e2e8f0
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
     doc.setLineWidth(0.3);
     doc.roundedRect(x, y, w, h, 1.5, 1.5, "FD");
 
-    // Rótulo
     doc.setFont("helvetica", "bold");
     doc.setFontSize(6.8);
-    doc.setTextColor(100, 116, 139); // slate-500
+    doc.setTextColor(100, 116, 139);
     doc.text(label.toUpperCase(), x + 3.5, y + 4.2);
 
-    // Valor
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
-    doc.setTextColor(15, 23, 42); // slate-900
+    doc.setTextColor(15, 23, 42);
     const valText = doc.splitTextToSize(value || "-", w - 7);
     doc.text(valText[0] || "-", x + 3.5, y + 9);
   };
@@ -229,7 +235,7 @@ export async function generateActivityPdf(
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
-  doc.setTextColor(148, 163, 184); // slate-400
+  doc.setTextColor(148, 163, 184);
   doc.text("SISTEMA DE PINTURA INDUSTRIAL  •  FICHA OPERACIONAL", marginLeft + 13, 14);
 
   // Número da OS e Emissão à direita
@@ -256,8 +262,8 @@ export async function generateActivityPdf(
   // 2. IDENTIFICAÇÃO DA ATIVIDADE (CARD HERO)
   // ============================================================================
   const heroH = 26;
-  doc.setFillColor(248, 250, 252); // #f8fafc
-  doc.setDrawColor(226, 232, 240); // #e2e8f0
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
   doc.setLineWidth(0.4);
   doc.roundedRect(marginLeft, currentY, contentWidth, heroH, 2, 2, "FD");
 
@@ -269,13 +275,14 @@ export async function generateActivityPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(37, 99, 235);
-  doc.text(activity.orderNumber.toUpperCase(), marginLeft + 6, currentY + 6);
+  doc.text((activity.orderNumber || "").toUpperCase(), marginLeft + 6, currentY + 6);
 
   // Nome da Atividade grande
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
-  doc.setTextColor(15, 23, 42); // slate-900
-  // Badges de Status e Prioridade alinhados com precisão no lado direito do Card Hero
+  doc.setTextColor(15, 23, 42);
+
+  // Badges de Status e Prioridade alinhados no lado direito do Card Hero
   const statusColors = getStatusBadgeColors(activity.status);
   const priorityColors = getPriorityBadgeColors(activity.priority);
 
@@ -289,12 +296,12 @@ export async function generateActivityPdf(
   const totalBadgesW = statusW + 3 + priorityW;
 
   const badgeX = pageWidth - marginRight - totalBadgesW - 4;
-  const badgeY = currentY + (heroH - 5.5) / 2; // Centralizado verticalmente no Card Hero
+  const badgeY = currentY + (heroH - 5.5) / 2;
 
   renderBadge(badgeX, badgeY, statusText, statusColors);
   renderBadge(badgeX + statusW + 3, badgeY, priorityText, priorityColors);
 
-  // Nome da Atividade grande com espaço livre até o início dos badges
+  // Nome da Atividade com quebra de linha ajustada ao espaço livre
   const maxNameWidth = badgeX - (marginLeft + 6) - 4;
   const nameLines = doc.splitTextToSize(activity.name, maxNameWidth);
   doc.text(nameLines.slice(0, 2), marginLeft + 6, currentY + 12.5);
@@ -320,12 +327,10 @@ export async function generateActivityPdf(
       ? `${activity.serviceQuantity} ${activity.serviceUnit || ""}`.trim()
       : "-";
 
-  // Linha 1: Área | Local / Equipamento
   renderInfoCard(marginLeft, currentY, cardW, cardH, "Área", activity.location?.area || "-");
   renderInfoCard(marginLeft + cardW + 4, currentY, cardW, cardH, "Local / Equipamento", locationParts || "-");
   currentY += cardH + 3;
 
-  // Linha 2: Responsável | Equipe
   renderInfoCard(marginLeft, currentY, cardW, cardH, "Responsável", activity.assignedTo || "-");
   renderInfoCard(
     marginLeft + cardW + 4,
@@ -337,7 +342,6 @@ export async function generateActivityPdf(
   );
   currentY += cardH + 3;
 
-  // Linha 3: Origem / Referência | Tipo de Serviço & Quantidade
   renderInfoCard(marginLeft, currentY, cardW, cardH, "Origem / Referência", activity.originReference || "-");
   renderInfoCard(
     marginLeft + cardW + 4,
@@ -471,7 +475,7 @@ export async function generateActivityPdf(
   doc.setLineWidth(0.3);
   doc.roundedRect(marginLeft, currentY, contentWidth, descBoxH, 1.5, 1.5, "FD");
 
-  doc.setTextColor(30, 41, 59); // slate-800
+  doc.setTextColor(30, 41, 59);
   doc.text(descLines, marginLeft + 4, currentY + 5.2);
 
   currentY += descBoxH + 5;
@@ -550,9 +554,21 @@ export async function generateActivityPdf(
     currentY = doc.lastAutoTable.finalY + 5;
   }
 
-  // ============================================================================
-  // 9. RODAPÉ INSTITUCIONAL EM TODAS AS PÁGINAS
-  // ============================================================================
+  const actEndPage = doc.getNumberOfPages();
+  return { startPage: actStartPage, endPage: actEndPage };
+}
+
+/**
+ * Aplica o rodapé institucional contínuo em todas as páginas do documento com paginação global "Página X de Y".
+ */
+function applyDocumentFooter(
+  doc: jsPDF,
+  pageActivityMap?: Map<number, string>
+): void {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginLeft = 14;
+  const marginRight = 14;
   const totalPages = doc.getNumberOfPages();
 
   for (let i = 1; i <= totalPages; i++) {
@@ -571,21 +587,99 @@ export async function generateActivityPdf(
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139); // slate-500
 
-    // Texto rodapé esquerdo
+    // Texto rodapé esquerdo: inclui número da OS se disponível no mapeamento de página
+    const orderNum = pageActivityMap?.get(i);
+    const osSuffix = orderNum ? `  •  OS: ${orderNum}` : "";
+
     doc.text(
-      `RSS3 SOLUÇÕES INDUSTRIAIS  |  Sistema de Pintura  •  OS: ${activity.orderNumber}`,
+      `RSS3 SOLUÇÕES INDUSTRIAIS  |  Sistema de Pintura${osSuffix}`,
       marginLeft,
       pageHeight - 6.5
     );
 
-    // Texto rodapé direito: Página X de Y
+    // Texto rodapé direito: Paginação Global Página X de Y
     doc.text(`Página ${i} de ${totalPages}`, pageWidth - marginRight, pageHeight - 6.5, {
       align: "right",
     });
   }
+}
 
-  // Download automático do arquivo
+/**
+ * Gera e realiza o download do relatório profissional corporativo de uma atividade individual em PDF
+ * com a identidade visual da RSS3 Soluções Industriais.
+ */
+export async function generateActivityPdf(
+  activity: Activity,
+  _options?: GeneratePdfOptions
+): Promise<void> {
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageActivityMap = new Map<number, string>();
+  const pageInfo = renderActivityContent(doc, activity, {
+    activityStartPage: 1,
+    isFirstActivity: true,
+  });
+
+  for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {
+    pageActivityMap.set(p, activity.orderNumber);
+  }
+
+  applyDocumentFooter(doc, pageActivityMap);
+
+  // Download automático com nome oficial individual
   const cleanOrder = sanitizeFileName(activity.orderNumber);
   const fileName = `OS_${cleanOrder}_Relatorio_Atividade.pdf`;
   doc.save(fileName);
+}
+
+/**
+ * Gera e realiza o download de um ÚNICO arquivo PDF contendo todas as atividades selecionadas.
+ * Cada atividade inicia obrigatoriamente em uma nova página, reutilizando 100% do layout
+ * da ficha completa RSS3 e mantendo paginação global unificada (Página X de Y).
+ */
+export async function generateActivitiesPdf(
+  activities: Activity[],
+  _options?: GeneratePdfOptions
+): Promise<boolean> {
+  if (!activities || activities.length === 0) {
+    return false;
+  }
+
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  });
+
+  const pageActivityMap = new Map<number, string>();
+
+  // Renderiza sequencialmente cada atividade com quebra de página garantida
+  activities.forEach((activity, index) => {
+    const isFirstActivity = index === 0;
+    const pageInfo = renderActivityContent(doc, activity, {
+      activityStartPage: doc.getNumberOfPages(),
+      isFirstActivity,
+    });
+
+    for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {
+      pageActivityMap.set(p, activity.orderNumber);
+    }
+  });
+
+  // Aplica paginação global e rodapé contínuo em todas as páginas
+  applyDocumentFooter(doc, pageActivityMap);
+
+  // Nome do arquivo consolidado oficial: atividades-pintura-rss3-DD-MM-AAAA.pdf
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  const fileName = `atividades-pintura-rss3-${day}-${month}-${year}.pdf`;
+
+  doc.save(fileName);
+  return true;
 }

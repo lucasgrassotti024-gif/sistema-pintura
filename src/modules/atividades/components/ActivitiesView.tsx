@@ -9,6 +9,7 @@ import { ActivityForm } from "./ActivityForm";
 import { Activity } from "../types/activity.types";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { exportActivitiesToExcel } from "../utils/excel-export.utils";
+import { generateActivitiesPdf } from "../services/activity-pdf.service";
 
 export function ActivitiesView() {
   const {
@@ -39,6 +40,57 @@ export function ActivitiesView() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportWarning, setExportWarning] = useState<string | null>(null);
+  const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>([]);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+
+  const handleToggleSelectActivity = (activityId: string) => {
+    setSelectedActivityIds((prev) =>
+      prev.includes(activityId)
+        ? prev.filter((id) => id !== activityId)
+        : [...prev, activityId]
+    );
+  };
+
+  const handleSelectAllVisible = (selectAll: boolean) => {
+    if (selectAll) {
+      // Adiciona todas as atividades atualmente visíveis na tela aos selecionados sem duplicar
+      const visibleIds = activities.map((a) => a.id);
+      setSelectedActivityIds((prev) => Array.from(new Set([...prev, ...visibleIds])));
+    } else {
+      // Desmarca somente as atividades atualmente visíveis na tela
+      const visibleIdSet = new Set(activities.map((a) => a.id));
+      setSelectedActivityIds((prev) => prev.filter((id) => !visibleIdSet.has(id)));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedActivityIds([]);
+  };
+
+  const handleGenerateSelectedPdf = async () => {
+    if (selectedActivityIds.length === 0 || isGeneratingPdf) return;
+
+    // Filtra rigorosamente as atividades selecionadas
+    const selectedActivities = activities.filter((a) =>
+      selectedActivityIds.includes(a.id)
+    );
+
+    if (selectedActivities.length === 0) {
+      setExportWarning("Nenhuma das atividades selecionadas está disponível no momento.");
+      return;
+    }
+
+    try {
+      setIsGeneratingPdf(true);
+      setExportWarning(null);
+      await generateActivitiesPdf(selectedActivities);
+    } catch (err) {
+      console.error("Erro ao gerar PDF conjunto:", err);
+      setExportWarning("Ocorreu um erro ao gerar o PDF das atividades selecionadas.");
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
 
   const handleSaveNew = async (activityData: Activity) => {
     await addActivity(activityData);
@@ -202,6 +254,65 @@ export function ActivitiesView() {
             availableAreas={availableAreas}
           />
 
+          {/* Barra de Ações para Atividades Selecionadas */}
+          {selectedActivityIds.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-blue-950/40 dark:bg-blue-950/60 border border-blue-500/30 rounded-lg shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <span className="text-xs font-semibold text-slate-100 font-mono">
+                  {selectedActivityIds.length}{" "}
+                  {selectedActivityIds.length === 1
+                    ? "atividade selecionada"
+                    : "atividades selecionadas"}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Botão Gerar PDF das Selecionadas */}
+                <button
+                  type="button"
+                  onClick={handleGenerateSelectedPdf}
+                  disabled={isGeneratingPdf}
+                  className="text-xs font-semibold px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded shadow-xs transition-all active:scale-95 flex items-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isGeneratingPdf ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Gerando PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="w-3.5 h-3.5 text-orange-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <span>Gerar PDF das selecionadas</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Botão Limpar Seleção */}
+                <button
+                  type="button"
+                  onClick={handleClearSelection}
+                  disabled={isGeneratingPdf}
+                  className="text-xs font-semibold px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 rounded transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  Limpar
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Grid Principal: Lista/Tabela + Painel Lateral de Detalhes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             <div className={selectedActivity ? "lg:col-span-2" : "lg:col-span-3"}>
@@ -210,6 +321,9 @@ export function ActivitiesView() {
                 selectedActivity={selectedActivity}
                 onSelectActivity={setSelectedActivity}
                 isLoading={isLoading}
+                selectedActivityIds={selectedActivityIds}
+                onToggleSelectActivity={handleToggleSelectActivity}
+                onSelectAllActivities={handleSelectAllVisible}
               />
             </div>
 

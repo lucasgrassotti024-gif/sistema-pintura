@@ -8,6 +8,9 @@ interface ActivityListProps {
   selectedActivity: Activity | null;
   onSelectActivity: (activity: Activity) => void;
   isLoading?: boolean;
+  selectedActivityIds?: string[];
+  onToggleSelectActivity?: (activityId: string) => void;
+  onSelectAllActivities?: (selectAll: boolean) => void;
 }
 
 export function ActivityList({
@@ -15,6 +18,9 @@ export function ActivityList({
   selectedActivity,
   onSelectActivity,
   isLoading = false,
+  selectedActivityIds = [],
+  onToggleSelectActivity,
+  onSelectAllActivities,
 }: ActivityListProps) {
   if (isLoading) {
     return (
@@ -33,33 +39,58 @@ export function ActivityList({
     );
   }
 
+  const isAllSelected =
+    activities.length > 0 &&
+    activities.every((act) => selectedActivityIds.includes(act.id));
+  const isSomeSelected =
+    activities.some((act) => selectedActivityIds.includes(act.id)) && !isAllSelected;
+
   return (
     <>
       {/* 1. VISUALIZAÇÃO EM CARDS (MOBILE < 768px) */}
       <div className="md:hidden space-y-3">
         {activities.map((activity) => {
           const delayed = isActivityDelayed(activity);
-          const isSelected = selectedActivity?.id === activity.id;
+          const isRowActive = selectedActivity?.id === activity.id;
+          const isChecked = selectedActivityIds.includes(activity.id);
 
           return (
             <div
               key={activity.id}
               onClick={() => onSelectActivity(activity)}
               className={`p-4 rounded-lg border bg-[#0c1524] shadow-sm transition-all cursor-pointer space-y-2.5 ${
-                isSelected
+                isChecked
+                  ? "border-blue-500/70 bg-blue-500/10 ring-1 ring-blue-500/30"
+                  : isRowActive
                   ? "border-orange-500/60 bg-orange-500/5 ring-1 ring-orange-500/30"
                   : "border-blue-500/15 hover:border-blue-500/35"
               }`}
             >
-              {/* Topo do Card */}
-              <div className="flex justify-between items-start gap-2">
-                <div className="space-y-0.5">
-                  <span className="font-mono font-bold text-xs text-blue-400">
-                    {activity.orderNumber}
-                  </span>
-                  <h3 className="font-semibold text-white text-xs leading-snug">
-                    {activity.name}
-                  </h3>
+              {/* Topo do Card com Checkbox */}
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex items-start gap-2.5">
+                  {onToggleSelectActivity && (
+                    <div
+                      className="pt-0.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => onToggleSelectActivity(activity.id)}
+                        aria-label={`Selecionar atividade ${activity.orderNumber}`}
+                        className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-[#070c14] cursor-pointer"
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-0.5">
+                    <span className="font-mono font-bold text-xs text-blue-400">
+                      {activity.orderNumber}
+                    </span>
+                    <h3 className="font-semibold text-white text-xs leading-snug">
+                      {activity.name}
+                    </h3>
+                  </div>
                 </div>
                 <ActivityStatusBadge status={activity.status} />
               </div>
@@ -102,6 +133,21 @@ export function ActivityList({
         <table className="min-w-full text-left text-xs">
           <thead className="text-[10px] uppercase font-mono font-bold text-slate-400 bg-[#070c14] border-b border-blue-500/15">
             <tr>
+              {onSelectAllActivities && (
+                <th className="py-3 pl-4 pr-2 w-10 text-center">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    ref={(el) => {
+                      if (el) el.indeterminate = isSomeSelected;
+                    }}
+                    onChange={(e) => onSelectAllActivities(e.target.checked)}
+                    aria-label="Selecionar todas as atividades visíveis"
+                    title="Selecionar todas as atividades visíveis"
+                    className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-[#070c14] cursor-pointer"
+                  />
+                </th>
+              )}
               <th className="py-3 px-4">Nota / OS</th>
               <th className="py-3 px-4">Atividade</th>
               <th className="py-3 px-4">Área / Local</th>
@@ -115,16 +161,35 @@ export function ActivityList({
           <tbody className="divide-y divide-blue-500/10">
             {activities.map((activity) => {
               const delayed = isActivityDelayed(activity);
-              const isSelected = selectedActivity?.id === activity.id;
+              const isRowActive = selectedActivity?.id === activity.id;
+              const isChecked = selectedActivityIds.includes(activity.id);
 
               return (
                 <tr
                   key={activity.id}
                   onClick={() => onSelectActivity(activity)}
                   className={`hover:bg-blue-500/[0.06] cursor-pointer transition-colors ${
-                    isSelected ? "bg-blue-500/15" : ""
+                    isChecked
+                      ? "bg-blue-500/10"
+                      : isRowActive
+                      ? "bg-blue-500/15"
+                      : ""
                   }`}
                 >
+                  {onToggleSelectActivity && (
+                    <td
+                      className="py-3 pl-4 pr-2 text-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => onToggleSelectActivity(activity.id)}
+                        aria-label={`Selecionar atividade ${activity.orderNumber}`}
+                        className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-[#070c14] cursor-pointer"
+                      />
+                    </td>
+                  )}
                   <td className="py-3 px-4 font-mono font-bold text-blue-400">
                     {activity.orderNumber}
                   </td>
