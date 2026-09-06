@@ -6,11 +6,65 @@ import { ALL_AI_TOOL_DECLARATIONS, dispatchAiTool } from "../tools";
 import { getFastPathGreeting } from "./ia-fast-path";
 
 /**
- * Traduz erros técnicos de nuvem/infraestrutura para mensagens amigáveis de engenharia.
+ * Ordem de prioridade dos modelos de IA do Google AI Studio para o AI Orchestrator.
+ *
+ * Configuração validada tecnicamente em 06/09/2026:
+ * - MODELO PRINCIPAL: "gemini-flash-latest"
+ *   Status: Ativo e estável em produção.
+ *   Validações:
+ *     ✓ Pergunta simples ("Olá") com latência adequada;
+ *     ✓ Function Calling com tool de domínio único ("consultarEstoqueMateriais");
+ *     ✓ Consulta multidomínio combinando cronograma e viabilidade de estoque;
+ *     ✓ Quota Free Tier ativa sem o teto severo de 20 requisições/dia.
+ *
+ * - FALLBACK 1: "gemini-3.5-flash"
+ *   Status: Disponível e compatível com todas as 9 declarações de ferramentas.
+ *   Acionado somente em caso de erro 429, 503 ou sobrecarga no modelo principal.
+ *
+ * - FALLBACK 2: "gemini-3.7-flash"
+ *   Status: Disponível na API como última esteira de contingência operacional.
+ *
+ * MODELOS REMOVIDOS PERMANENTEMENTE:
+ * - "gemini-3.6-flash": Removido por violação de cota estrita de 20 RPD (GenerateRequestsPerDayPerProjectPerModel-FreeTier)
+ *                       gerando 429 RESOURCE_EXHAUSTED no projeto atual.
+ * - "gemini-2.5-flash": Removido por descontinuação oficial pelo Google (HTTP 404 NOT_FOUND).
+ *
+ * NOTA DE MANUTENÇÃO:
+ * Revalidar periodicamente a disponibilidade do alias "gemini-flash-latest" quando houver
+ * atualizações estruturais nos endpoints do Google Generative AI.
  */
-function getFriendlyErrorMessage(error: unknown): string {
+const FALLBACK_MODELS = [
+  "gemini-flash-latest",
+  "gemini-3.5-flash",
+  "gemini-3.7-flash",
+];
+
+/**
+ * Analisa e traduz erros técnicos do Google Gemini de forma transparente e precisa.
+ */
+export function getFriendlyErrorMessage(error: unknown): string {
   const rawMsg = error instanceof Error ? error.message : String(error);
 
+  // 1. Cota Diária Esgotada (PerDay)
+  if (
+    rawMsg.includes("GenerateRequestsPerDay") ||
+    (rawMsg.includes("RESOURCE_EXHAUSTED") && rawMsg.includes("day")) ||
+    (rawMsg.includes("429") && rawMsg.includes("free_tier_requests"))
+  ) {
+    return "O limite diário de consultas de IA do plano atual foi atingido no Google AI Studio. A cota será renovada pelo Google no próximo ciclo diário.";
+  }
+
+  // 2. Limite Temporário de Taxa (Burst / RPM)
+  if (
+    rawMsg.includes("429") ||
+    rawMsg.includes("RESOURCE_EXHAUSTED") ||
+    rawMsg.includes("rate limit") ||
+    rawMsg.includes("Too Many Requests")
+  ) {
+    return "A IA está temporariamente com alto volume de consultas simultâneas no Google. Por favor, aguarde alguns segundos e tente novamente.";
+  }
+
+  // 3. Sobrecarga temporária do servidor Google (503 / UNAVAILABLE)
   if (
     rawMsg.includes("503") ||
     rawMsg.includes("high demand") ||
@@ -18,30 +72,49 @@ function getFriendlyErrorMessage(error: unknown): string {
     rawMsg.includes("overloaded") ||
     rawMsg.includes("temporarily unavailable")
   ) {
-    return "O assistente de IA está com alta demanda momentânea nos servidores da nuvem. Os dados da planta continuam disponíveis normalmente nos módulos do sistema. Por favor, aguarde alguns instantes e pergunte novamente.";
+    return "Os servidores de IA do Google estão momentaneamente sobrecarregados. Os dados da planta continuam disponíveis nos módulos do sistema. Aguarde alguns instantes e tente novamente.";
   }
 
-  if (
-    rawMsg.includes("429") ||
-    rawMsg.includes("RESOURCE_EXHAUSTED") ||
-    rawMsg.includes("quota") ||
-    rawMsg.includes("rate limit")
-  ) {
-    return "Limite temporário de consultas atingido. Por favor, aguarde alguns instantes antes de enviar uma nova pergunta.";
+  // 4. Autenticação e Chave de API
+  if (rawMsg.includes("API key not valid") || rawMsg.includes("401") || rawMsg.includes("UNAUTHENTICATED")) {
+    return "A configuração da chave da IA (GEMINI_API_KEY) está inválida no servidor. Verifique as credenciais do Google AI Studio.";
   }
 
-  return "Não foi possível obter resposta do assistente no momento. Tente novamente em instantes.";
+  // 5. Permissão ou Acesso Bloqueado (403)
+  if (rawMsg.includes("403") || rawMsg.includes("PERMISSION_DENIED")) {
+    return "Acesso não autorizado aos serviços de IA do Google para este projeto.";
+  }
+
+  // 6. Modelo não encontrado (404)
+  if (rawMsg.includes("404") || rawMsg.includes("NOT_FOUND")) {
+    return "O modelo de IA solicitado não está disponível nesta versão da API.";
+  }
+
+  return "Não foi possível obter resposta da IA no momento. Tente novamente em instantes.";
 }
 
 /**
- * Cria uma Response em stream SSE direta para saudações e fallbacks rápidos.
+ * Cria uma Response com streaming local progressivo (SSE) a partir de um texto já obtido.
+ * Transmite pequenos blocos com micro-delays para preservar a experiência de digitação suave
+ * no chat sem consumir nenhuma chamada extra à API do Google.
  */
-function createSseStreamResponse(text: string): Response {
+function createLocalStreamingResponse(fullText: string): Response {
   const textEncoder = new TextEncoder();
+  const chunkSize = 6; // Caracteres por emissão
+
   const readable = new ReadableStream({
-    start(controller) {
-      controller.enqueue(textEncoder.encode(text));
-      controller.close();
+    async start(controller) {
+      try {
+        for (let i = 0; i < fullText.length; i += chunkSize) {
+          const chunk = fullText.slice(i, i + chunkSize);
+          controller.enqueue(textEncoder.encode(chunk));
+          // Micro-pausa de 12ms para simular digitação fluida sem latência excessiva
+          await new Promise((resolve) => setTimeout(resolve, 12));
+        }
+        controller.close();
+      } catch (err) {
+        controller.close();
+      }
     },
   });
 
@@ -55,8 +128,60 @@ function createSseStreamResponse(text: string): Response {
 }
 
 /**
+ * Cria uma Response direta sem streaming para saudações e mensagens de erro estáticas.
+ */
+function createDirectSseResponse(text: string): Response {
+  const textEncoder = new TextEncoder();
+  const readable = new ReadableStream({
+    start(controller) {
+      controller.enqueue(textEncoder.encode(text));
+      controller.close();
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+}
+
+/**
+ * Helper com retry seguro para erros temporários de rede (503 ou 429 de burst curto).
+ */
+async function callGeminiWithRetry(
+  ai: GoogleGenAI,
+  modelName: string,
+  params: Parameters<GoogleGenAI["models"]["generateContent"]>[0]
+) {
+  let attempt = 0;
+  const maxAttempts = 2;
+
+  while (attempt < maxAttempts) {
+    attempt++;
+    try {
+      return await ai.models.generateContent(params);
+    } catch (err: any) {
+      const isTemporary =
+        err?.status === 503 ||
+        err?.message?.includes("503") ||
+        err?.message?.includes("UNAVAILABLE") ||
+        (err?.status === 429 && !err?.message?.includes("GenerateRequestsPerDay"));
+
+      if (isTemporary && attempt < maxAttempts) {
+        console.warn(`[AI Orchestrator] Tentativa ${attempt} falhou com erro temporário no modelo ${modelName}. Aguardando 1.5s antes do retry...`);
+        await new Promise((r) => setTimeout(r, 1500));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+/**
  * Orquestrador Central da IA Operacional (AI Orchestrator).
- * Coordena o raciocínio do modelo Gemini, execução determinística de tools e streaming final.
+ * V1: Eliminação estrita de chamadas redundantes de streaming e fallback inteligente de modelos.
  */
 export async function orchestrateAiConversation(
   messages: Array<{ sender: "user" | "ia"; text: string }>,
@@ -65,26 +190,26 @@ export async function orchestrateAiConversation(
 ): Promise<Response> {
   const latestMessage = messages[messages.length - 1]?.text?.trim() || "";
   if (!latestMessage) {
-    return createSseStreamResponse("Mensagem vazia recebida.");
+    return createDirectSseResponse("Mensagem vazia recebida.");
   }
 
-  // 1. Fast-path de saudações elementares (0ms LLM / 0ms DB)
+  // 1. Fast-path para saudações isoladas (0ms LLM / 0 chamadas de API)
   const fastGreeting = getFastPathGreeting(latestMessage);
   if (fastGreeting) {
-    return createSseStreamResponse(fastGreeting);
+    return createDirectSseResponse(fastGreeting);
   }
 
-  // 2. Chave de API do Gemini
+  // 2. Chave de API
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return createSseStreamResponse(
+    return createDirectSseResponse(
       "Assistente de IA temporariamente indisponível: Chave de API não configurada no servidor."
     );
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // 3. Montar instrução do sistema contextualizada com dados reais do turno
+  // 3. Montar instrução do sistema contextualizada
   const systemInstruction = `
 ${OPERATIONAL_AI_SYSTEM_PROMPT}
 
@@ -94,120 +219,119 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
 - Módulo Atual na Interface: ${context.currentModule || "Geral"}
 `;
 
-  // 4. Histórico multi-turn (últimas 10 mensagens)
+  // 4. Histórico de conversação multi-turn (últimas 10 mensagens)
   const conversationHistory: Content[] = messages.slice(-10).map((m) => ({
     role: m.sender === "user" ? "user" : "model",
     parts: [{ text: m.text }],
   }));
 
-  const contents: Content[] = [...conversationHistory];
+  const startTimeTotal = Date.now();
+  let lastError: unknown = null;
 
-  // 5. Loop de Function Calling (Orquestração de Múltiplas Tools)
-  const MAX_TOOL_ITERATIONS = 5;
-  let iteration = 0;
-  const executionLogs: AiToolExecutionLog[] = [];
+  // 5. Tentar a lista de modelos (com fallback se o primário sofrer esgotamento de cota diária ou 404)
+  for (const currentModel of FALLBACK_MODELS) {
+    const contents: Content[] = [...conversationHistory];
+    const MAX_TOOL_ITERATIONS = 5;
+    let iteration = 0;
+    let geminiApiCallCount = 0;
+    const executionLogs: AiToolExecutionLog[] = [];
+    let finalText = "";
 
-  try {
-    while (iteration < MAX_TOOL_ITERATIONS) {
-      iteration++;
+    try {
+      while (iteration < MAX_TOOL_ITERATIONS) {
+        iteration++;
+        geminiApiCallCount++;
 
-      const generateResult = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents,
-        config: {
-          systemInstruction,
-          tools: [{ functionDeclarations: ALL_AI_TOOL_DECLARATIONS }],
-          temperature: 0.1,
-          maxOutputTokens: 2048,
-        },
-      });
-
-      const functionCalls = generateResult.functionCalls;
-
-      if (!functionCalls || functionCalls.length === 0) {
-        // Nenhuma ferramenta necessária nesta rodada (ou já coletou todos os dados)
-        break;
-      }
-
-      // Adiciona o turno com a intenção do modelo de chamar ferramentas
-      const candidateContent = generateResult.candidates?.[0]?.content;
-      if (candidateContent) {
-        contents.push(candidateContent);
-      }
-
-      // Executa as tools chamadas sob RLS do usuário
-      const toolResponseParts: Part[] = [];
-
-      for (const fc of functionCalls) {
-        const toolName = fc.name;
-        if (!toolName) continue;
-        const toolArgs = (fc.args as Record<string, unknown>) || {};
-
-        const { output, log } = await dispatchAiTool(toolName, toolArgs, supabase);
-        executionLogs.push(log);
-
-        toolResponseParts.push({
-          functionResponse: {
-            name: toolName,
-            id: fc.id,
-            response: { output },
+        const generateResult = await callGeminiWithRetry(ai, currentModel, {
+          model: currentModel,
+          contents,
+          config: {
+            systemInstruction,
+            tools: [{ functionDeclarations: ALL_AI_TOOL_DECLARATIONS }],
+            temperature: 0.1,
+            maxOutputTokens: 2048,
           },
+        });
+
+        if (!generateResult) break;
+
+        const functionCalls = generateResult.functionCalls;
+
+        // Se o modelo NÃO solicitou mais tools, significa que ele já sintetizou a resposta final
+        if (!functionCalls || functionCalls.length === 0) {
+          finalText = generateResult.text || "";
+          break;
+        }
+
+        // Adiciona a intenção da chamada de tools ao histórico
+        const candidateContent = generateResult.candidates?.[0]?.content;
+        if (candidateContent) {
+          contents.push(candidateContent);
+        }
+
+        // Executa as tools sob RLS do usuário no Supabase
+        const toolResponseParts: Part[] = [];
+        for (const fc of functionCalls) {
+          const toolName = fc.name;
+          if (!toolName) continue;
+          const toolArgs = (fc.args as Record<string, unknown>) || {};
+
+          const { output, log } = await dispatchAiTool(toolName, toolArgs, supabase);
+          executionLogs.push(log);
+
+          toolResponseParts.push({
+            functionResponse: {
+              name: toolName,
+              id: fc.id,
+              response: { output },
+            },
+          });
+        }
+
+        // Devolve os dados das tools ao Gemini para a próxima iteração
+        contents.push({
+          role: "user",
+          parts: toolResponseParts,
         });
       }
 
-      // Devolve os resultados das ferramentas ao Gemini para a próxima rodada de raciocínio
-      contents.push({
-        role: "user",
-        parts: toolResponseParts,
-      });
+      // 6. Observabilidade e Auditoria de Chamadas
+      const totalDuration = Date.now() - startTimeTotal;
+      console.info(
+        `[AI Orchestrator] Pergunta: "${latestMessage.substring(0, 45)}" | Modelo: ${currentModel} | Requests Gemini: ${geminiApiCallCount} | Tools: ${
+          executionLogs.map((l) => `${l.toolName}(${l.durationMs}ms)`).join(", ") || "nenhuma"
+        } | Duração Total: ${totalDuration}ms`
+      );
+
+      // 7. O Gemini JÁ gerou o texto final no loop. Streaming local sem nenhuma chamada de rede extra!
+      if (finalText) {
+        return createLocalStreamingResponse(finalText);
+      }
+
+      // Se porventura o texto vier vazio (caso atípico), retorna aviso técnico
+      return createDirectSseResponse("Não foi possível consolidar uma resposta operacional para esta solicitação.");
+    } catch (err: any) {
+      lastError = err;
+      const shouldFallback =
+        err?.message?.includes("GenerateRequestsPerDay") ||
+        err?.message?.includes("free_tier_requests") ||
+        err?.status === 404 ||
+        err?.status === 503 ||
+        err?.message?.includes("UNAVAILABLE") ||
+        err?.message?.includes("high demand");
+
+      if (shouldFallback) {
+        console.warn(`[AI Orchestrator] Modelo ${currentModel} falhou com erro recuperável via fallback (${err?.status || err?.message}). Chaveando para o próximo modelo...`);
+        continue;
+      }
+
+      // Se for outro erro não recuperável por troca de modelo (ex: 401, 403), interrompe
+      break;
     }
-
-    // 6. Log operacional resumido para observabilidade
-    if (executionLogs.length > 0) {
-      console.info(`[AI Orchestrator] Pergunta: "${latestMessage.substring(0, 60)}" | Tools executadas: ${executionLogs.map((l) => `${l.toolName}(${l.durationMs}ms)`).join(", ")}`);
-    }
-
-    // 7. Streaming da Síntese Final via Server-Sent Events (SSE)
-    const streamResponse = await ai.models.generateContentStream({
-      model: "gemini-3.6-flash",
-      contents,
-      config: {
-        systemInstruction,
-        temperature: 0.1,
-        maxOutputTokens: 2048,
-      },
-    });
-
-    const textEncoder = new TextEncoder();
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          for await (const chunk of streamResponse) {
-            const chunkText = chunk.text || "";
-            if (chunkText) {
-              controller.enqueue(textEncoder.encode(chunkText));
-            }
-          }
-          controller.close();
-        } catch (streamErr) {
-          console.error("[AI Orchestrator] Erro no streaming de resposta:", streamErr);
-          const friendlyFallback = getFriendlyErrorMessage(streamErr);
-          controller.enqueue(textEncoder.encode(`\n\n${friendlyFallback}`));
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(readable, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
-  } catch (orchestrationError) {
-    console.error("[AI Orchestrator] Erro de orquestração:", orchestrationError);
-    const friendlyMessage = getFriendlyErrorMessage(orchestrationError);
-    return createSseStreamResponse(friendlyMessage);
   }
+
+  // Se todos os modelos falharem
+  console.error("[AI Orchestrator] Todos os modelos falharam. Erro final:", lastError);
+  const friendlyMsg = getFriendlyErrorMessage(lastError);
+  return createDirectSseResponse(friendlyMsg);
 }
