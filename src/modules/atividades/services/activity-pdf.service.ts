@@ -3,21 +3,87 @@ import autoTable from "jspdf-autotable";
 import { Activity } from "../types/activity.types";
 
 export interface GeneratePdfOptions {
-  includePhotos: boolean;
+  includePhotos?: boolean;
 }
 
 /**
  * Formata datas ISO (YYYY-MM-DD ou YYYY-MM-DD HH:mm) para padrão brasileiro DD/MM/YYYY.
  */
 function formatDateBR(dateStr?: string): string {
-  if (!dateStr) return "-";
+  if (!dateStr || dateStr === "-" || dateStr.trim() === "") return "-";
   const [datePart, timePart] = dateStr.split(" ");
-  const parts = datePart.split("-");
-  if (parts.length === 3) {
+  const cleanDate = (datePart || "").split("T")[0].trim();
+  const parts = cleanDate.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
     const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
     return timePart ? `${formatted} às ${timePart}` : formatted;
   }
   return dateStr;
+}
+
+/**
+ * Tradução oficial de status operacional da atividade
+ */
+function formatStatus(status: string): string {
+  const map: Record<string, string> = {
+    planejada: "Planejada",
+    programada: "Programada",
+    em_andamento: "Em Andamento",
+    pausada: "Pausada",
+    concluida: "Concluída",
+    cancelada: "Cancelada",
+  };
+  return map[status] || status;
+}
+
+/**
+ * Tradução de prioridade
+ */
+function formatPriority(priority: string): string {
+  const map: Record<string, string> = {
+    baixa: "Baixa",
+    media: "Média",
+    alta: "Alta",
+    urgente: "Urgente",
+  };
+  return map[priority] || priority;
+}
+
+/**
+ * Cores discretas para os badges de Status
+ */
+function getStatusBadgeColors(status: string): { bg: [number, number, number]; text: [number, number, number]; border: [number, number, number] } {
+  switch (status) {
+    case "planejada":
+    case "programada":
+      return { bg: [254, 243, 199], text: [180, 83, 9], border: [253, 230, 138] }; // Amarelo discreto (#FEF3C7)
+    case "em_andamento":
+      return { bg: [219, 234, 254], text: [29, 78, 216], border: [191, 219, 254] }; // Azul discreto (#DBEAFE)
+    case "concluida":
+      return { bg: [209, 250, 229], text: [4, 120, 87], border: [167, 243, 208] }; // Verde discreto (#D1FAE5)
+    case "cancelada":
+      return { bg: [254, 226, 226], text: [185, 28, 28], border: [254, 202, 202] }; // Vermelho discreto (#FEE2E2)
+    default:
+      return { bg: [241, 245, 249], text: [71, 85, 105], border: [226, 232, 240] };
+  }
+}
+
+/**
+ * Cores discretas para os badges de Prioridade
+ */
+function getPriorityBadgeColors(priority: string): { bg: [number, number, number]; text: [number, number, number]; border: [number, number, number] } {
+  switch (priority) {
+    case "urgente":
+      return { bg: [254, 226, 226], text: [185, 28, 28], border: [254, 202, 202] }; // Vermelho discreto
+    case "alta":
+      return { bg: [255, 237, 213], text: [194, 65, 12], border: [254, 215, 170] }; // Laranja discreto (#FFEDD5)
+    case "media":
+      return { bg: [254, 243, 199], text: [180, 83, 9], border: [253, 230, 138] }; // Amarelo discreto
+    case "baixa":
+      return { bg: [241, 245, 249], text: [71, 85, 105], border: [226, 232, 240] }; // Cinza/azul discreto
+    default:
+      return { bg: [241, 245, 249], text: [71, 85, 105], border: [226, 232, 240] };
+  }
 }
 
 /**
@@ -28,11 +94,12 @@ function sanitizeFileName(orderNumber: string): string {
 }
 
 /**
- * Gera e realiza o download do relatório profissional da atividade em PDF.
+ * Gera e realiza o download do relatório profissional corporativo da atividade em PDF
+ * com a identidade visual da RSS3 Soluções Industriais.
  */
 export async function generateActivityPdf(
   activity: Activity,
-  options: GeneratePdfOptions
+  _options?: GeneratePdfOptions
 ): Promise<void> {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -42,50 +109,135 @@ export async function generateActivityPdf(
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 15;
-  const marginRight = 15;
+  const marginLeft = 14;
+  const marginRight = 14;
   const contentWidth = pageWidth - marginLeft - marginRight;
+  const marginBottom = 16;
 
-  let currentY = 18;
+  let currentY = 0;
+
+  // Helper para checar necessidade de quebra de página
+  const checkPageBreak = (neededHeight: number): boolean => {
+    if (currentY + neededHeight > pageHeight - marginBottom) {
+      doc.addPage();
+      currentY = 16;
+      return true;
+    }
+    return false;
+  };
+
+  // Helper para títulos de seção com barra lateral azul/laranja institucional
+  const renderSectionHeader = (title: string): void => {
+    checkPageBreak(12);
+
+    // Barra de fundo suave
+    doc.setFillColor(241, 245, 249); // #f1f5f9
+    doc.roundedRect(marginLeft, currentY, contentWidth, 6.5, 1, 1, "F");
+
+    // Acento lateral esquerdo: Azul escuro industrial (#0B1F3A) + Laranja (#F97316)
+    doc.setFillColor(11, 31, 58);
+    doc.rect(marginLeft, currentY, 2.5, 6.5, "F");
+
+    doc.setFillColor(249, 115, 22);
+    doc.rect(marginLeft + 2.5, currentY, 1.2, 6.5, "F");
+
+    // Texto do título
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(11, 31, 58);
+    doc.text(title.toUpperCase(), marginLeft + 6.5, currentY + 4.5);
+
+    currentY += 9.5;
+  };
+
+  // Helper para renderizar Cards de Informação estruturados
+  const renderInfoCard = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    value: string
+  ): void => {
+    doc.setFillColor(248, 250, 252); // #f8fafc
+    doc.setDrawColor(226, 232, 240); // #e2e8f0
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, w, h, 1.5, 1.5, "FD");
+
+    // Rótulo
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.8);
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text(label.toUpperCase(), x + 3.5, y + 4.2);
+
+    // Valor
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42); // slate-900
+    const valText = doc.splitTextToSize(value || "-", w - 7);
+    doc.text(valText[0] || "-", x + 3.5, y + 9);
+  };
+
+  // Helper para renderizar badges de status e prioridade
+  const renderBadge = (
+    x: number,
+    y: number,
+    text: string,
+    colors: { bg: [number, number, number]; text: [number, number, number]; border: [number, number, number] }
+  ): number => {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    const textWidth = doc.getTextWidth(text);
+    const badgeW = textWidth + 8;
+    const badgeH = 5.5;
+
+    doc.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2]);
+    doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, badgeW, badgeH, 1, 1, "FD");
+
+    doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
+    doc.text(text, x + 4, y + 3.9);
+
+    return badgeW;
+  };
 
   // ============================================================================
-  // CABEÇALHO CORPORATIVO
+  // 1. CABEÇALHO INSTITUCIONAL RSS3
   // ============================================================================
-  // Barra de destaque superior verde esmeralda
-  doc.setFillColor(16, 185, 129); // #10b981
-  doc.rect(0, 0, pageWidth, 4, "F");
+  const headerHeight = 24;
+  doc.setFillColor(11, 31, 58); // Azul escuro #0B1F3A
+  doc.rect(0, 0, pageWidth, headerHeight, "F");
 
-  // Identificação do Sistema
+  // Linha de acento laranja RSS3 inferior
+  doc.setFillColor(249, 115, 22); // #F97316
+  doc.rect(0, headerHeight - 1.2, pageWidth, 1.2, "F");
+
+  // Logo / Tag "R3" estilizado
+  doc.setFillColor(249, 115, 22);
+  doc.roundedRect(marginLeft, 4.5, 10, 10, 1.5, 1.5, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.setTextColor(15, 23, 42); // #0f172a
-  doc.text("SISTEMA PINTURA INDUSTRIAL", marginLeft, currentY);
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text("R3", marginLeft + 2.5, 11.2);
+
+  // Nome institucional e sistema
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(255, 255, 255);
+  doc.text("RSS3 SOLUÇÕES INDUSTRIAIS", marginLeft + 13, 9.5);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(100, 116, 139); // #64748b
-  doc.text("Relatório Técnico Operacional de Atividade", marginLeft, currentY + 5);
+  doc.setFontSize(7.5);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text("SISTEMA DE PINTURA INDUSTRIAL  •  FICHA OPERACIONAL", marginLeft + 13, 14);
 
-  // Informações de Emissão e Status no topo direito
+  // Número da OS e Emissão à direita
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.setTextColor(15, 23, 42);
-  doc.text(`OS: ${activity.orderNumber}`, pageWidth - marginRight, currentY, { align: "right" });
+  doc.setTextColor(255, 255, 255);
+  doc.text(activity.orderNumber || "OS-N/A", pageWidth - marginRight, 9.5, { align: "right" });
 
-  const statusLabel = activity.status.toUpperCase();
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  if (activity.status === "concluida") {
-    doc.setTextColor(5, 150, 105);
-  } else if (activity.status === "cancelada") {
-    doc.setTextColor(225, 29, 72);
-  } else {
-    doc.setTextColor(37, 99, 235);
-  }
-  doc.text(`STATUS: ${statusLabel}`, pageWidth - marginRight, currentY + 5, { align: "right" });
-
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(100, 116, 139);
   const nowBR = new Date().toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -93,455 +245,341 @@ export async function generateActivityPdf(
     hour: "2-digit",
     minute: "2-digit",
   });
-  doc.text(`Emitido em: ${nowBR}`, pageWidth - marginRight, currentY + 9, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`Emissão: ${nowBR}`, pageWidth - marginRight, 14, { align: "right" });
 
-  currentY += 15;
+  currentY = headerHeight + 5;
 
-  // Linha divisória sutil
+  // ============================================================================
+  // 2. IDENTIFICAÇÃO DA ATIVIDADE (CARD HERO)
+  // ============================================================================
+  const heroH = 26;
+  doc.setFillColor(248, 250, 252); // #f8fafc
   doc.setDrawColor(226, 232, 240); // #e2e8f0
-  doc.setLineWidth(0.5);
-  doc.line(marginLeft, currentY, pageWidth - marginRight, currentY);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(marginLeft, currentY, contentWidth, heroH, 2, 2, "FD");
 
-  currentY += 6;
+  // Barra lateral azul destaque
+  doc.setFillColor(37, 99, 235); // #2563EB
+  doc.rect(marginLeft, currentY, 2.5, heroH, "F");
 
-  // Função auxiliar para títulos de seção
-  const renderSectionHeader = (title: string, yPos: number): number => {
-    doc.setFillColor(248, 250, 252); // #f8fafc
-    doc.rect(marginLeft, yPos, contentWidth, 6, "F");
+  // OS número pequeno em destaque
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(37, 99, 235);
+  doc.text(activity.orderNumber.toUpperCase(), marginLeft + 6, currentY + 6);
 
-    doc.setFillColor(16, 185, 129); // Indicador verde lateral
-    doc.rect(marginLeft, yPos, 2, 6, "F");
+  // Nome da Atividade grande
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42); // slate-900
+  // Badges de Status e Prioridade alinhados com precisão no lado direito do Card Hero
+  const statusColors = getStatusBadgeColors(activity.status);
+  const priorityColors = getPriorityBadgeColors(activity.priority);
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(15, 23, 42);
-    doc.text(title.toUpperCase(), marginLeft + 5, yPos + 4.2);
+  const statusText = formatStatus(activity.status).toUpperCase();
+  const priorityText = `PRIORIDADE ${formatPriority(activity.priority).toUpperCase()}`;
 
-    return yPos + 9;
-  };
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.5);
+  const statusW = doc.getTextWidth(statusText) + 8;
+  const priorityW = doc.getTextWidth(priorityText) + 8;
+  const totalBadgesW = statusW + 3 + priorityW;
+
+  const badgeX = pageWidth - marginRight - totalBadgesW - 4;
+  const badgeY = currentY + (heroH - 5.5) / 2; // Centralizado verticalmente no Card Hero
+
+  renderBadge(badgeX, badgeY, statusText, statusColors);
+  renderBadge(badgeX + statusW + 3, badgeY, priorityText, priorityColors);
+
+  // Nome da Atividade grande com espaço livre até o início dos badges
+  const maxNameWidth = badgeX - (marginLeft + 6) - 4;
+  const nameLines = doc.splitTextToSize(activity.name, maxNameWidth);
+  doc.text(nameLines.slice(0, 2), marginLeft + 6, currentY + 12.5);
+
+  currentY += heroH + 6;
 
   // ============================================================================
-  // SEÇÃO 1: IDENTIFICAÇÃO GERAL
+  // 3. DADOS PRINCIPAIS (GRADE DE CARDS)
   // ============================================================================
-  currentY = renderSectionHeader("1. Identificação Geral da Atividade", currentY);
+  renderSectionHeader("1. Dados Principais da Ordem de Serviço");
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text("Nome da Atividade:", marginLeft, currentY);
+  const cardW = (contentWidth - 4) / 2;
+  const cardH = 12.5;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(15, 23, 42);
-  doc.text(activity.name || "-", marginLeft + 35, currentY);
+  const locationParts = [activity.location?.local, activity.location?.equipment]
+    .filter((v) => Boolean(v && v.trim() && v !== "-"))
+    .join(" / ");
 
-  currentY += 5;
+  const qtyStr =
+    activity.serviceQuantity !== undefined &&
+    activity.serviceQuantity !== null &&
+    !isNaN(Number(activity.serviceQuantity))
+      ? `${activity.serviceQuantity} ${activity.serviceUnit || ""}`.trim()
+      : "-";
 
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Tipo de Serviço:", marginLeft, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(activity.serviceType || "-", marginLeft + 35, currentY);
+  // Linha 1: Área | Local / Equipamento
+  renderInfoCard(marginLeft, currentY, cardW, cardH, "Área", activity.location?.area || "-");
+  renderInfoCard(marginLeft + cardW + 4, currentY, cardW, cardH, "Local / Equipamento", locationParts || "-");
+  currentY += cardH + 3;
 
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Prioridade:", marginLeft + 100, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text((activity.priority || "Média").toUpperCase(), marginLeft + 120, currentY);
+  // Linha 2: Responsável | Equipe
+  renderInfoCard(marginLeft, currentY, cardW, cardH, "Responsável", activity.assignedTo || "-");
+  renderInfoCard(
+    marginLeft + cardW + 4,
+    currentY,
+    cardW,
+    cardH,
+    "Equipe Operacional",
+    activity.team || activity.schedule?.teamName || "-"
+  );
+  currentY += cardH + 3;
 
-  currentY += 5;
-
-  if (activity.originReference) {
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(71, 85, 105);
-    doc.text("Origem / Ref.:", marginLeft, currentY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    doc.text(activity.originReference, marginLeft + 35, currentY);
-    currentY += 5;
-  }
-
-  if (activity.description) {
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(71, 85, 105);
-    doc.text("Descrição:", marginLeft, currentY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    const splitDesc = doc.splitTextToSize(activity.description, contentWidth - 35);
-    doc.text(splitDesc, marginLeft + 35, currentY);
-    currentY += splitDesc.length * 4 + 2;
-  } else {
-    currentY += 2;
-  }
+  // Linha 3: Origem / Referência | Tipo de Serviço & Quantidade
+  renderInfoCard(marginLeft, currentY, cardW, cardH, "Origem / Referência", activity.originReference || "-");
+  renderInfoCard(
+    marginLeft + cardW + 4,
+    currentY,
+    cardW,
+    cardH,
+    "Tipo de Serviço / Quantidade",
+    `${activity.serviceType || "-"} (${qtyStr})`
+  );
+  currentY += cardH + 5;
 
   // ============================================================================
-  // SEÇÃO 2: LOCALIZAÇÃO
+  // 4. CRONOGRAMA OPERACIONAL
   // ============================================================================
-  currentY = renderSectionHeader("2. Hierarquia e Localização Física", currentY);
+  renderSectionHeader("2. Cronograma Operacional");
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text("Área:", marginLeft, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(activity.location.area || "-", marginLeft + 15, currentY);
+  const cronoCardW = (contentWidth - 9) / 4;
+  const cronoCardH = 13.5;
 
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Local Específico:", marginLeft + 65, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(activity.location.local || "-", marginLeft + 95, currentY);
+  renderInfoCard(
+    marginLeft,
+    currentY,
+    cronoCardW,
+    cronoCardH,
+    "Início Planejado",
+    formatDateBR(activity.schedule?.plannedStartDate)
+  );
+  renderInfoCard(
+    marginLeft + cronoCardW + 3,
+    currentY,
+    cronoCardW,
+    cronoCardH,
+    "Término Planejado",
+    formatDateBR(activity.schedule?.plannedEndDate)
+  );
+  renderInfoCard(
+    marginLeft + (cronoCardW + 3) * 2,
+    currentY,
+    cronoCardW,
+    cronoCardH,
+    "Início Real",
+    formatDateBR(activity.schedule?.actualStartDate)
+  );
+  renderInfoCard(
+    marginLeft + (cronoCardW + 3) * 3,
+    currentY,
+    cronoCardW,
+    cronoCardH,
+    "Conclusão Real",
+    formatDateBR(activity.schedule?.actualEndDate)
+  );
 
-  currentY += 5;
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Equipamento:", marginLeft, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(activity.location.equipment || "Não especificado", marginLeft + 25, currentY);
-
-  currentY += 7;
-
-  // ============================================================================
-  // SEÇÃO 3: PLANEJAMENTO E RESPONSABILIDADE
-  // ============================================================================
-  currentY = renderSectionHeader("3. Cronograma e Responsabilidade Técnica", currentY);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text("Início Planejado:", marginLeft, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(formatDateBR(activity.schedule.plannedStartDate), marginLeft + 30, currentY);
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Término Planejado:", marginLeft + 80, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(formatDateBR(activity.schedule.plannedEndDate), marginLeft + 115, currentY);
-
-  currentY += 5;
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Início Real:", marginLeft, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(formatDateBR(activity.schedule.actualStartDate), marginLeft + 30, currentY);
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Término Real:", marginLeft + 80, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(formatDateBR(activity.schedule.actualEndDate), marginLeft + 115, currentY);
-
-  currentY += 5;
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Equipe Operacional:", marginLeft, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(activity.team || activity.schedule.teamName || "-", marginLeft + 35, currentY);
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Responsável:", marginLeft + 90, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(activity.assignedTo || "-", marginLeft + 115, currentY);
-
-  currentY += 7;
+  currentY += cronoCardH + 5;
 
   // ============================================================================
-  // SEÇÃO 4: EXECUÇÃO E QUANTITATIVO
+  // 5. MATERIAIS PLANEJADOS
   // ============================================================================
-  currentY = renderSectionHeader("4. Execução Físico-Quantitativa", currentY);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.5);
-  doc.setTextColor(71, 85, 105);
-  doc.text("Progresso Físico:", marginLeft, currentY);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(16, 185, 129);
-  doc.text(`${activity.progressPercentage}%`, marginLeft + 30, currentY);
-
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Volume de Serviço:", marginLeft + 70, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  const qtyStr = activity.serviceQuantity !== undefined ? `${activity.serviceQuantity} ${activity.serviceUnit || "m²"}` : "-";
-  doc.text(qtyStr, marginLeft + 105, currentY);
-
-  currentY += 5;
-
-  const tagsStr = activity.tags && activity.tags.length > 0 ? activity.tags.map((t) => t.code).join(", ") : "-";
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(71, 85, 105);
-  doc.text("Tags / Identificadores:", marginLeft, currentY);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(15, 23, 42);
-  doc.text(tagsStr, marginLeft + 40, currentY);
-
-  currentY += 5;
-
-  if (activity.observations) {
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(71, 85, 105);
-    doc.text("Observações:", marginLeft, currentY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    const splitObs = doc.splitTextToSize(activity.observations, contentWidth - 30);
-    doc.text(splitObs, marginLeft + 30, currentY);
-    currentY += splitObs.length * 4 + 2;
-  } else {
-    currentY += 3;
-  }
-
-  // ============================================================================
-  // CONDICIONAL: CANCELAMENTO (quando aplicável)
-  // ============================================================================
-  if (activity.status === "cancelada" || activity.history.some((h) => h.action.toLowerCase().includes("cancelamento"))) {
-    const cancelEntry = activity.history.find((h) => h.action.toLowerCase().includes("cancelamento"));
-    currentY = renderSectionHeader("Cancelamento Operacional", currentY);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(225, 29, 72);
-    doc.text("Status:", marginLeft, currentY);
-    doc.text("ATIVIDADE CANCELADA", marginLeft + 15, currentY);
-
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(71, 85, 105);
-    doc.text("Data/Hora:", marginLeft + 80, currentY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    doc.text(formatDateBR(cancelEntry?.timestamp || activity.updatedAt), marginLeft + 100, currentY);
-
-    currentY += 5;
-
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(71, 85, 105);
-    doc.text("Motivo / Justificativa:", marginLeft, currentY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    const reasonText = cancelEntry?.observation || cancelEntry?.oldValue || "Cancelamento operacional registrado no sistema";
-    const splitReason = doc.splitTextToSize(reasonText, contentWidth - 40);
-    doc.text(splitReason, marginLeft + 40, currentY);
-    currentY += splitReason.length * 4 + 4;
-  }
-
-  // ============================================================================
-  // CONDICIONAL: ARQUIVAMENTO (quando aplicável)
-  // ============================================================================
-  if (activity.archivedAt) {
-    currentY = renderSectionHeader("Arquivamento da Atividade", currentY);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(71, 85, 105);
-    doc.text("Data do Arquivamento:", marginLeft, currentY);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(15, 23, 42);
-    doc.text(formatDateBR(activity.archivedAt), marginLeft + 40, currentY);
-
-    currentY += 5;
-
-    if (activity.archiveReason) {
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(71, 85, 105);
-      doc.text("Motivo:", marginLeft, currentY);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(15, 23, 42);
-      const splitArch = doc.splitTextToSize(activity.archiveReason, contentWidth - 20);
-      doc.text(splitArch, marginLeft + 20, currentY);
-      currentY += splitArch.length * 4 + 2;
-    } else {
-      currentY += 2;
-    }
-  }
-
-  // ============================================================================
-  // SEÇÃO 5: MATERIAIS PLANEJADOS E CONSUMO REAL
-  // ============================================================================
-  currentY = renderSectionHeader("5. Relação de Materiais e Consumo Real", currentY);
-
-  const materialsRows: string[][] = [];
+  renderSectionHeader("3. Materiais Planejados");
 
   const planned = activity.plannedMaterials || [];
-  const consumptions = activity.consumptions || [];
-
-  if (planned.length === 0 && consumptions.length === 0) {
-    doc.setFont("helvetica", "italic");
+  if (planned.length === 0) {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(marginLeft, currentY, contentWidth, 9, 1.5, 1.5, "FD");
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text("Nenhum material registrado para esta atividade.", marginLeft, currentY + 3);
-    currentY += 8;
+    doc.setTextColor(100, 116, 139);
+    doc.text("Nenhum material planejado cadastrado para esta atividade.", marginLeft + 4, currentY + 5.5);
+    currentY += 13;
   } else {
-    // Mesclar planejados e consumidos por nome
-    const matMap = new Map<string, { planned: number; consumed: number; unit: string }>();
-
-    planned.forEach((pm) => {
-      matMap.set(pm.materialName, {
-        planned: pm.quantity,
-        consumed: 0,
-        unit: pm.unit,
-      });
-    });
-
-    consumptions.forEach((c) => {
-      const existing = matMap.get(c.materialName);
-      if (existing) {
-        existing.consumed += c.quantity;
-      } else {
-        matMap.set(c.materialName, {
-          planned: 0,
-          consumed: c.quantity,
-          unit: c.unit,
-        });
-      }
-    });
-
-    matMap.forEach((val, key) => {
-      materialsRows.push([
-        key,
-        val.planned > 0 ? String(val.planned) : "-",
-        val.consumed > 0 ? String(val.consumed) : "-",
-        val.unit,
-      ]);
-    });
-
-    autoTable(doc, {
-      startY: currentY,
-      margin: { left: marginLeft, right: marginRight },
-      head: [["Material / Insumo", "Qtd. Planejada", "Consumo Real", "Unidade"]],
-      body: materialsRows,
-      theme: "plain",
-      headStyles: {
-        fillColor: [241, 245, 249],
-        textColor: [51, 65, 85],
-        fontStyle: "bold",
-        fontSize: 8,
-      },
-      styles: {
-        fontSize: 8,
-        textColor: [15, 23, 42],
-        cellPadding: 2,
-        lineColor: [226, 232, 240],
-        lineWidth: 0.2,
-      },
-    });
-
-    // @ts-expect-error autoTable plugin attaches lastAutoTable
-    currentY = doc.lastAutoTable.finalY + 8;
-  }
-
-  // ============================================================================
-  // SEÇÃO 6: HISTÓRICO DE APONTAMENTOS & AUDITORIA
-  // ============================================================================
-  currentY = renderSectionHeader("6. Histórico de Apontamentos e Auditoria", currentY);
-
-  const history = activity.history || [];
-
-  if (history.length === 0) {
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(8);
-    doc.setTextColor(148, 163, 184);
-    doc.text("Histórico não disponível para esta atividade.", marginLeft, currentY + 3);
-    currentY += 8;
-  } else {
-    const historyRows = history.map((h) => [
-      formatDateBR(h.timestamp),
-      h.userName || "Usuário",
-      h.action || "-",
-      h.field || "-",
-      h.newValue ? `${h.oldValue || "-"} → ${h.newValue}` : h.oldValue || "-",
-      h.observation || "-",
+    const tableBody = planned.map((pm, idx) => [
+      String(idx + 1).padStart(2, "0"),
+      pm.materialName || "-",
+      pm.quantity !== undefined ? String(pm.quantity) : "-",
+      pm.unit || "-",
     ]);
 
     autoTable(doc, {
       startY: currentY,
       margin: { left: marginLeft, right: marginRight },
-      head: [["Data/Hora", "Usuário", "Ação", "Campo", "Alteração", "Observação"]],
-      body: historyRows,
-      theme: "plain",
+      head: [["Item", "Material / Insumo", "Qtd. Planejada", "Unidade"]],
+      body: tableBody,
+      theme: "striped",
       headStyles: {
-        fillColor: [241, 245, 249],
-        textColor: [51, 65, 85],
+        fillColor: [11, 31, 58], // Azul escuro #0B1F3A
+        textColor: [255, 255, 255],
         fontStyle: "bold",
-        fontSize: 7.5,
+        fontSize: 7.8,
+        halign: "left",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
       },
       styles: {
-        fontSize: 7.5,
+        fontSize: 7.8,
+        textColor: [15, 23, 42],
+        cellPadding: 2.5,
+        lineColor: [226, 232, 240],
+        lineWidth: 0.2,
+      },
+      columnStyles: {
+        0: { cellWidth: 12, halign: "center" },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 28, halign: "right" },
+        3: { cellWidth: 22, halign: "center" },
+      },
+    });
+
+    // @ts-expect-error autoTable plugin attaches lastAutoTable
+    currentY = doc.lastAutoTable.finalY + 5;
+  }
+
+  // ============================================================================
+  // 6. DESCRIÇÃO DA ATIVIDADE
+  // ============================================================================
+  renderSectionHeader("4. Descrição da Atividade");
+
+  const descText =
+    activity.description && activity.description.trim()
+      ? activity.description.trim()
+      : "Sem descrição cadastrada.";
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.2);
+  const descLines = doc.splitTextToSize(descText, contentWidth - 8);
+  const descBoxH = Math.max(12, descLines.length * 4.2 + 6);
+
+  checkPageBreak(descBoxH + 4);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(marginLeft, currentY, contentWidth, descBoxH, 1.5, 1.5, "FD");
+
+  doc.setTextColor(30, 41, 59); // slate-800
+  doc.text(descLines, marginLeft + 4, currentY + 5.2);
+
+  currentY += descBoxH + 5;
+
+  // ============================================================================
+  // 7. OBSERVAÇÕES
+  // ============================================================================
+  renderSectionHeader("5. Observações");
+
+  const obsText =
+    activity.observations && activity.observations.trim()
+      ? activity.observations.trim()
+      : "Sem observações cadastradas.";
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.2);
+  const obsLines = doc.splitTextToSize(obsText, contentWidth - 8);
+  const obsBoxH = Math.max(10, obsLines.length * 4.2 + 5.5);
+
+  checkPageBreak(obsBoxH + 4);
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(marginLeft, currentY, contentWidth, obsBoxH, 1.5, 1.5, "FD");
+
+  doc.setTextColor(30, 41, 59);
+  doc.text(obsLines, marginLeft + 4, currentY + 5.2);
+
+  currentY += obsBoxH + 5;
+
+  // ============================================================================
+  // 8. HISTÓRICO DA ATIVIDADE (AUDITORIA OPERACIONAL COMPACTA)
+  // ============================================================================
+  const history = activity.history || [];
+  if (history.length > 0) {
+    renderSectionHeader("6. Histórico Operacional e Auditoria");
+
+    const historyBody = history.map((h) => [
+      formatDateBR(h.timestamp),
+      h.userName || "Sistema",
+      h.action || "-",
+      h.observation || h.newValue || "-",
+    ]);
+
+    autoTable(doc, {
+      startY: currentY,
+      margin: { left: marginLeft, right: marginRight },
+      head: [["Data/Hora", "Responsável", "Ação", "Observação / Detalhe"]],
+      body: historyBody,
+      theme: "striped",
+      headStyles: {
+        fillColor: [11, 31, 58],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 7.2,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252],
+      },
+      styles: {
+        fontSize: 7.2,
         textColor: [15, 23, 42],
         cellPadding: 2,
         lineColor: [226, 232, 240],
         lineWidth: 0.2,
       },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 32 },
+        2: { cellWidth: 35 },
+        3: { cellWidth: "auto" },
+      },
     });
 
     // @ts-expect-error autoTable plugin attaches lastAutoTable
-    currentY = doc.lastAutoTable.finalY + 8;
+    currentY = doc.lastAutoTable.finalY + 5;
   }
 
   // ============================================================================
-  // SEÇÃO 7: REGISTRO FOTOGRÁFICO (quando selecionado)
-  // ============================================================================
-  if (options.includePhotos) {
-    // Se a posição estiver próxima ao rodapé, adiciona uma nova página
-    if (currentY > pageHeight - 40) {
-      doc.addPage();
-      currentY = 20;
-    }
-
-    currentY = renderSectionHeader("7. Registro Fotográfico de Campo", currentY);
-
-    // Verificação de fotos reais disponíveis
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(100, 116, 139);
-    doc.text("Não há registros fotográficos vinculados a esta atividade.", marginLeft, currentY + 3);
-    currentY += 8;
-  }
-
-  // ============================================================================
-  // NUMERAÇÃO DE PÁGINAS E RODAPÉ CONTÍNUO
+  // 9. RODAPÉ INSTITUCIONAL EM TODAS AS PÁGINAS
   // ============================================================================
   const totalPages = doc.getNumberOfPages();
 
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
 
-    // Linha do rodapé
-    doc.setDrawColor(226, 232, 240);
+    // Linha superior do rodapé: cinza sutil
+    doc.setDrawColor(203, 213, 225); // slate-300
     doc.setLineWidth(0.4);
-    doc.line(marginLeft, pageHeight - 12, pageWidth - marginRight, pageHeight - 12);
+    doc.line(marginLeft, pageHeight - 11, pageWidth - marginRight, pageHeight - 11);
+
+    // Detalhe laranja à esquerda
+    doc.setFillColor(249, 115, 22); // #F97316
+    doc.rect(marginLeft, pageHeight - 11.2, 18, 0.8, "F");
 
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.setTextColor(148, 163, 184);
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139); // slate-500
 
     // Texto rodapé esquerdo
     doc.text(
-      `Sistema Pintura Industrial — OS: ${activity.orderNumber}`,
+      `RSS3 SOLUÇÕES INDUSTRIAIS  |  Sistema de Pintura  •  OS: ${activity.orderNumber}`,
       marginLeft,
-      pageHeight - 7
+      pageHeight - 6.5
     );
 
-    // Texto rodapé central
-    doc.text(`Gerado em: ${nowBR}`, pageWidth / 2, pageHeight - 7, { align: "center" });
-
     // Texto rodapé direito: Página X de Y
-    doc.text(`Página ${i} de ${totalPages}`, pageWidth - marginRight, pageHeight - 7, {
+    doc.text(`Página ${i} de ${totalPages}`, pageWidth - marginRight, pageHeight - 6.5, {
       align: "right",
     });
   }

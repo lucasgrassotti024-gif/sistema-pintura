@@ -63,7 +63,13 @@ export function ActivitiesView() {
 
     try {
       setIsExporting(true);
-      const success = exportActivitiesToExcel(activities);
+      const success = exportActivitiesToExcel(activities, {
+        search,
+        statusFilter,
+        areaFilter,
+        startDate,
+        endDate,
+      });
       if (!success) {
         setExportWarning("Não foi possível gerar a planilha Excel. Verifique se há registros na tela.");
       }
