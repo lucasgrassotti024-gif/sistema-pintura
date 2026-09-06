@@ -2,6 +2,57 @@ import { createClient } from "@/lib/supabase/client";
 import { Activity, ActivityPriority, ActivityStatus, ActivityHistoryEntry } from "../types/activity.types";
 import { MOCK_ACTIVITIES } from "./activity.mock";
 
+export interface AssignableUser {
+  id: string;
+  fullName: string;
+}
+
+let assignableUsersCache: { data: AssignableUser[]; timestamp: number } | null = null;
+const CACHE_TTL_MS = 30000;
+
+/**
+ * Busca a lista segura de usuários ativos que podem ser atribuídos como responsáveis.
+ * Utiliza a RPC SECURITY DEFINER `get_assignable_users` para contornar o isolamento de RLS
+ * sem expor dados confidenciais (email, senhas, tokens).
+ */
+export async function getAssignableUsers(): Promise<AssignableUser[]> {
+  const now = Date.now();
+  if (assignableUsersCache && now - assignableUsersCache.timestamp < CACHE_TTL_MS) {
+    return assignableUsersCache.data;
+  }
+
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("get_assignable_users");
+
+  if (error) {
+    console.warn("[getAssignableUsers] RPC não disponível ou erro:", error.message);
+    // Fallback defensivo: tenta consultar public.users diretamente
+    const { data: fallbackData } = await supabase
+      .from("users")
+      .select("id, full_name")
+      .eq("active", true)
+      .order("full_name", { ascending: true });
+
+    if (fallbackData && fallbackData.length > 0) {
+      const users: AssignableUser[] = fallbackData.map((u: any) => ({
+        id: u.id,
+        fullName: u.full_name,
+      }));
+      assignableUsersCache = { data: users, timestamp: now };
+      return users;
+    }
+    return [];
+  }
+
+  const users: AssignableUser[] = (data || []).map((u: any) => ({
+    id: u.id,
+    fullName: u.full_name,
+  }));
+
+  assignableUsersCache = { data: users, timestamp: now };
+  return users;
+}
+
 /**
  * Interface do registro retornado pelo Supabase para public.activities com JOINs
  */
@@ -30,6 +81,7 @@ interface SupabaseActivityRow {
   created_at: string;
   updated_at: string;
   custom_location_text: string | null;
+  assigned_user_id?: string | null;
   areas: { id: string; name: string; code: string } | null;
   locations: { id: string; name: string } | null;
   equipments: { id: string; name: string } | null;
@@ -60,10 +112,17 @@ interface SupabaseActivityRow {
 /**
  * Transforma uma linha do Supabase (snake_case com relacionamentos) no modelo de domínio Activity (camelCase).
  */
-function mapRowToActivity(row: SupabaseActivityRow): Activity {
+function mapRowToActivity(row: SupabaseActivityRow, userMap?: Map<string, string>): Activity {
   const areaName = row.areas?.name || "Área Não Definida";
   const localName = row.locations?.name || "Local Geral";
   const equipName = row.equipments?.name || row.custom_location_text || "Não especificado";
+
+  // Resolução segura do responsável:
+  // 1. Tenta o nome vindo do JOIN nativo caso o RLS permita (ex: o próprio usuário)
+  // 2. Se vier vazio, tenta resolver via userMap (RPC get_assignable_users) usando row.assigned_user_id
+  const assignedName =
+    row.users?.full_name ||
+    (row.assigned_user_id && userMap ? userMap.get(row.assigned_user_id) : undefined);
 
   return {
     id: row.id,
@@ -82,7 +141,8 @@ function mapRowToActivity(row: SupabaseActivityRow): Activity {
       local: localName,
       equipment: equipName,
     },
-    assignedTo: row.users?.full_name || undefined,
+    assignedUserId: row.assigned_user_id || undefined,
+    assignedTo: assignedName || undefined,
     team: row.teams?.name || undefined,
     observations: row.observations || undefined,
     tags: (row.activity_tags || []).map((t) => ({
@@ -160,6 +220,7 @@ export async function getActivities(preferRealData = true): Promise<Activity[]> 
       created_at,
       updated_at,
       custom_location_text,
+      assigned_user_id,
       areas (id, name, code),
       locations (id, name),
       equipments (id, name),
@@ -203,7 +264,10 @@ export async function getActivities(preferRealData = true): Promise<Activity[]> 
     return [];
   }
 
-  return (data as unknown as SupabaseActivityRow[]).map(mapRowToActivity);
+  const users = await getAssignableUsers();
+  const userMap = new Map(users.map((u) => [u.id, u.fullName]));
+
+  return (data as unknown as SupabaseActivityRow[]).map((row) => mapRowToActivity(row, userMap));
 }
 
 /**
@@ -243,6 +307,7 @@ export async function getHistoryActivities(preferRealData = true): Promise<Activ
       created_at,
       updated_at,
       custom_location_text,
+      assigned_user_id,
       areas (id, name, code),
       locations (id, name),
       equipments (id, name),
@@ -285,7 +350,10 @@ export async function getHistoryActivities(preferRealData = true): Promise<Activ
     return [];
   }
 
-  return (data as unknown as SupabaseActivityRow[]).map(mapRowToActivity);
+  const users = await getAssignableUsers();
+  const userMap = new Map(users.map((u) => [u.id, u.fullName]));
+
+  return (data as unknown as SupabaseActivityRow[]).map((row) => mapRowToActivity(row, userMap));
 }
 
 /**
@@ -321,6 +389,7 @@ export async function getActivityById(activityId: string): Promise<Activity | nu
       created_at,
       updated_at,
       custom_location_text,
+      assigned_user_id,
       areas (id, name, code),
       locations (id, name),
       equipments (id, name),
@@ -354,7 +423,10 @@ export async function getActivityById(activityId: string): Promise<Activity | nu
     return null;
   }
 
-  return mapRowToActivity(data as unknown as SupabaseActivityRow);
+  const users = await getAssignableUsers();
+  const userMap = new Map(users.map((u) => [u.id, u.fullName]));
+
+  return mapRowToActivity(data as unknown as SupabaseActivityRow, userMap);
 }
 
 /**
@@ -453,16 +525,8 @@ export async function createActivity(activity: Activity): Promise<Activity> {
     if (teamData) teamId = teamData.id;
   }
 
-  // 6. Resolver responsável em public.users (opcional)
-  let assignedUserId: string | null = null;
-  if (activity.assignedTo) {
-    const { data: userData } = await supabase
-      .from("users")
-      .select("id")
-      .eq("full_name", activity.assignedTo)
-      .maybeSingle();
-    if (userData) assignedUserId = userData.id;
-  }
+  // 6. Atribuição de Responsável por UUID direto (public.users.id)
+  const assignedUserId: string | null = activity.assignedUserId || null;
 
   // 7. Inserir a Atividade principal em public.activities
   const { data: insertedActivity, error: activityError } = await supabase
@@ -683,16 +747,9 @@ export async function updateActivity(activity: Activity): Promise<Activity> {
     if (teamData) teamId = teamData.id;
   }
 
-  // 6. Resolver responsável em public.users
-  let assignedUserId: string | null = null;
-  if (activity.assignedTo) {
-    const { data: userData } = await supabase
-      .from("users")
-      .select("id")
-      .eq("full_name", activity.assignedTo)
-      .maybeSingle();
-    if (userData) assignedUserId = userData.id;
-  }
+  // 6. Atribuição de Responsável por UUID direto (ou null se desmarcado)
+  const assignedUserId: string | null =
+    activity.assignedUserId !== undefined ? (activity.assignedUserId || null) : null;
 
   // 7. Executar UPDATE principal em public.activities pelo ID existente
   const { data: updatedActivityRow, error: updateError } = await supabase

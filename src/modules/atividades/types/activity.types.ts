@@ -72,7 +72,8 @@ export interface Activity {
   description: string;
   status: ActivityStatus;
   priority: ActivityPriority;
-  assignedTo?: string; // Responsável
+  assignedUserId?: string; // ID do responsável no banco (public.users.id)
+  assignedTo?: string; // Nome do responsável para exibição
   team?: string; // Equipe
   serviceQuantity?: number; // Quantidade do serviço
   serviceUnit?: string; // Unidade do serviço (m², m linear, etc)

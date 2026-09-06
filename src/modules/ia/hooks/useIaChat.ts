@@ -144,7 +144,12 @@ export function useIaChat() {
         const response = await fetch("/api/ia/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: payloadMessages }),
+          body: JSON.stringify({
+            messages: payloadMessages,
+            clientContext: {
+              currentModule: "pintura/ia",
+            },
+          }),
           signal: abortControllerRef.current.signal,
         });
 

@@ -9,6 +9,7 @@ import {
 } from "../types/activity.types";
 import { Material } from "@/modules/materiais/types/material.types";
 import { getMaterials } from "@/modules/materiais/services/material.service";
+import { getAssignableUsers, AssignableUser } from "../services/activity.service";
 
 interface ActivityFormProps {
   initialActivity?: Activity | null; // Quando fornecido, atua em modo de EDIÇÃO da atividade
@@ -107,7 +108,13 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   const [plannedStartDate, setPlannedStartDate] = useState(initialActivity?.schedule.plannedStartDate || "");
   const [plannedEndDate, setPlannedEndDate] = useState(initialActivity?.schedule.plannedEndDate || "");
   const [priority, setPriority] = useState<ActivityPriority>(initialActivity?.priority || "media");
+  const [assignedUserId, setAssignedUserId] = useState<string>(initialActivity?.assignedUserId || "");
   const [assignedTo, setAssignedTo] = useState(initialActivity?.assignedTo || "");
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const userDropdownRef = useRef<HTMLDivElement>(null);
   const [team, setTeam] = useState(initialActivity?.team || PRESET_TEAMS[0]);
 
   // Quantidade de Serviço
@@ -161,6 +168,60 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
       isMounted = false;
     };
   }, []);
+
+  // Carregar responsáveis ativos cadastrados no sistema
+  useEffect(() => {
+    let isMounted = true;
+    async function loadUsers() {
+      setLoadingUsers(true);
+      try {
+        const users = await getAssignableUsers();
+        if (!isMounted) return;
+        setAssignableUsers(users);
+
+        // Se houver initialActivity com assignedUserId mas sem assignedTo, resolve o nome
+        if (initialActivity?.assignedUserId && !initialActivity?.assignedTo) {
+          const matched = users.find((u) => u.id === initialActivity.assignedUserId);
+          if (matched) setAssignedTo(matched.fullName);
+        } else if (initialActivity?.assignedTo && !initialActivity?.assignedUserId) {
+          // Compatibilidade com atividades legadas: se o nome coincidir, vincula o UUID
+          const matched = users.find(
+            (u) => u.fullName.trim().toLowerCase() === initialActivity.assignedTo?.trim().toLowerCase()
+          );
+          if (matched) setAssignedUserId(matched.id);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar lista de responsáveis:", err);
+      } finally {
+        if (isMounted) setLoadingUsers(false);
+      }
+    }
+    loadUsers();
+    return () => {
+      isMounted = false;
+    };
+  }, [initialActivity]);
+
+  // Fechar dropdown de responsáveis ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setIsUserDropdownOpen(false);
+      }
+    }
+    if (isUserDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isUserDropdownOpen]);
+
+  // Filtragem dinâmica de usuários para seleção
+  const filteredUsers = assignableUsers.filter((u) => {
+    if (!userSearchTerm.trim()) return true;
+    return u.fullName.toLowerCase().includes(userSearchTerm.toLowerCase());
+  });
 
   // Filtragem dinâmica do catálogo para autocomplete
   const filteredCatalog = catalogMaterials.filter((m) => {
@@ -383,6 +444,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
         },
         description: description.trim() || name.trim(),
         priority,
+        assignedUserId: assignedUserId || undefined,
         assignedTo: assignedTo.trim() || undefined,
         team,
         serviceQuantity: serviceQuantity ? parseFloat(serviceQuantity) : undefined,
@@ -425,6 +487,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
         description: description.trim() || name.trim(),
         status: "programada",
         priority,
+        assignedUserId: assignedUserId || undefined,
         assignedTo: assignedTo.trim() || undefined,
         team,
         serviceQuantity: serviceQuantity ? parseFloat(serviceQuantity) : undefined,
@@ -772,16 +835,121 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               </select>
             </div>
 
-            <div>
+            <div className="relative" ref={userDropdownRef}>
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Responsável
               </label>
-              <input
-                type="text"
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-              />
+              
+              {/* Botão Gatilho do Seletor */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserDropdownOpen((prev) => !prev);
+                    setUserSearchTerm("");
+                  }}
+                  className="w-full text-left text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 bg-[var(--bg-surface)] hover:border-slate-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden flex items-center justify-between cursor-pointer transition-colors"
+                >
+                  <span className={assignedTo ? "text-[var(--text-primary)] font-medium truncate" : "text-[var(--text-muted)] truncate"}>
+                    {assignedTo || "Selecione um responsável..."}
+                  </span>
+                  
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {assignedUserId && (
+                      <span
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignedUserId("");
+                          setAssignedTo("");
+                        }}
+                        title="Remover responsável"
+                        className="text-xs text-[var(--text-muted)] hover:text-rose-400 p-0.5 rounded cursor-pointer transition-colors"
+                      >
+                        ×
+                      </span>
+                    )}
+                    <span className="text-[10px] text-[var(--text-muted)]">▼</span>
+                  </div>
+                </button>
+
+                {/* Dropdown Flutuante Pesquisável */}
+                {isUserDropdownOpen && (
+                  <div className="absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-hidden bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-md shadow-xl flex flex-col">
+                    {/* Campo de Pesquisa Interna */}
+                    <div className="p-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)]">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="🔍 Pesquisar responsável..."
+                          value={userSearchTerm}
+                          onChange={(e) => setUserSearchTerm(e.target.value)}
+                          className="w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1.5 bg-[var(--bg-surface)] text-[var(--text-primary)] focus:ring-1 focus:ring-blue-500 focus:outline-hidden placeholder:text-[var(--text-muted)]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Lista de Opções */}
+                    <div className="overflow-y-auto max-h-48 divide-y divide-[var(--border-subtle)] text-xs">
+                      {/* Opção Desatribuir */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssignedUserId("");
+                          setAssignedTo("");
+                          setIsUserDropdownOpen(false);
+                          setUserSearchTerm("");
+                        }}
+                        className={`w-full text-left p-2.5 hover:bg-[var(--bg-surface-raised)] flex items-center justify-between transition-colors cursor-pointer ${
+                          !assignedUserId ? "bg-blue-500/10 text-blue-400 font-medium" : "text-[var(--text-muted)]"
+                        }`}
+                      >
+                        <span>— Não atribuído (vazio)</span>
+                        {!assignedUserId && <span className="text-blue-400 font-bold">✓</span>}
+                      </button>
+
+                      {loadingUsers ? (
+                        <div className="p-3 text-center text-xs text-[var(--text-muted)]">
+                          Carregando responsáveis...
+                        </div>
+                      ) : filteredUsers.length === 0 ? (
+                        <div className="p-3 text-center text-xs text-[var(--text-muted)]">
+                          {assignableUsers.length === 0
+                            ? "Nenhum responsável disponível no sistema."
+                            : "Nenhum responsável encontrado para a pesquisa."}
+                        </div>
+                      ) : (
+                        filteredUsers.map((user) => {
+                          const isSelected = assignedUserId === user.id;
+                          return (
+                            <button
+                              key={user.id}
+                              type="button"
+                              onClick={() => {
+                                setAssignedUserId(user.id);
+                                setAssignedTo(user.fullName);
+                                setIsUserDropdownOpen(false);
+                                setUserSearchTerm("");
+                              }}
+                              className={`w-full text-left p-2.5 hover:bg-[var(--bg-surface-raised)] flex items-center justify-between transition-colors cursor-pointer ${
+                                isSelected ? "bg-emerald-500/10 text-emerald-400 font-semibold" : "text-[var(--text-primary)]"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 rounded-full bg-slate-700/60 border border-slate-600/40 text-[10px] flex items-center justify-center font-bold text-slate-300">
+                                  {user.fullName.charAt(0).toUpperCase()}
+                                </span>
+                                <span>{user.fullName}</span>
+                              </div>
+                              {isSelected && <span className="text-emerald-400 font-bold">✓</span>}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
