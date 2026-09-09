@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useIaChat } from "@/modules/ia/hooks/useIaChat";
 import { useActivities } from "@/modules/atividades/hooks/useActivities";
 import { useMaterials } from "@/modules/materiais/hooks/useMaterials";
@@ -18,6 +19,7 @@ import { ActivityDetails } from "@/modules/atividades/components/ActivityDetails
 import { getActivityById } from "@/modules/atividades/services/activity.service";
 
 export default function IAPage() {
+  const router = useRouter();
   const {
     messages,
     isLoading,
@@ -316,7 +318,7 @@ export default function IAPage() {
                     <MaterialAttachmentCard
                       material={msg.material}
                       onOpenDetails={() => {
-                        window.location.href = "/pintura/materiais-estoque";
+                        router.push("/pintura/materiais-estoque");
                       }}
                     />
                   )}
@@ -326,7 +328,7 @@ export default function IAPage() {
                         key={mat.id}
                         material={mat}
                         onOpenDetails={() => {
-                          window.location.href = "/pintura/materiais-estoque";
+                          router.push("/pintura/materiais-estoque");
                         }}
                       />
                     ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { IaChatMessage, IaConversation } from "../types/ia.types";
 import { AttachedActivityData, AttachedMaterialData } from "@/modules/chat/types/chat.types";
 import { useAuth } from "@/context/AuthContext";
@@ -12,43 +12,88 @@ import {
   deleteIaMessage,
 } from "../services/ia-conversation.service";
 
+// Timestamp estático inicial para evitar qualquer discrepância de hidratação entre SSR e Client
 const INITIAL_WELCOME_MESSAGE: IaChatMessage = {
   id: "init-welcome",
   sender: "ia",
   text: "Olá! Sou o Assistente Operacional de Engenharia do Sistema de Pintura Industrial. Estou conectado aos dados reais da planta para apoiar análises de frentes ativas, atrasos, demandas de insumos, riscos de cronograma e ordens de serviço. Como posso auxiliar seu turno hoje?",
-  timestamp: new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+  timestamp: "--:--",
 };
 
 /**
  * Decodifica o conteúdo bruto da mensagem extraindo referências visuais
- * estruturadas embutidas em <!--REFERENCES:...-->
+ * estruturadas embutidas em <!--REFERENCES:...-->.
+ * Trata com resiliência:
+ * - Mensagens sem referências
+ * - Fragmentos parciais recebidos durante o streaming SSE (ex: "<!--REF" ou "<!--REFERENCES:{" )
+ * - JSON inválido ou corrompido
+ * - Referências vazias ou dados malformados
  */
 function parseMessageContent(rawContent: string): {
   cleanText: string;
   activities?: AttachedActivityData[];
   materials?: AttachedMaterialData[];
 } {
+  if (!rawContent) {
+    return { cleanText: "" };
+  }
+
+  // Se a tag foi aberta mas ainda não fechou durante o streaming progressivo,
+  // removemos o trecho parcial da exibição de texto para não poluir o chat,
+  // mas NÃO tentamos executar JSON.parse prematuramente.
+  const partialIndex = rawContent.indexOf("<!--REFERENCES:");
+  if (partialIndex !== -1 && !rawContent.includes("-->")) {
+    return { cleanText: rawContent.substring(0, partialIndex).trimEnd() };
+  }
+
+  // Também trata se estiver no início de abertura parcial (ex: "<!--REF")
+  const openTagPartial = rawContent.search(/<!--(?:R(?:E(?:F(?:E(?:R(?:E(?:N(?:C(?:E(?:S)?)?)?)?)?)?)?)?)?)?$/i);
+  if (openTagPartial !== -1 && openTagPartial > 0) {
+    return { cleanText: rawContent.substring(0, openTagPartial).trimEnd() };
+  }
+
   const match = rawContent.match(/<!--REFERENCES:([\s\S]*?)-->/);
   if (!match) {
     return { cleanText: rawContent };
   }
 
-  const cleanText = rawContent.replace(match[0], "").trim();
+  const cleanText = rawContent.replace(match[0], "").trimEnd();
+  const rawJson = match[1]?.trim();
+
+  if (!rawJson) {
+    return { cleanText };
+  }
+
   try {
-    const parsed = JSON.parse(match[1]);
+    const parsed = JSON.parse(rawJson);
+    if (!parsed || typeof parsed !== "object") {
+      return { cleanText };
+    }
+
+    const activities = Array.isArray(parsed.activities)
+      ? parsed.activities.filter((a: any) => a && typeof a === "object" && a.id)
+      : undefined;
+
+    const materials = Array.isArray(parsed.materials)
+      ? parsed.materials.filter((m: any) => m && typeof m === "object" && m.id)
+      : undefined;
+
     return {
       cleanText,
-      activities: Array.isArray(parsed.activities) ? parsed.activities : undefined,
-      materials: Array.isArray(parsed.materials) ? parsed.materials : undefined,
+      activities: activities && activities.length > 0 ? activities : undefined,
+      materials: materials && materials.length > 0 ? materials : undefined,
     };
   } catch {
+    // Se o JSON estiver incompleto ou inválido, retorna apenas o texto limpo sem derrubar a tela
     return { cleanText };
   }
 }
 
 export function useIaChat() {
   const { user } = useAuth();
-  const supabase = createClient();
+
+  // 1. Instância singleton estável do cliente Supabase para o Browser (evita re-instanciação a cada render)
+  const supabase = useMemo(() => createClient(), []);
 
   const [activeConversation, setActiveConversation] = useState<IaConversation | null>(null);
   const [messages, setMessages] = useState<IaChatMessage[]>([INITIAL_WELCOME_MESSAGE]);
@@ -58,6 +103,14 @@ export function useIaChat() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const activeConversationRef = useRef<IaConversation | null>(null);
+
+  // Ajusta o timestamp da mensagem inicial amigavelmente no client após a montagem (sem hydration mismatch)
+  useEffect(() => {
+    const currentTime = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    setMessages((prev) =>
+      prev.map((m) => (m.id === "init-welcome" && m.timestamp === "--:--" ? { ...m, timestamp: currentTime } : m))
+    );
+  }, []);
 
   // Mantém a ref sincronizada para uso dentro de closures assíncronas
   useEffect(() => {

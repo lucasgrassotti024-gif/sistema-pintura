@@ -300,6 +300,25 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
                   assignedTo: act.responsible || undefined,
                 });
               }
+
+              // Coletar também materiais planejados reais desta atividade para exibir o card de Material correspondente
+              if (Array.isArray(act.materiais_planejados)) {
+                for (const pm of act.materiais_planejados) {
+                  const matCode = pm.codigo || pm.material;
+                  if (matCode && !collectedMaterials.some((m) => m.code === matCode || m.name === pm.material)) {
+                    collectedMaterials.push({
+                      id: pm.material_id || `pm-${act.id}-${matCode}`,
+                      code: pm.codigo || "PLAN",
+                      name: pm.material,
+                      type: "Insumo Planejado",
+                      unit: pm.unidade || "L",
+                      currentStock: Number(pm.quantidade_planejada || 0),
+                      minimumStock: 0,
+                      status: "adequado",
+                    });
+                  }
+                }
+              }
             } else if (toolName === "buscarAtividades" && Array.isArray(outAny?.atividades)) {
               // Se a busca retornou poucas atividades (<= 3), adiciona aos cards
               for (const act of outAny.atividades.slice(0, 3)) {
@@ -330,6 +349,21 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
                     currentStock: Number(mat.current_stock || 0),
                     minimumStock: Number(mat.minimum_stock || 0),
                     status: mat.situacao_estoque,
+                  });
+                }
+              }
+            } else if (toolName === "verificarViabilidadeMateriais" && Array.isArray(outAny?.itens_avaliados)) {
+              for (const item of outAny.itens_avaliados.slice(0, 3)) {
+                if (!collectedMaterials.some((m) => m.name === item.material_nome)) {
+                  collectedMaterials.push({
+                    id: item.material_id || `mat-viab-${item.material_nome}`,
+                    code: item.material_codigo || "MAT",
+                    name: item.material_nome,
+                    type: "Insumo Crítico",
+                    unit: item.unidade || "L",
+                    currentStock: Number(item.estoque_atual || 0),
+                    minimumStock: Number(item.demanda_total || 0),
+                    status: item.status_viabilidade === "defasado" ? "critico" : "adequado",
                   });
                 }
               }
