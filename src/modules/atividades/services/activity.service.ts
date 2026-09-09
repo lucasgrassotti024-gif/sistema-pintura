@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { Activity, ActivityPriority, ActivityStatus, ActivityHistoryEntry } from "../types/activity.types";
+import { Activity, ActivityPriority, ActivityStatus, ActivityHistoryEntry, ActivityPhotoItem } from "../types/activity.types";
 import { MOCK_ACTIVITIES } from "./activity.mock";
 
 export interface AssignableUser {
@@ -426,7 +426,18 @@ export async function getActivityById(activityId: string): Promise<Activity | nu
   const users = await getAssignableUsers();
   const userMap = new Map(users.map((u) => [u.id, u.fullName]));
 
-  return mapRowToActivity(data as unknown as SupabaseActivityRow, userMap);
+  const activity = mapRowToActivity(data as unknown as SupabaseActivityRow, userMap);
+
+  // Buscar fotos confirmadas com signed URLs seguras
+  try {
+    const photos = await getActivityPhotos(activityId, true);
+    activity.photos = photos;
+  } catch (photoErr) {
+    console.warn("Aviso ao carregar fotos da atividade:", photoErr);
+    activity.photos = [];
+  }
+
+  return activity;
 }
 
 /**
@@ -1139,6 +1150,270 @@ export async function updateActivityProgress(
   }
 
   return updated;
+}
+
+/**
+ * Busca todas as fotos confirmadas de uma atividade em public.activity_photos.
+ * Opcionalmente gera Signed URLs do bucket privado 'activity-photos' com validade de 1 hora.
+ */
+export async function getActivityPhotos(
+  activityId: string,
+  generateSignedUrls: boolean = true
+): Promise<ActivityPhotoItem[]> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("activity_photos")
+    .select(`
+      id,
+      photo_record_id,
+      storage_path,
+      original_filename,
+      file_size,
+      mime_type,
+      created_at,
+      activity_photo_records!inner (
+        id,
+        activity_id,
+        observation,
+        status
+      )
+    `)
+    .eq("activity_photo_records.activity_id", activityId)
+    .eq("activity_photo_records.status", "confirmado")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("[getActivityPhotos] Erro ao consultar fotos da atividade:", error);
+    return [];
+  }
+
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  // Mapear objetos base
+  type RawPhotoRow = {
+    id: string;
+    photo_record_id: string;
+    storage_path: string;
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+    created_at: string;
+    activity_photo_records?: {
+      id: string;
+      activity_id: string;
+      observation?: string | null;
+      status: string;
+    } | null;
+  };
+
+  const rows = data as unknown as RawPhotoRow[];
+  const photos: ActivityPhotoItem[] = rows.map((r) => ({
+    id: r.id,
+    photoRecordId: r.photo_record_id,
+    storagePath: r.storage_path,
+    originalFilename: r.original_filename,
+    fileSize: r.file_size,
+    mimeType: r.mime_type,
+    createdAt: r.created_at,
+    observation: r.activity_photo_records?.observation || undefined,
+  }));
+
+  // Se solicitado gerar Signed URLs para acesso seguro ao bucket privado
+  if (generateSignedUrls && photos.length > 0) {
+    try {
+      const paths = photos.map((p) => p.storagePath);
+      const { data: signedData, error: signedErr } = await supabase.storage
+        .from("activity-photos")
+        .createSignedUrls(paths, 3600);
+
+      if (!signedErr && signedData) {
+        const signedMap = new Map<string, string>();
+        signedData.forEach((item) => {
+          if (item.path && item.signedUrl) {
+            signedMap.set(item.path, item.signedUrl);
+          }
+        });
+
+        photos.forEach((p) => {
+          p.signedUrl = signedMap.get(p.storagePath);
+        });
+      } else if (signedErr) {
+        console.warn("[getActivityPhotos] Erro ao gerar URLs assinadas em lote:", signedErr);
+      }
+    } catch (urlErr) {
+      console.warn("[getActivityPhotos] Falha ao processar URLs assinadas:", urlErr);
+    }
+  }
+
+  return photos;
+}
+
+/**
+ * Realiza upload atômico e resiliente de fotos vinculadas a uma atividade.
+ * Estratégia de integridade e falha parcial:
+ * - Se qualquer upload falhar, remove imediatamente do Storage os arquivos já enviados na sessão
+ *   e aborta a sessão via abort_photo_record_session, garantindo zero arquivos órfãos ou referências quebradas.
+ */
+export async function uploadActivityPhotos(
+  activityId: string,
+  files: File[],
+  observation?: string
+): Promise<{ success: boolean; uploadedCount: number; errors?: string[] }> {
+  if (!files || files.length === 0) {
+    return { success: true, uploadedCount: 0 };
+  }
+
+  const supabase = createClient();
+
+  // 1. Iniciar Sessão de Registro Fotográfico
+  const { data: sessionData, error: sessionErr } = await supabase.rpc(
+    "start_photo_record_session",
+    {
+      p_activity_id: activityId,
+      p_observation: observation?.trim() || null,
+    }
+  );
+
+  if (sessionErr || !sessionData?.photo_record_id) {
+    const msg = sessionErr?.message || "Não foi possível iniciar a sessão de upload de fotos.";
+    console.error("[uploadActivityPhotos] Erro ao iniciar sessão:", sessionErr);
+    throw new Error(`Falha no registro de fotos: ${msg}`);
+  }
+
+  const recordId = sessionData.photo_record_id;
+  const uploadedPhotos: Array<{
+    storage_path: string;
+    original_filename: string;
+    file_size: number;
+    mime_type: string;
+  }> = [];
+  const pathsToRemoveOnFailure: string[] = [];
+
+  try {
+    for (const file of files) {
+      // Validação defensiva pré-upload
+      if (file.size > 5242880) {
+        throw new Error(`O arquivo "${file.name}" excede o limite máximo permitido de 5 MB.`);
+      }
+      const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowedMimes.includes(file.type)) {
+        throw new Error(`O arquivo "${file.name}" possui formato inválido. Permitido: JPG, PNG, WEBP.`);
+      }
+
+      const fileExt = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const photoId = crypto.randomUUID();
+      const storagePath = `activities/${activityId}/${recordId}/${photoId}.${fileExt}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from("activity-photos")
+        .upload(storagePath, file, {
+          contentType: file.type || "image/jpeg",
+          upsert: false,
+        });
+
+      if (uploadErr) {
+        throw new Error(`Falha ao enviar o arquivo "${file.name}" para o Storage: ${uploadErr.message}`);
+      }
+
+      pathsToRemoveOnFailure.push(storagePath);
+      uploadedPhotos.push({
+        storage_path: storagePath,
+        original_filename: file.name,
+        file_size: file.size,
+        mime_type: file.type || "image/jpeg",
+      });
+    }
+
+    // 2. Confirmar a sessão com todas as fotos enviadas
+    if (uploadedPhotos.length > 0) {
+      const { error: confirmErr } = await supabase.rpc("confirm_photo_record_session", {
+        p_photo_record_id: recordId,
+        p_photos: uploadedPhotos,
+      });
+
+      if (confirmErr) {
+        throw new Error(`Erro ao confirmar registro de fotos no banco: ${confirmErr.message}`);
+      }
+    }
+
+    return {
+      success: true,
+      uploadedCount: uploadedPhotos.length,
+    };
+  } catch (flowErr) {
+    console.error("[uploadActivityPhotos] Erro durante o fluxo de upload. Iniciando rollback seguro:", flowErr);
+
+    // Rollback 1: Limpar arquivos físicos já enviados para não deixar órfãos no Storage
+    if (pathsToRemoveOnFailure.length > 0) {
+      try {
+        await supabase.storage.from("activity-photos").remove(pathsToRemoveOnFailure);
+      } catch (cleanupErr) {
+        console.warn("[uploadActivityPhotos] Aviso ao limpar arquivos do Storage no rollback:", cleanupErr);
+      }
+    }
+
+    // Rollback 2: Abortar a sessão fotográfica pendente no banco
+    try {
+      await supabase.rpc("abort_photo_record_session", {
+        p_photo_record_id: recordId,
+      });
+    } catch (abortErr) {
+      console.warn("[uploadActivityPhotos] Aviso ao abortar sessão no rollback:", abortErr);
+    }
+
+    throw flowErr;
+  }
+}
+
+/**
+ * Remove fotos de uma atividade com segurança:
+ * 1. Chama a RPC delete_activity_photos (valida atividades.editar e remove metadados e sessões vazias)
+ * 2. Remove os arquivos correspondentes do Storage privado
+ */
+export async function deleteActivityPhotos(
+  activityId: string,
+  photoIds: string[]
+): Promise<{ success: boolean; deletedCount: number }> {
+  if (!photoIds || photoIds.length === 0) {
+    return { success: true, deletedCount: 0 };
+  }
+
+  const supabase = createClient();
+
+  // Executar RPC segura
+  const { data: rpcResult, error: rpcErr } = await supabase.rpc("delete_activity_photos", {
+    p_activity_id: activityId,
+    p_photo_ids: photoIds,
+  });
+
+  if (rpcErr) {
+    console.error("[deleteActivityPhotos] Erro retornado pela RPC delete_activity_photos:", rpcErr);
+    throw new Error(`Falha ao excluir foto(s): ${rpcErr.message}`);
+  }
+
+  // Se houver caminhos retornados, remover arquivos físicos do Storage
+  const pathsToRemove: string[] = rpcResult?.storage_paths || [];
+  if (pathsToRemove.length > 0) {
+    try {
+      const { error: storageErr } = await supabase.storage
+        .from("activity-photos")
+        .remove(pathsToRemove);
+
+      if (storageErr) {
+        console.warn("[deleteActivityPhotos] Aviso ao remover arquivos físicos do Storage:", storageErr);
+      }
+    } catch (storageException) {
+      console.warn("[deleteActivityPhotos] Exceção ao limpar Storage:", storageException);
+    }
+  }
+
+  return {
+    success: true,
+    deletedCount: rpcResult?.deleted_count || photoIds.length,
+  };
 }
 
 /**

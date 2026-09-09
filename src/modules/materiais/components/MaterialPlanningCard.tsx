@@ -1,5 +1,5 @@
 import React from "react";
-import { MaterialPlanningMetrics, MaterialStockStatus } from "../types/material.types";
+import { MaterialPlanningMetrics } from "../types/material.types";
 
 interface MaterialPlanningCardProps {
   metrics: MaterialPlanningMetrics;
@@ -12,99 +12,68 @@ export function MaterialPlanningCard({
   isSelected = false,
   onSelect,
 }: MaterialPlanningCardProps) {
-  const { material, plannedOriginal, consumedReal, remainingPlanned, projectedStock, deviation, projectedStatus } = metrics;
-
-  const getStatusBadge = (status: MaterialStockStatus) => {
-    switch (status) {
-      case "adequado":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            Adequado
-          </span>
-        );
-      case "atencao":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-            Atenção
-          </span>
-        );
-      case "critico":
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-rose-500/15 text-rose-400 border border-rose-500/30 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
-            {projectedStock <= 0 ? "Insuficiente" : "Crítico"}
-          </span>
-        );
-    }
-  };
+  const { material, plannedOriginal } = metrics;
 
   return (
     <div
       onClick={() => onSelect(metrics)}
-      className={`bg-[#0c1524] border rounded-lg p-4 cursor-pointer transition-all shadow-sm space-y-3 ${
+      className={`bg-[#0c1524] border rounded-lg p-4 cursor-pointer transition-all shadow-sm space-y-3.5 ${
         isSelected
-          ? "border-orange-500/60 bg-orange-500/5 ring-1 ring-orange-500/30 shadow-[0_0_15px_-2px_rgba(249,115,22,0.25)]"
-          : "border-blue-500/15 hover:border-blue-500/35 hover:bg-[#131f33]/40"
+          ? "border-emerald-500/60 bg-emerald-500/5 ring-1 ring-emerald-500/30 shadow-[0_0_15px_-2px_rgba(16,185,129,0.25)]"
+          : "border-blue-500/15 hover:border-emerald-500/35 hover:bg-[#131f33]/40"
       }`}
     >
-      {/* Topo: Código, Nome e Badge */}
-      <div className="flex justify-between items-start gap-2">
-        <div className="space-y-0.5">
-          <span className="font-mono font-bold text-xs text-blue-400 tracking-wider">
-            {material.code}
+      {/* Topo: Nome, Código e Tipo */}
+      <div className="space-y-1">
+        <h3 className="font-bold text-white text-sm leading-snug tracking-tight">
+          {material.name}
+        </h3>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-mono text-slate-400">
+            Código: <span className="text-slate-200 font-bold">{material.code}</span>
           </span>
-          <h3 className="font-bold text-white text-xs leading-snug">
-            {material.name}
-          </h3>
-          <span className="text-[11px] text-slate-400 block">
-            {material.type} {material.manufacturer ? `• ${material.manufacturer}` : ""}
-          </span>
-        </div>
-        {getStatusBadge(projectedStatus)}
-      </div>
-
-      {/* Grid de Saldos e Consumos */}
-      <div className="grid grid-cols-2 gap-2 text-xs bg-[#070c14] border border-blue-500/15 rounded p-2.5">
-        <div>
-          <span className="text-slate-400 text-[10px] font-mono block">Estoque Físico</span>
-          <span className="font-bold font-mono text-white text-sm">
-            {material.currentStock} {material.unit}
-          </span>
-        </div>
-        <div>
-          <span className="text-slate-400 text-[10px] font-mono block">Estoque Projetado</span>
-          <span
-            className={`font-bold font-mono text-sm ${
-              projectedStock <= 0 ? "text-rose-400" : projectedStock < material.minimumStock ? "text-amber-400" : "text-emerald-400"
-            }`}
-          >
-            {projectedStock} {material.unit}
-          </span>
-        </div>
-        <div className="pt-1.5 border-t border-blue-500/10">
-          <span className="text-slate-400 text-[10px] font-mono block">Demanda Original</span>
-          <span className="font-mono text-slate-200 text-xs">
-            {plannedOriginal} {material.unit}
-          </span>
-        </div>
-        <div className="pt-1.5 border-t border-blue-500/10">
-          <span className="text-slate-400 text-[10px] font-mono block">Consumo Real</span>
-          <span className="font-mono text-orange-400 font-bold text-xs">
-            {consumedReal} {material.unit}
-          </span>
+          {material.type && (
+            <>
+              <span className="text-slate-600">•</span>
+              <span className="text-slate-400 text-[11px] truncate">
+                {material.type} {material.manufacturer ? `(${material.manufacturer})` : ""}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Rodapé do Card: Desvio e Demanda Restante */}
-      <div className="flex justify-between items-center text-[11px] font-mono text-slate-400 pt-1">
-        <span>Restante a Consumir: <strong className="text-blue-300">{remainingPlanned} {material.unit}</strong></span>
-        {deviation !== 0 && (
-          <span className={deviation > 0 ? "text-amber-400" : "text-emerald-400"}>
-            Desvio: {deviation > 0 ? `+${deviation}` : deviation} {material.unit}
+      {/* Bloco Central: Apenas ESTOQUE e PLANEJADO */}
+      <div className="grid grid-cols-2 divide-x divide-white/10 bg-[#070c14] border border-white/10 rounded-lg overflow-hidden">
+        {/* Estoque Atual */}
+        <div className="p-3">
+          <span className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider block">
+            Estoque
           </span>
-        )}
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className={`text-xl font-bold font-mono ${material.currentStock <= 0 ? "text-rose-400" : "text-emerald-400"}`}>
+              {material.currentStock}
+            </span>
+            <span className="text-xs font-mono text-slate-400 uppercase">
+              {material.unit}
+            </span>
+          </div>
+        </div>
+
+        {/* Planejado */}
+        <div className="p-3 pl-4">
+          <span className="text-[11px] font-mono font-semibold text-slate-400 uppercase tracking-wider block">
+            Planejado
+          </span>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-xl font-bold font-mono text-slate-100">
+              {plannedOriginal}
+            </span>
+            <span className="text-xs font-mono text-slate-400 uppercase">
+              {material.unit}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

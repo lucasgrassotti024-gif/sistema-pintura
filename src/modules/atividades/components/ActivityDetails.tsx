@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Activity } from "../types/activity.types";
+import { Activity, ActivityPhotoItem } from "../types/activity.types";
 import { ActivityStatusBadge } from "./ActivityStatusBadge";
 import { ActivityPriorityBadge } from "./ActivityPriorityBadge";
 import { ActivityProgress } from "./ActivityProgress";
@@ -8,6 +8,8 @@ import { CancelActivityModal } from "./CancelActivityModal";
 import { ArchiveActivityModal } from "./ArchiveActivityModal";
 import { PermanentDeleteActivityModal } from "./PermanentDeleteActivityModal";
 import { GeneratePdfModal } from "./GeneratePdfModal";
+import { ImageLightboxModal } from "@/modules/chat/components/ImageLightboxModal";
+import { getActivityPhotos } from "../services/activity.service";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { isActivityDelayed, canEditActivity } from "../rules/activity.rules";
 
@@ -35,6 +37,29 @@ export function ActivityDetails({
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDeletingPermanently, setIsDeletingPermanently] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name?: string } | null>(null);
+  const [photos, setPhotos] = useState<ActivityPhotoItem[]>(activity.photos || []);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    if (activity.photos && activity.photos.length > 0) {
+      setPhotos(activity.photos);
+    } else if (activity.id) {
+      setLoadingPhotos(true);
+      getActivityPhotos(activity.id, true)
+        .then((pts) => {
+          if (isMounted) setPhotos(pts);
+        })
+        .catch((err) => console.warn("Erro ao buscar fotos da atividade no detalhes:", err))
+        .finally(() => {
+          if (isMounted) setLoadingPhotos(false);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activity.id, activity.photos]);
 
   const delayed = isActivityDelayed(activity);
   const isCancelled = activity.status === "cancelada";
@@ -235,6 +260,43 @@ export function ActivityDetails({
         </div>
       )}
 
+      {/* 4.2. FOTOS & EVIDÊNCIAS FOTOGRÁFICAS */}
+      {photos && photos.length > 0 && (
+        <div className="bg-[#070c14] border border-blue-500/15 rounded-md p-3.5 space-y-2 text-xs">
+          <div className="flex justify-between items-center border-b border-blue-500/10 pb-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 font-mono">
+              Fotos e Evidências
+            </span>
+            <span className="text-[10px] text-emerald-400 font-mono font-semibold">
+              {photos.length} foto(s)
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+            {photos.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setLightboxImage({ url: p.signedUrl || "", name: p.originalFilename })}
+                className="group relative rounded overflow-hidden border border-blue-500/20 hover:border-emerald-500/50 bg-[#0c1524] transition-all cursor-pointer aspect-video flex items-center justify-center"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.signedUrl || ""}
+                  alt={p.originalFilename}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-[10px] text-white font-mono bg-black/70 px-1.5 py-0.5 rounded">
+                    Ampliar ↗
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 5. PROGRESSO */}
       <div className="space-y-2 pt-1">
         <ActivityProgress currentProgress={activity.progressPercentage} />
@@ -294,6 +356,16 @@ export function ActivityDetails({
           onClose={() => setIsGeneratingPdf(false)}
         />
       )}
+
+      {/* Lightbox para fotos ampliadas */}
+      {lightboxImage && (
+        <ImageLightboxModal
+          imageUrl={lightboxImage.url}
+          imageName={lightboxImage.name}
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
     </div>
   );
 }
+

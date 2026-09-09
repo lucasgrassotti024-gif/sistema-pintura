@@ -60,6 +60,18 @@ export interface ActivityHistoryEntry {
   newValue?: string;
 }
 
+export interface ActivityPhotoItem {
+  id: string;
+  photoRecordId: string;
+  storagePath: string;
+  originalFilename: string;
+  fileSize: number;
+  mimeType: string;
+  createdAt: string;
+  signedUrl?: string;
+  observation?: string;
+}
+
 export type ActivityPriority = "baixa" | "media" | "alta" | "urgente";
 
 export interface Activity {
@@ -84,9 +96,11 @@ export interface Activity {
   schedule: ActivitySchedule;
   consumptions: ActivityConsumption[];
   history: ActivityHistoryEntry[];
+  photos?: ActivityPhotoItem[]; // Fotos e evidências fotográficas associadas
   archivedAt?: string;
   archivedBy?: string;
   archiveReason?: string;
   createdAt: string;
   updatedAt: string;
 }
+

@@ -83,7 +83,7 @@ export function ActivitiesView() {
     try {
       setIsGeneratingPdf(true);
       setExportWarning(null);
-      await generateActivitiesPdf(selectedActivities);
+      await generateActivitiesPdf(selectedActivities, { includePhotos: true });
     } catch (err) {
       console.error("Erro ao gerar PDF conjunto:", err);
       setExportWarning("Ocorreu um erro ao gerar o PDF das atividades selecionadas.");

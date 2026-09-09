@@ -6,10 +6,17 @@ import {
   ActivityPriority,
   ActivityPlannedMaterial,
   ActivityHistoryEntry,
+  ActivityPhotoItem,
 } from "../types/activity.types";
 import { Material } from "@/modules/materiais/types/material.types";
 import { getMaterials } from "@/modules/materiais/services/material.service";
-import { getAssignableUsers, AssignableUser } from "../services/activity.service";
+import {
+  getAssignableUsers,
+  AssignableUser,
+  uploadActivityPhotos,
+  deleteActivityPhotos,
+  getActivityPhotos,
+} from "../services/activity.service";
 
 interface ActivityFormProps {
   initialActivity?: Activity | null; // Quando fornecido, atua em modo de EDIÇÃO da atividade
@@ -237,6 +244,36 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   // Observações
   const [observations, setObservations] = useState(initialActivity?.observations || "");
 
+  // Fotos da Atividade
+  const [existingPhotos, setExistingPhotos] = useState<ActivityPhotoItem[]>(initialActivity?.photos || []);
+  const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([]);
+  const [newPhotoPreviews, setNewPhotoPreviews] = useState<{ id: string; file: File; previewUrl: string }[]>([]);
+  const [photoIdsToDelete, setPhotoIdsToDelete] = useState<string[]>([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+
+  // Carregar fotos existentes caso não venham em initialActivity
+  useEffect(() => {
+    let isMounted = true;
+    if (initialActivity?.id) {
+      if (initialActivity.photos && initialActivity.photos.length > 0) {
+        setExistingPhotos(initialActivity.photos);
+      } else {
+        setLoadingPhotos(true);
+        getActivityPhotos(initialActivity.id, true)
+          .then((pts) => {
+            if (isMounted) setExistingPhotos(pts);
+          })
+          .catch((err) => console.warn("Erro ao buscar fotos da atividade:", err))
+          .finally(() => {
+            if (isMounted) setLoadingPhotos(false);
+          });
+      }
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [initialActivity]);
+
   // Mensagens de Erro e Estado de Submissão
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -358,6 +395,54 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
     }
   };
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const selectedFiles = Array.from(e.target.files);
+
+    const totalCurrent = (existingPhotos.length - photoIdsToDelete.length) + newPhotoFiles.length;
+    if (totalCurrent + selectedFiles.length > 8) {
+      setError("Limite máximo de 8 fotos por atividade excedido.");
+      return;
+    }
+
+    const allowedMimes = ["image/jpeg", "image/png", "image/webp"];
+    for (const f of selectedFiles) {
+      if (f.size > 5242880) {
+        setError(`A foto "${f.name}" excede o tamanho máximo de 5 MB.`);
+        return;
+      }
+      if (!allowedMimes.includes(f.type)) {
+        setError(`Formato do arquivo "${f.name}" inválido. Permitido: JPG, PNG, WEBP.`);
+        return;
+      }
+    }
+
+    const newPreviews = selectedFiles.map((file) => ({
+      id: `preview-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setNewPhotoFiles((prev) => [...prev, ...selectedFiles]);
+    setNewPhotoPreviews((prev) => [...prev, ...newPreviews]);
+    setError(null);
+  };
+
+  const handleRemoveNewPhoto = (index: number) => {
+    const previewToRemove = newPhotoPreviews[index];
+    if (previewToRemove?.previewUrl) {
+      URL.revokeObjectURL(previewToRemove.previewUrl);
+    }
+    setNewPhotoFiles((prev) => prev.filter((_, i) => i !== index));
+    setNewPhotoPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleToggleDeleteExistingPhoto = (photoId: string) => {
+    setPhotoIdsToDelete((prev) =>
+      prev.includes(photoId) ? prev.filter((id) => id !== photoId) : [...prev, photoId]
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmittingRef.current) return;
@@ -404,7 +489,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
     });
 
     const now = new Date().toISOString().replace("T", " ").substring(0, 16);
-    const mockUser = "Coordenador de Pintura (Mock)";
+    const mockUser = "Coordenador de Pintura";
 
     if (isEditing && initialActivity) {
       // MODO EDIÇÃO: Preserva progresso, consumos, ID e histórico anterior
@@ -463,7 +548,26 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
       };
 
       try {
+        // 1. Salvar os dados cadastrais da atividade
         await onSave(updatedActivity);
+
+        // 2. Se houver fotos marcadas para exclusão, remover com segurança e auditoria
+        if (photoIdsToDelete.length > 0) {
+          try {
+            await deleteActivityPhotos(initialActivity.id, photoIdsToDelete);
+          } catch (delErr) {
+            console.warn("Aviso ao excluir fotos marcadas:", delErr);
+          }
+        }
+
+        // 3. Se houver novas fotos anexadas, realizar upload atômico
+        if (newPhotoFiles.length > 0) {
+          await uploadActivityPhotos(
+            initialActivity.id,
+            newPhotoFiles,
+            `Fotos adicionadas na edição da OS ${updatedActivity.orderNumber}`
+          );
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro ao salvar atividade no sistema.";
         setError(msg);
@@ -516,7 +620,24 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
       };
 
       try {
+        // 1. Criar a atividade no Supabase e aguardar resolução
         await onSave(newActivity);
+
+        // Se houver novas fotos anexadas, obter o ID da atividade cadastrada
+        if (newPhotoFiles.length > 0) {
+          // Busca a atividade recém-criada pelo número de OS
+          const { fetchActivities } = await import("../services/activity.service");
+          const allActs = await fetchActivities();
+          const createdAct = allActs.find((a) => a.orderNumber === newActivity.orderNumber);
+
+          if (createdAct?.id) {
+            await uploadActivityPhotos(
+              createdAct.id,
+              newPhotoFiles,
+              `Fotos iniciais anexadas no cadastro da OS ${newActivity.orderNumber}`
+            );
+          }
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro ao cadastrar atividade no sistema.";
         setError(msg);
@@ -1186,6 +1307,129 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
             onChange={(e) => setObservations(e.target.value)}
             className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
           />
+        </div>
+
+        {/* Bloco 7: Fotos e Evidências Fotográficas */}
+        <div className="space-y-3 p-4 rounded-lg bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)] font-mono flex items-center gap-2">
+                <span>Fotos e Evidências da Atividade</span>
+                <span className="text-[10px] font-normal text-[var(--text-muted)] lowercase">
+                  ({existingPhotos.length - photoIdsToDelete.length + newPhotoFiles.length}/8 fotos)
+                </span>
+              </h3>
+              <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                Formatos permitidos: JPG, PNG, WEBP (máximo de 5 MB por arquivo).
+              </p>
+            </div>
+
+            {loadingPhotos && (
+              <span className="text-[11px] text-blue-500 font-mono animate-pulse">
+                Carregando fotos...
+              </span>
+            )}
+          </div>
+
+          {/* Input de Seleção de Arquivos */}
+          <div className="relative">
+            <input
+              type="file"
+              multiple
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoChange}
+              disabled={
+                isSubmitting ||
+                existingPhotos.length - photoIdsToDelete.length + newPhotoFiles.length >= 8
+              }
+              className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+          </div>
+
+          {/* Galeria de Fotos Existentes (Modo Edição) */}
+          {existingPhotos.length > 0 && (
+            <div className="space-y-1.5 pt-2 border-t border-[var(--border-subtle)]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] font-mono">
+                Fotos Cadastradas Anteriormente:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {existingPhotos.map((photo) => {
+                  const isMarkedForDeletion = photoIdsToDelete.includes(photo.id);
+                  return (
+                    <div
+                      key={photo.id}
+                      className={`relative group rounded-md overflow-hidden border transition-all ${
+                        isMarkedForDeletion
+                          ? "border-rose-500/60 opacity-40 grayscale"
+                          : "border-[var(--border-subtle)] hover:border-blue-500/40 bg-[var(--bg-surface)]"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={photo.signedUrl || ""}
+                        alt={photo.originalFilename}
+                        className="w-full h-24 object-cover"
+                      />
+                      <div className="p-1.5 bg-[var(--bg-surface-raised)]/95 flex items-center justify-between text-[10px]">
+                        <span className="truncate max-w-[100px] text-[var(--text-secondary)]" title={photo.originalFilename}>
+                          {photo.originalFilename}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleDeleteExistingPhoto(photo.id)}
+                          title={isMarkedForDeletion ? "Desfazer remoção" : "Remover foto"}
+                          className={`px-1.5 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                            isMarkedForDeletion
+                              ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+                              : "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+                          }`}
+                        >
+                          {isMarkedForDeletion ? "Restaurar" : "✕ Excluir"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Galeria de Novas Fotos Pré-selecionadas */}
+          {newPhotoPreviews.length > 0 && (
+            <div className="space-y-1.5 pt-2 border-t border-[var(--border-subtle)]">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 font-mono">
+                Novas Fotos Prontas para Envio:
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {newPhotoPreviews.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    className="relative group rounded-md overflow-hidden border border-emerald-500/30 bg-[var(--bg-surface)]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.previewUrl}
+                      alt={item.file.name}
+                      className="w-full h-24 object-cover"
+                    />
+                    <div className="p-1.5 bg-[var(--bg-surface-raised)]/95 flex items-center justify-between text-[10px]">
+                      <span className="truncate max-w-[100px] text-[var(--text-primary)]" title={item.file.name}>
+                        {item.file.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveNewPhoto(idx)}
+                        title="Remover foto antes de salvar"
+                        className="text-rose-500 hover:text-rose-400 font-bold px-1 cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Ações do Formulário */}

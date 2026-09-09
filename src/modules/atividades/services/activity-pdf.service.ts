@@ -1,9 +1,110 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { Activity } from "../types/activity.types";
+import { Activity, ActivityPhotoItem } from "../types/activity.types";
+import { getActivityPhotos } from "./activity.service";
 
 export interface GeneratePdfOptions {
   includePhotos?: boolean;
+}
+
+interface LoadedPdfImage {
+  dataUrl: string;
+  width: number;
+  height: number;
+  format: "JPEG" | "PNG" | "WEBP";
+  filename: string;
+}
+
+/**
+ * Converte de forma segura e eficiente uma URL de foto em imagem Base64/DataURL para o jsPDF.
+ * Possui proteções contra:
+ * - URL expirada ou inválida
+ * - Erro de rede / CORS
+ * - Imagens excessivamente grandes (redimensiona no canvas se ultrapassar 1600px para economizar memória e PDF size)
+ * - Retorna null em caso de falha para NÃO quebrar a geração do PDF.
+ */
+async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImage | null> {
+  if (!photo.signedUrl) return null;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout por imagem
+
+    const response = await fetch(photo.signedUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      console.warn(`[loadPdfImageSafe] Falha ao baixar imagem "${photo.originalFilename}": HTTP ${response.status}`);
+      return null;
+    }
+
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/")) {
+      console.warn(`[loadPdfImageSafe] Tipo MIME não suportado: ${blob.type}`);
+      return null;
+    }
+
+    // Carregar em elemento Image e desenhar em canvas com compressão profilática
+    return await new Promise<LoadedPdfImage | null>((resolve) => {
+      const blobUrl = URL.createObjectURL(blob);
+      const img = new Image();
+
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+
+        try {
+          const maxDim = 1200; // Máxima dimensão para o PDF manter alta definição e arquivo leve
+          let w = img.naturalWidth || img.width;
+          let h = img.naturalHeight || img.height;
+
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            resolve(null);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, w, h);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+          resolve({
+            dataUrl,
+            width: w,
+            height: h,
+            format: "JPEG",
+            filename: photo.originalFilename,
+          });
+        } catch (canvasErr) {
+          console.warn("[loadPdfImageSafe] Falha no processamento via canvas:", canvasErr);
+          resolve(null);
+        }
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        console.warn(`[loadPdfImageSafe] Falha ao decodificar imagem "${photo.originalFilename}".`);
+        resolve(null);
+      };
+
+      img.src = blobUrl;
+    });
+  } catch (err) {
+    console.warn(`[loadPdfImageSafe] Erro ao carregar foto "${photo.originalFilename}":`, err);
+    return null;
+  }
 }
 
 /**
@@ -109,7 +210,8 @@ function sanitizeFileName(orderNumber: string): string {
 function renderActivityContent(
   doc: jsPDF,
   activity: Activity,
-  pageStartInfo: { activityStartPage: number; isFirstActivity: boolean }
+  pageStartInfo: { activityStartPage: number; isFirstActivity: boolean },
+  loadedPhotos?: LoadedPdfImage[]
 ): { startPage: number; endPage: number } {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -507,11 +609,78 @@ function renderActivityContent(
   currentY += obsBoxH + 5;
 
   // ============================================================================
+  // 7.1. FOTOS / REGISTROS FOTOGRÁFICOS (EVIDÊNCIAS DE CAMPO)
+  // ============================================================================
+  if (loadedPhotos && loadedPhotos.length > 0) {
+    renderSectionHeader("6. Fotos e Registros Fotográficos");
+
+    const colCount = loadedPhotos.length === 1 ? 1 : 2;
+    const gap = 4;
+    const photoW = colCount === 1 ? Math.min(contentWidth, 120) : (contentWidth - gap) / 2;
+    const photoH = colCount === 1 ? 75 : 55; // Altura fixa de card para uniformidade visual
+    const cardH = photoH + 7; // Foto + barra de legenda/nome
+
+    for (let i = 0; i < loadedPhotos.length; i++) {
+      const item = loadedPhotos[i];
+      const isCol2 = colCount === 2 && i % 2 === 1;
+      const x = isCol2 ? marginLeft + photoW + gap : marginLeft;
+
+      // Se for a primeira coluna ou foto única, verificar quebra de página
+      if (!isCol2) {
+        checkPageBreak(cardH + 4);
+      }
+
+      // 1. Fundo do card
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(x, currentY, photoW, cardH, 1.5, 1.5, "FD");
+
+      // 2. Calcular redimensionamento para caber perfeitamente mantendo aspect ratio
+      const padding = 2;
+      const availW = photoW - padding * 2;
+      const availH = photoH - padding * 2;
+
+      let drawW = availW;
+      let drawH = (item.height * availW) / item.width;
+
+      if (drawH > availH) {
+        drawH = availH;
+        drawW = (item.width * availH) / item.height;
+      }
+
+      const drawX = x + padding + (availW - drawW) / 2;
+      const drawY = currentY + padding + (availH - drawH) / 2;
+
+      try {
+        doc.addImage(item.dataUrl, item.format, drawX, drawY, drawW, drawH);
+      } catch (imgAddErr) {
+        console.warn(`[renderActivityContent] Falha ao renderizar imagem no jsPDF:`, imgAddErr);
+      }
+
+      // 3. Legenda com nome do arquivo
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.8);
+      doc.setTextColor(100, 116, 139);
+      const cleanName = doc.splitTextToSize(item.filename, photoW - 6);
+      doc.text(cleanName[0] || "Foto de Evidência", x + 3, currentY + photoH + 4.5);
+
+      // Avançar cursor Y ao finalizar a linha (após col2 ou se for a última foto em col1)
+      if (isCol2 || i === loadedPhotos.length - 1) {
+        currentY += cardH + 4;
+      }
+    }
+
+    currentY += 2;
+  }
+
+  // ============================================================================
   // 8. HISTÓRICO DA ATIVIDADE (AUDITORIA OPERACIONAL COMPACTA)
   // ============================================================================
   const history = activity.history || [];
   if (history.length > 0) {
-    renderSectionHeader("6. Histórico Operacional e Auditoria");
+    const historySectionNum = loadedPhotos && loadedPhotos.length > 0 ? "7" : "6";
+    renderSectionHeader(`${historySectionNum}. Histórico Operacional e Auditoria`);
 
     const historyBody = history.map((h) => [
       formatDateBR(h.timestamp),
@@ -557,6 +726,7 @@ function renderActivityContent(
   const actEndPage = doc.getNumberOfPages();
   return { startPage: actStartPage, endPage: actEndPage };
 }
+
 
 /**
  * Aplica o rodapé institucional contínuo em todas as páginas do documento com paginação global "Página X de Y".
@@ -610,7 +780,7 @@ function applyDocumentFooter(
  */
 export async function generateActivityPdf(
   activity: Activity,
-  _options?: GeneratePdfOptions
+  options?: GeneratePdfOptions
 ): Promise<void> {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -619,10 +789,41 @@ export async function generateActivityPdf(
   });
 
   const pageActivityMap = new Map<number, string>();
-  const pageInfo = renderActivityContent(doc, activity, {
-    activityStartPage: 1,
-    isFirstActivity: true,
-  });
+  let loadedPhotos: LoadedPdfImage[] | undefined = undefined;
+
+  // Se fotos estiverem habilitadas, carregar de forma protegida e eficiente
+  if (options?.includePhotos) {
+    let activityPhotos = activity.photos;
+
+    // Se ainda não foram buscadas ou faltarem URLs assinadas, buscar agora
+    if (!activityPhotos || activityPhotos.length === 0 || !activityPhotos.some((p) => p.signedUrl)) {
+      try {
+        activityPhotos = await getActivityPhotos(activity.id, true);
+      } catch (pErr) {
+        console.warn("[generateActivityPdf] Falha ao carregar fotos da atividade:", pErr);
+        activityPhotos = [];
+      }
+    }
+
+    if (activityPhotos && activityPhotos.length > 0) {
+      const loadPromises = activityPhotos.map((photo) => loadPdfImageSafe(photo));
+      const results = await Promise.all(loadPromises);
+      const validImages = results.filter((img): img is LoadedPdfImage => img !== null);
+      if (validImages.length > 0) {
+        loadedPhotos = validImages;
+      }
+    }
+  }
+
+  const pageInfo = renderActivityContent(
+    doc,
+    activity,
+    {
+      activityStartPage: 1,
+      isFirstActivity: true,
+    },
+    loadedPhotos
+  );
 
   for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {
     pageActivityMap.set(p, activity.orderNumber);
@@ -643,7 +844,7 @@ export async function generateActivityPdf(
  */
 export async function generateActivitiesPdf(
   activities: Activity[],
-  _options?: GeneratePdfOptions
+  options?: GeneratePdfOptions
 ): Promise<boolean> {
   if (!activities || activities.length === 0) {
     return false;
@@ -658,17 +859,48 @@ export async function generateActivitiesPdf(
   const pageActivityMap = new Map<number, string>();
 
   // Renderiza sequencialmente cada atividade com quebra de página garantida
-  activities.forEach((activity, index) => {
+  // e carregamento sob demanda de fotos para não estourar memória do browser
+  for (let index = 0; index < activities.length; index++) {
+    const activity = activities[index];
     const isFirstActivity = index === 0;
-    const pageInfo = renderActivityContent(doc, activity, {
-      activityStartPage: doc.getNumberOfPages(),
-      isFirstActivity,
-    });
+
+    let loadedPhotos: LoadedPdfImage[] | undefined = undefined;
+
+    if (options?.includePhotos) {
+      let activityPhotos = activity.photos;
+      if (!activityPhotos || activityPhotos.length === 0 || !activityPhotos.some((p) => p.signedUrl)) {
+        try {
+          activityPhotos = await getActivityPhotos(activity.id, true);
+        } catch (pErr) {
+          console.warn(`[generateActivitiesPdf] Falha ao carregar fotos da OS ${activity.orderNumber}:`, pErr);
+          activityPhotos = [];
+        }
+      }
+
+      if (activityPhotos && activityPhotos.length > 0) {
+        const loadPromises = activityPhotos.map((photo) => loadPdfImageSafe(photo));
+        const results = await Promise.all(loadPromises);
+        const validImages = results.filter((img): img is LoadedPdfImage => img !== null);
+        if (validImages.length > 0) {
+          loadedPhotos = validImages;
+        }
+      }
+    }
+
+    const pageInfo = renderActivityContent(
+      doc,
+      activity,
+      {
+        activityStartPage: doc.getNumberOfPages(),
+        isFirstActivity,
+      },
+      loadedPhotos
+    );
 
     for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {
       pageActivityMap.set(p, activity.orderNumber);
     }
-  });
+  }
 
   // Aplica paginação global e rodapé contínuo em todas as páginas
   applyDocumentFooter(doc, pageActivityMap);
@@ -683,3 +915,4 @@ export async function generateActivitiesPdf(
   doc.save(fileName);
   return true;
 }
+
