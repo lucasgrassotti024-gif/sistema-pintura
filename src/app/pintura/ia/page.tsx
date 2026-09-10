@@ -171,41 +171,57 @@ export default function IAPage() {
                     )}
                   </div>
 
-                  {/* Card de Atividade(s) Anexada(s) ou Detectada(s) */}
-                  {msg.activity && (
-                    <ActivityAttachmentCard
-                      activity={msg.activity}
-                      onOpenDetails={handleOpenActivityDetails}
-                    />
-                  )}
-                  {msg.activities &&
-                    msg.activities.map((act) => (
-                      <ActivityAttachmentCard
-                        key={act.id}
-                        activity={act}
-                        onOpenDetails={handleOpenActivityDetails}
-                      />
-                    ))}
+                  {/* Cards de Atividades (Desduplicados estritamente por ID/OrderNumber) */}
+                  {(() => {
+                    const allActs: AttachedActivityData[] = [];
+                    if (msg.activity) allActs.push(msg.activity);
+                    if (msg.activities) {
+                      for (const a of msg.activities) {
+                        if (!allActs.some((item) => item.id === a.id || item.orderNumber === a.orderNumber)) {
+                          allActs.push(a);
+                        }
+                      }
+                    }
+                    if (allActs.length === 0) return null;
+                    return (
+                      <div className="flex flex-col gap-2 w-full max-w-md">
+                        {allActs.map((act) => (
+                          <ActivityAttachmentCard
+                            key={act.id}
+                            activity={act}
+                            onOpenDetails={handleOpenActivityDetails}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
 
-                  {/* Card de Material(is) Anexado(s) ou Detectado(s) */}
-                  {msg.material && (
-                    <MaterialAttachmentCard
-                      material={msg.material}
-                      onOpenDetails={() => {
-                        router.push("/pintura/materiais-estoque");
-                      }}
-                    />
-                  )}
-                  {msg.materials &&
-                    msg.materials.map((mat) => (
-                      <MaterialAttachmentCard
-                        key={mat.id}
-                        material={mat}
-                        onOpenDetails={() => {
-                          router.push("/pintura/materiais-estoque");
-                        }}
-                      />
-                    ))}
+                  {/* Cards de Materiais (Desduplicados estritamente por ID/Código) */}
+                  {(() => {
+                    const allMats: AttachedMaterialData[] = [];
+                    if (msg.material) allMats.push(msg.material);
+                    if (msg.materials) {
+                      for (const m of msg.materials) {
+                        if (!allMats.some((item) => item.id === m.id || (m.code && item.code === m.code))) {
+                          allMats.push(m);
+                        }
+                      }
+                    }
+                    if (allMats.length === 0) return null;
+                    return (
+                      <div className="flex flex-col gap-2 w-full max-w-md">
+                        {allMats.map((mat) => (
+                          <MaterialAttachmentCard
+                            key={mat.id}
+                            material={mat}
+                            onOpenDetails={() => {
+                              router.push("/pintura/materiais-estoque");
+                            }}
+                          />
+                        ))}
+                      </div>
+                    );
+                  })()}
 
                   {/* Bolha Textual da Mensagem */}
                   {msg.text && (

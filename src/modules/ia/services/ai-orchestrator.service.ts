@@ -287,7 +287,7 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
             const outAny = output as any;
             if (toolName === "obterDetalhesAtividade" && outAny?.encontrada && outAny?.atividade) {
               const act = outAny.atividade;
-              if (!collectedActivities.some((a) => a.id === act.id)) {
+              if (!collectedActivities.some((a) => a.id === act.id || a.orderNumber === act.order_number)) {
                 collectedActivities.push({
                   id: act.id,
                   orderNumber: act.order_number,
@@ -300,29 +300,26 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
                   assignedTo: act.responsible || undefined,
                 });
               }
-
-              // Coletar também materiais planejados reais desta atividade para exibir o card de Material correspondente
-              if (Array.isArray(act.materiais_planejados)) {
-                for (const pm of act.materiais_planejados) {
-                  const matCode = pm.codigo || pm.material;
-                  if (matCode && !collectedMaterials.some((m) => m.code === matCode || m.name === pm.material)) {
-                    collectedMaterials.push({
-                      id: pm.material_id || `pm-${act.id}-${matCode}`,
-                      code: pm.codigo || "PLAN",
-                      name: pm.material,
-                      type: "Insumo Planejado",
-                      unit: pm.unidade || "L",
-                      currentStock: Number(pm.quantidade_planejada || 0),
-                      minimumStock: 0,
-                      status: "adequado",
-                    });
-                  }
+            } else if (toolName === "buscarAtividades" && Array.isArray(outAny?.atividades)) {
+              // Limita até 5 atividades principais nos cards para não poluir a tela
+              for (const act of outAny.atividades.slice(0, 5)) {
+                if (!collectedActivities.some((a) => a.id === act.id || a.orderNumber === act.order_number)) {
+                  collectedActivities.push({
+                    id: act.id,
+                    orderNumber: act.order_number,
+                    name: act.name,
+                    status: act.status,
+                    priority: act.priority,
+                    progressPercentage: Number(act.progress_percentage || 0),
+                    plannedEndDate: act.planned_end_date,
+                    areaName: act.area || undefined,
+                    assignedTo: act.responsible || undefined,
+                  });
                 }
               }
-            } else if (toolName === "buscarAtividades" && Array.isArray(outAny?.atividades)) {
-              // Se a busca retornou poucas atividades (<= 3), adiciona aos cards
-              for (const act of outAny.atividades.slice(0, 3)) {
-                if (!collectedActivities.some((a) => a.id === act.id)) {
+            } else if (toolName === "consultarProgramacao" && Array.isArray(outAny?.atividades)) {
+              for (const act of outAny.atividades.slice(0, 5)) {
+                if (!collectedActivities.some((a) => a.id === act.id || a.orderNumber === act.order_number)) {
                   collectedActivities.push({
                     id: act.id,
                     orderNumber: act.order_number,
@@ -339,7 +336,7 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
             } else if (toolName === "consultarEstoqueMateriais" && Array.isArray(outAny?.materiais)) {
               // Adiciona até 3 materiais citados
               for (const mat of outAny.materiais.slice(0, 3)) {
-                if (!collectedMaterials.some((m) => m.id === mat.id)) {
+                if (!collectedMaterials.some((m) => m.id === mat.id || (mat.code && m.code === mat.code))) {
                   collectedMaterials.push({
                     id: mat.id,
                     code: mat.code,
@@ -354,7 +351,7 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
               }
             } else if (toolName === "verificarViabilidadeMateriais" && Array.isArray(outAny?.itens_avaliados)) {
               for (const item of outAny.itens_avaliados.slice(0, 3)) {
-                if (!collectedMaterials.some((m) => m.name === item.material_nome)) {
+                if (!collectedMaterials.some((m) => m.name === item.material_nome || (item.material_codigo && m.code === item.material_codigo))) {
                   collectedMaterials.push({
                     id: item.material_id || `mat-viab-${item.material_nome}`,
                     code: item.material_codigo || "MAT",
