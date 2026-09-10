@@ -3,10 +3,6 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useIaChat } from "@/modules/ia/hooks/useIaChat";
-import { useActivities } from "@/modules/atividades/hooks/useActivities";
-import { useMaterials } from "@/modules/materiais/hooks/useMaterials";
-import { isActivityDelayed } from "@/modules/atividades/rules/activity.rules";
-import { formatDateISO } from "@/modules/atividades/utils/week.utils";
 import { EmojiPickerPopover } from "@/modules/chat/components/EmojiPickerPopover";
 import { AttachActivityModal } from "@/modules/chat/components/AttachActivityModal";
 import { AttachMaterialModal } from "@/modules/chat/components/AttachMaterialModal";
@@ -31,9 +27,6 @@ export default function IAPage() {
     clearChat,
   } = useIaChat();
 
-  const { rawActivities } = useActivities();
-  const { materials } = useMaterials();
-
   const [inputQuery, setInputQuery] = useState("");
   const [attachedActivity, setAttachedActivity] = useState<AttachedActivityData | null>(null);
   const [attachedMaterial, setAttachedMaterial] = useState<AttachedMaterialData | null>(null);
@@ -53,89 +46,6 @@ export default function IAPage() {
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  const todayISO = useMemo(() => formatDateISO(new Date()), []);
-  const tomorrowISO = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return formatDateISO(d);
-  }, []);
-
-  const summary = useMemo(() => {
-    try {
-      const active = (rawActivities || []).filter(
-        (a) =>
-          a &&
-          (a.status === "programada" ||
-            a.status === "em_andamento" ||
-            a.status === "planejada" ||
-            a.status === "pausada")
-      );
-
-      const delayed = active.filter((a) => {
-        try {
-          return isActivityDelayed(a, todayISO);
-        } catch {
-          return false;
-        }
-      });
-
-      const dueSoon = active.filter((a) => {
-        const plannedEnd = a.schedule?.plannedEndDate;
-        if (!plannedEnd) return false;
-        return (
-          plannedEnd >= todayISO &&
-          plannedEnd <= tomorrowISO &&
-          Number(a.progressPercentage || 0) < 80
-        );
-      });
-
-      const criticalMaterials = (materials || []).filter(
-        (m) => m && m.active && Number(m.currentStock || 0) < Number(m.minimumStock || 0)
-      );
-
-      return {
-        activeCount: active.length,
-        delayedCount: delayed.length,
-        dueSoonCount: dueSoon.length,
-        criticalMaterialsCount: criticalMaterials.length,
-      };
-    } catch (err) {
-      console.warn("[IAPage] Falha defensiva ao calcular summary operacional:", err);
-      return {
-        activeCount: 0,
-        delayedCount: 0,
-        dueSoonCount: 0,
-        criticalMaterialsCount: 0,
-      };
-    }
-  }, [rawActivities, materials, todayISO, tomorrowISO]);
-
-  const dynamicSuggestions = useMemo(() => {
-    const list: string[] = [];
-
-    if (summary.delayedCount > 0) {
-      list.push("Quais atividades estão atrasadas e quais os responsáveis?");
-    }
-
-    if (summary.criticalMaterialsCount > 0) {
-      list.push("Quais insumos estão abaixo do estoque mínimo e podem comprometer frentes?");
-    }
-
-    if (summary.dueSoonCount > 0) {
-      list.push("Existe risco de atraso nas atividades que vencem amanhã?");
-    }
-
-    if (summary.activeCount > 0) {
-      list.push("Faça um resumo executivo da operação de pintura hoje.");
-    }
-
-    if (list.length < 4) {
-      list.push("Qual atividade em andamento apresenta maior criticidade?");
-    }
-
-    return list.slice(0, 4);
-  }, [summary]);
 
   const handleSelectEmoji = (emoji: string) => {
     if (textareaRef.current) {
@@ -223,65 +133,9 @@ export default function IAPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-7rem)] min-h-[520px] max-w-5xl mx-auto w-full gap-3 transition-all duration-200">
-      {/* 1. CABEÇALHO TÉCNICO */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm shrink-0">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
-            <h1 className="text-base sm:text-lg font-bold text-[var(--text-primary)] tracking-tight">
-              Inteligência Operacional RSS3
-            </h1>
-            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-              Read-Only • Gemini Flash Latest
-            </span>
-          </div>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            Assistente técnico com suporte a anexos de ordens de serviço, insumos de pintura e diagnósticos cruzados.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 self-end sm:self-center">
-          {isInitializing && (
-            <span className="text-[11px] font-mono text-emerald-500 animate-pulse flex items-center gap-1.5 mr-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Sincronizando histórico...
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={clearChat}
-            disabled={isLoading || messages.length <= 1}
-            className="text-xs font-semibold px-3 py-1.5 bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] disabled:opacity-30 text-[var(--text-secondary)] rounded-md border border-[var(--border-medium)] transition-colors cursor-pointer"
-          >
-            Limpar Conversa
-          </button>
-        </div>
-      </div>
-
-      {/* 2. SUGESTÕES RÁPIDAS */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg px-3.5 sm:px-4 py-2.5 space-y-2 shadow-sm shrink-0">
-        <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          Sugestões de Consulta Operacional:
-        </span>
-        <div className="flex flex-wrap gap-2 max-h-24 sm:max-h-none overflow-y-auto">
-          {dynamicSuggestions.map((prompt, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleSend(prompt)}
-              disabled={isLoading}
-              className="text-xs bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] border border-[var(--border-medium)] hover:border-emerald-500/40 disabled:opacity-50 px-3 py-1.5 rounded-md text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors text-left font-medium cursor-pointer"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* 3. JANELA DE CONVERSA PRINCIPAL */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg shadow-md flex flex-col flex-1 min-h-[300px] overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-7rem)] min-h-[520px] max-w-5xl mx-auto w-full transition-all duration-200">
+      {/* JANELA DE CONVERSA PRINCIPAL EXPANDIDA */}
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg shadow-md flex flex-col flex-1 min-h-0 overflow-hidden">
         <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-[var(--bg-base)]">
           {messages.map((msg) => {
             const isUser = msg.sender === "user";
@@ -439,7 +293,7 @@ export default function IAPage() {
             </div>
           )}
 
-          {/* Barra de Ações Rápidas: Emojis + Anexar OS + Anexar Material */}
+          {/* Barra de Ações Rápidas: Emojis + Anexar OS + Anexar Material + Limpar Conversa */}
           <div className="flex items-center gap-2 relative flex-wrap">
             {/* Popover de Emojis Reutilizado */}
             <div className="relative">
@@ -484,6 +338,26 @@ export default function IAPage() {
               <span>+</span>
               <span>Material</span>
             </button>
+
+            {/* Status de Sincronização & Botão Limpar Conversa (no canto direito da barra) */}
+            <div className="ml-auto flex items-center gap-2">
+              {isInitializing && (
+                <span className="text-[10px] font-mono text-emerald-500 animate-pulse flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Sincronizando...
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={clearChat}
+                disabled={isLoading || messages.length <= 1}
+                className="text-[11px] font-semibold px-2.5 py-1.5 bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-highlight)] disabled:opacity-30 text-[var(--text-secondary)] hover:text-rose-400 rounded-md border border-[var(--border-medium)] hover:border-rose-500/40 transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Limpar mensagens da conversa"
+              >
+                <span>🗑️</span>
+                <span>Limpar Conversa</span>
+              </button>
+            </div>
           </div>
 
           {/* Campo de Texto e Botão de Envio */}
