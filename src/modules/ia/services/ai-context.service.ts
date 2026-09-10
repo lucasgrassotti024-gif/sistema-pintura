@@ -35,5 +35,6 @@ export async function buildAiSessionContext(
     currentModule: clientContext?.currentModule || "pintura",
     currentActivityId: clientContext?.currentActivityId,
     permissions: clientContext?.permissions || [],
+    recentMemory: clientContext?.recentMemory,
   };
 }

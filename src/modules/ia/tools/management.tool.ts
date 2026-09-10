@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { FunctionDeclaration, Type } from "@google/genai";
+import { analyzeSharedStockDemand, classifyActivityOperationalRisk } from "../rules/operational-analytics.rules";
 
 export const managementDeclarations: FunctionDeclaration[] = [
   {
@@ -248,24 +249,56 @@ export async function executeManagementTool(
         }
       }
 
-      // 4. Calcular Saldo Projetado e identificar déficits
+      // 4. Calcular Saldo Projetado e Déficits Concorrentes via regra determinística
       const analiseMateriais = Array.from(demandMap.values()).map((item) => {
-        const saldoProjetado = item.saldoAtualEstoque - item.demandaTotal;
-        const viavel = saldoProjetado >= 0;
-        return {
-          material: item.materialName,
-          unidade: item.unit,
-          estoque_atual: item.saldoAtualEstoque,
-          demanda_planejada: item.demandaTotal,
-          saldo_projetado: saldoProjetado,
-          viavel,
-          deficit: viavel ? 0 : Math.abs(saldoProjetado),
-          atividades_afetadas: item.atividadesAfetadas,
-        };
+        return analyzeSharedStockDemand(
+          item.materialName,
+          item.unit,
+          item.saldoAtualEstoque,
+          stockMap.get(item.materialId || item.materialName.toLowerCase().trim())?.minimum_stock || 0,
+          item.atividadesAfetadas.map((a) => ({
+            orderNumber: a.order_number,
+            activityName: a.name,
+            plannedQuantity: a.qtd_necessaria,
+          })),
+          item.materialId
+        );
       });
 
-      const materiaisCriticosComDeficit = analiseMateriais.filter((m) => !m.viavel);
+      const materiaisCriticosComDeficit = analiseMateriais.filter((m) => !m.isViable);
       const viavelGlobal = materiaisCriticosComDeficit.length === 0;
+
+      // 5. Mapear risco operacional por atividade no período
+      const mapaDeficitPorMaterial = new Map<string, { materialName: string; deficit: number; unit: string }>();
+      for (const m of materiaisCriticosComDeficit) {
+        mapaDeficitPorMaterial.set(m.materialName.toLowerCase(), {
+          materialName: m.materialName,
+          deficit: m.deficit,
+          unit: m.unit,
+        });
+      }
+
+      const atividadesComAnaliseRisco = (activitiesData || []).map((act: any) => {
+        const matDeficitsDaAtividade: Array<{ materialName: string; deficit: number; unit: string }> = [];
+        for (const pm of act.activity_planned_materials || []) {
+          const matObj = Array.isArray(pm.materials) ? pm.materials[0] : pm.materials;
+          const name = (matObj?.name || pm.custom_material_name || "").toLowerCase();
+          const def = mapaDeficitPorMaterial.get(name);
+          if (def) {
+            matDeficitsDaAtividade.push(def);
+          }
+        }
+
+        return classifyActivityOperationalRisk({
+          orderNumber: act.order_number,
+          activityName: act.name,
+          status: act.status,
+          progressPercentage: Number(act.progress_percentage || 0),
+          plannedEndDate: act.planned_end_date,
+          todayISO,
+          deficitMaterials: matDeficitsDaAtividade,
+        });
+      });
 
       return {
         periodo_analisado: {
@@ -274,12 +307,20 @@ export async function executeManagementTool(
           data_fim: endISO,
         },
         total_atividades_periodo: atividadesAnalisadas.length,
-        atividades: atividadesAnalisadas,
         situacao_geral: viavelGlobal
           ? "VIÁVEL: Estoque suficiente para todas as frentes planejadas no período."
-          : "ALERTA DE DESABASTECIMENTO: Há materiais com saldo projetado negativo.",
-        materiais_com_risco_deficit: materiaisCriticosComDeficit,
-        demanda_completa_materiais: analiseMateriais,
+          : "ALERTA DE DESABASTECIMENTO: Há materiais com saldo projetado concorrente insuficiente.",
+        materiais_com_risco_deficit: materiaisCriticosComDeficit.map((m) => ({
+          material: m.materialName,
+          unidade: m.unit,
+          estoque_atual: m.currentStock,
+          demanda_total_concorrente: m.totalDemand,
+          saldo_projetado: m.projectedBalance,
+          deficit_calculado: m.deficit,
+          frentes_afetadas: m.activities,
+        })),
+        atividades_em_risco_no_periodo: atividadesComAnaliseRisco.filter((a) => a.riskClassification === "critico"),
+        todas_atividades_periodo: atividadesComAnaliseRisco,
       };
     }
 

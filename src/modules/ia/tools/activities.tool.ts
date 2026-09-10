@@ -249,7 +249,8 @@ export async function executeActivitiesTool(
           service_quantity: row.service_quantity,
           service_unit: row.service_unit,
           cancellation_reason: row.cancellation_reason || null,
-          observations: row.observations || null,
+          possui_consumo_registrado: (row.activity_consumptions || []).length > 0,
+          possui_planejamento_cadastrado: (row.activity_planned_materials || []).length > 0,
           materiais_planejados: (row.activity_planned_materials || []).map((pm: any) => ({
             material: pm.materials?.name || pm.custom_material_name,
             codigo: pm.materials?.code || null,

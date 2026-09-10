@@ -271,6 +271,81 @@ export function useIaChat() {
           };
         });
 
+        // Extrair memória estruturada compacta dos turnos recentes:
+        // - 1 entidade principal em foco (focusedEntity) baseada no turno imediatamente anterior ou menção direta
+        // - até 4 atividades relacionadas recentes
+        // - até 2 materiais relacionados recentes
+        const recentActivitiesMap = new Map<string, { id: string; orderNumber: string; name: string }>();
+        const recentMaterialsMap = new Map<string, { id: string; code: string; name: string }>();
+
+        // Percorre as mensagens recentes da mais nova para a mais antiga (ordem cronológica reversa)
+        const recentSlice = [...messages, newUserMsg].slice(-8).reverse();
+        
+        let focusedActivity: { id: string; orderNumber: string; name: string } | undefined;
+        let focusedMaterial: { id: string; code: string; name: string } | undefined;
+        const comparisonIds: string[] = [];
+
+        // Detecta se a mensagem atual cita especificamente alguma OS por número
+        const osMatch = trimmed.match(/\b(?:os\s*|os-)?(50\d{9}|\d{5,12})\b/i);
+        const mentionedOrderNumber = osMatch ? osMatch[1] : null;
+
+        for (const msg of recentSlice) {
+          const acts = msg.activities || (msg.activity ? [msg.activity] : []);
+          for (const a of acts) {
+            if (a.id && a.orderNumber) {
+              if (!focusedActivity) {
+                // Se o usuário mencionou um número específico de OS ou é a primeira atividade recente
+                if (!mentionedOrderNumber || a.orderNumber.includes(mentionedOrderNumber)) {
+                  focusedActivity = { id: a.id, orderNumber: a.orderNumber, name: a.name };
+                }
+              }
+              if (!recentActivitiesMap.has(a.id) && recentActivitiesMap.size < 4) {
+                recentActivitiesMap.set(a.id, {
+                  id: a.id,
+                  orderNumber: a.orderNumber,
+                  name: a.name,
+                });
+              }
+            }
+          }
+
+          const mats = msg.materials || (msg.material ? [msg.material] : []);
+          for (const m of mats) {
+            if (m.id && m.name) {
+              if (!focusedMaterial) {
+                focusedMaterial = { id: m.id, code: m.code || "MAT", name: m.name };
+              }
+              if (!recentMaterialsMap.has(m.id) && recentMaterialsMap.size < 2) {
+                recentMaterialsMap.set(m.id, {
+                  id: m.id,
+                  code: m.code || "MAT",
+                  name: m.name,
+                });
+              }
+            }
+          }
+        }
+
+        // Se o contexto tiver pelo menos 2 atividades e o usuário perguntar por comparação/diferença
+        const isComparisonIntent = /\b(compar|diferen|qual delas|entre elas|ambas|as duas)\b/i.test(trimmed);
+        if (isComparisonIntent && recentActivitiesMap.size >= 2) {
+          Array.from(recentActivitiesMap.keys()).slice(0, 2).forEach((id) => comparisonIds.push(id));
+        }
+
+        const recentMemory = {
+          focusedEntity: (focusedActivity || focusedMaterial) ? {
+            activityId: focusedActivity?.id,
+            orderNumber: focusedActivity?.orderNumber,
+            activityName: focusedActivity?.name,
+            materialId: focusedMaterial?.id,
+            materialCode: focusedMaterial?.code,
+            materialName: focusedMaterial?.name,
+            comparisonActivityIds: comparisonIds.length > 0 ? comparisonIds : undefined,
+          } : undefined,
+          recentActivities: Array.from(recentActivitiesMap.values()),
+          recentMaterials: Array.from(recentMaterialsMap.values()),
+        };
+
         // Disparo imediato da requisição ao backend (0ms de overhead no client)
         const response = await fetch("/api/ia/chat", {
           method: "POST",
@@ -279,6 +354,7 @@ export function useIaChat() {
             messages: payloadMessages,
             clientContext: {
               currentModule: "pintura/ia",
+              recentMemory,
             },
           }),
           signal: abortControllerRef.current.signal,

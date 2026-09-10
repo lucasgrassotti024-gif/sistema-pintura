@@ -12,6 +12,41 @@ export type AiDomain =
   | "alertas"
   | "gestao";
 
+export interface AiEntityMemoryActivity {
+  id: string;
+  orderNumber: string;
+  name: string;
+}
+
+export interface AiEntityMemoryMaterial {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface AiEntityFocus {
+  activityId?: string;
+  orderNumber?: string;
+  activityName?: string;
+  materialId?: string;
+  materialCode?: string;
+  materialName?: string;
+  comparisonActivityIds?: string[];
+  lastTopic?: "status" | "materiais" | "consumo" | "atraso" | "geral";
+}
+
+/**
+ * Memória estruturada e compacta de curto prazo (entidade em foco + entidades relacionadas recentes).
+ * - 1 entidade principal em foco (ou par de comparação)
+ * - Até 4 atividades relacionadas recentes
+ * - Até 2 materiais relacionados recentes
+ */
+export interface AiConversationMemory {
+  focusedEntity?: AiEntityFocus;
+  recentActivities: AiEntityMemoryActivity[];
+  recentMaterials: AiEntityMemoryMaterial[];
+}
+
 /**
  * Contexto operacional transmitido da sessão do usuário para a IA.
  */
@@ -22,6 +57,7 @@ export interface AiSessionContext {
   currentModule?: string;
   currentActivityId?: string;
   permissions?: string[];
+  recentMemory?: AiConversationMemory;
 }
 
 /**
@@ -34,6 +70,21 @@ export interface AiToolExecutionLog {
   success: boolean;
   durationMs: number;
   resultSummary?: string;
+  error?: string;
+}
+
+/**
+ * Registro estruturado de telemetria operacional (sem dados sensíveis, sem chaves).
+ */
+export interface AiOperationalTelemetry {
+  timestampISO: string;
+  questionSnippet: string;
+  modelUsed: string;
+  fallbackUsed: boolean;
+  totalDurationMs: number;
+  geminiIterations: number;
+  toolsExecuted: Array<{ toolName: string; durationMs: number; success: boolean }>;
+  hasMemoryContext: boolean;
   error?: string;
 }
 

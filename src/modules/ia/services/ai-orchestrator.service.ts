@@ -206,7 +206,49 @@ export async function orchestrateAiConversation(
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // 3. Montar instrução do sistema contextualizada
+  // 3. Montar instrução do sistema contextualizada e injetar memória estruturada compacta de curto prazo
+  let memoryContextText = "";
+  if (context.recentMemory) {
+    const { focusedEntity, recentActivities, recentMaterials } = context.recentMemory;
+    const parts: string[] = [];
+
+    if (focusedEntity) {
+      const focusParts: string[] = [];
+      if (focusedEntity.orderNumber) {
+        focusParts.push(`OS Principal em Foco: ${focusedEntity.orderNumber}${focusedEntity.activityName ? ` ("${focusedEntity.activityName}")` : ""}`);
+      }
+      if (focusedEntity.materialName) {
+        focusParts.push(`Material em Foco: ${focusedEntity.materialName}${focusedEntity.materialCode ? ` (${focusedEntity.materialCode})` : ""}`);
+      }
+      if (focusedEntity.comparisonActivityIds && focusedEntity.comparisonActivityIds.length > 1) {
+        focusParts.push(`Cenário de Comparação: Frentes concorrentes/comparadas ativas no diálogo.`);
+      }
+      if (focusParts.length > 0) {
+        parts.push(`ENTIDADE(S) EM FOCO ATUAL:\n${focusParts.map((f) => `- ${f}`).join("\n")}`);
+      }
+    }
+
+    if (recentActivities && recentActivities.length > 0) {
+      parts.push(
+        `Atividades no contexto recente (máx 4):\n${recentActivities
+          .map((a) => `- OS ${a.orderNumber} ("${a.name}")`)
+          .join("\n")}`
+      );
+    }
+
+    if (recentMaterials && recentMaterials.length > 0) {
+      parts.push(
+        `Materiais no contexto recente (máx 2):\n${recentMaterials
+          .map((m) => `- ${m.name} (${m.code})`)
+          .join("\n")}`
+      );
+    }
+
+    if (parts.length > 0) {
+      memoryContextText = `\n## MEMÓRIA DE CURTO PRAZO DO TURNO (RESOLUÇÃO DE REFERÊNCIAS):\n${parts.join("\n\n")}\n*Atenção: A memória identifica as entidades dos pronomes ('ela', 'delas', 'essa OS', 'esse consumo'). Para saber o estado dinâmico atual (status, progresso, saldo de estoque presente), consulte SEMPRE o banco através da ferramenta apropriada.*\n`;
+    }
+  }
+
   const systemInstruction = `
 ${OPERATIONAL_AI_SYSTEM_PROMPT}
 
@@ -214,7 +256,7 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
 - Data de Referência do Sistema (Hoje): ${context.todayISO}
 - Usuário Conectado: ${context.userFullName || "Operador do Sistema"}
 - Módulo Atual na Interface: ${context.currentModule || "Geral"}
-`;
+${memoryContextText}`;
 
   // 4. Histórico de conversação multi-turn (últimas 10 mensagens)
   const conversationHistory: Content[] = messages.slice(-10).map((m) => ({
@@ -388,13 +430,24 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
         });
       }
 
-      // 6. Observabilidade e Auditoria de Chamadas
+      // 6. Observabilidade e Telemetria Operacional Estruturada (sem chaves, sem dados sensíveis)
       const totalDuration = Date.now() - startTimeTotal;
-      console.info(
-        `[AI Orchestrator] Pergunta: "${latestMessage.substring(0, 45)}" | Modelo: ${currentModel} | Requests Gemini: ${geminiApiCallCount} | Tools: ${
-          executionLogs.map((l) => `${l.toolName}(${l.durationMs}ms)`).join(", ") || "nenhuma"
-        } | Duração Total: ${totalDuration}ms`
-      );
+      const telemetry = {
+        timestampISO: new Date().toISOString(),
+        pergunta: latestMessage.substring(0, 50),
+        modelo: currentModel,
+        fallbackAcionado: currentModel !== FALLBACK_MODELS[0],
+        duracaoTotalMs: totalDuration,
+        iteracoesGemini: geminiApiCallCount,
+        toolsExecutadas: executionLogs.map((l) => ({
+          tool: l.toolName,
+          duracaoMs: l.durationMs,
+          sucesso: l.success,
+        })),
+        temMemoriaContexto: Boolean(context.recentMemory && (context.recentMemory.recentActivities.length > 0 || context.recentMemory.recentMaterials.length > 0)),
+      };
+
+      console.info(`[AI Orchestrator Telemetry] ${JSON.stringify(telemetry)}`);
 
       // 7. O Gemini JÁ gerou o texto final no loop.
       // Se houver referências coletadas reais, empacotamos no final do texto para o cliente decodificar

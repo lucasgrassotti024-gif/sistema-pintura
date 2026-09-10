@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { FunctionDeclaration, Type } from "@google/genai";
+import { calculatePlannedVsConsumed } from "../rules/operational-analytics.rules";
 
 export const consumptionDeclarations: FunctionDeclaration[] = [
   {
@@ -116,7 +117,7 @@ export async function executeConsumptionTool(
     );
   }
 
-  // Se consultou uma OS específica, compila comparativo Planejado vs. Realizado
+  // Se consultou uma OS específica, compila comparativo Planejado vs. Realizado usando regra pura determinística
   let comparativoPlanejadoRealizado: any[] | null = null;
   if (activityId && plannedMaterialsList.length > 0) {
     comparativoPlanejadoRealizado = plannedMaterialsList.map((pm: any) => {
@@ -128,22 +129,29 @@ export async function executeConsumptionTool(
         .filter((c) => c.material.toLowerCase() === matName.toLowerCase())
         .reduce((sum, c) => sum + c.quantidade_consumida, 0);
 
-      const desvio = totalConsumed - plannedQty;
-      const percentualConsumido = plannedQty > 0 ? Math.round((totalConsumed / plannedQty) * 100) : 0;
+      const calc = calculatePlannedVsConsumed(plannedQty, totalConsumed);
 
       return {
         material: matName,
-        quantidade_planejada: plannedQty,
-        quantidade_consumida_real: totalConsumed,
+        quantidade_planejada: calc.planned,
+        quantidade_consumida_real: calc.consumed,
+        saldo_restante_a_consumir: calc.remaining,
         unidade: pm.unit,
-        desvio_saldo: desvio,
-        percentual_atendido: percentualConsumido,
-        status: desvio > 0 ? "acima_do_planejado" : totalConsumed === plannedQty ? "conforme" : "abaixo_do_planejado",
+        percentual_atendido: calc.percentConsumed,
+        totalmente_consumido: calc.isFullyConsumed,
+        excedeu_planejado: calc.isOverconsumed,
+        quantidade_excedente: calc.overconsumedAmount,
+        status: calc.isOverconsumed ? "acima_do_planejado" : calc.isFullyConsumed ? "conforme" : "abaixo_do_planejado",
       };
     });
   }
 
+  const possuiConsumoRegistrado = consumptions.length > 0;
+  const possuiPlanejamentoCadastrado = plannedMaterialsList.length > 0;
+
   return {
+    possui_consumo_registrado: possuiConsumoRegistrado,
+    possui_planejamento_cadastrado: possuiPlanejamentoCadastrado,
     total_apontamentos: consumptions.length,
     apontamentos: consumptions,
     comparativo_planejado_vs_realizado: comparativoPlanejadoRealizado,

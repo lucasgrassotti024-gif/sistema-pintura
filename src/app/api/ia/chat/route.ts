@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
         currentModule?: string;
         currentActivityId?: string;
         permissions?: string[];
+        recentMemory?: any;
       };
     };
 
