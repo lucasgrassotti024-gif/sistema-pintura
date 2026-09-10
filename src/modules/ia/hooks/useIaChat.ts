@@ -224,15 +224,18 @@ export function useIaChat() {
       abortControllerRef.current = new AbortController();
 
       try {
-        // Garantir que existe uma conversa ativa no banco
-        let currentConv = activeConversationRef.current;
-        if (!currentConv) {
-          const titleBase = trimmed || (attachment?.activity ? `OS ${attachment.activity.orderNumber}` : "Material");
-          const initialTitle = titleBase.length > 45 ? `${titleBase.substring(0, 42)}...` : titleBase;
-          currentConv = await createConversation(supabase, user.id, initialTitle);
-          setActiveConversation(currentConv);
-          activeConversationRef.current = currentConv;
-        }
+        // Obter ou criar conversa ativa em background (não bloqueia a ida ao backend da IA)
+        const conversationPromise = (async () => {
+          let conv = activeConversationRef.current;
+          if (!conv) {
+            const titleBase = trimmed || (attachment?.activity ? `OS ${attachment.activity.orderNumber}` : "Material");
+            const initialTitle = titleBase.length > 45 ? `${titleBase.substring(0, 42)}...` : titleBase;
+            conv = await createConversation(supabase, user.id, initialTitle);
+            setActiveConversation(conv);
+            activeConversationRef.current = conv;
+          }
+          return conv;
+        })();
 
         // Serializa com metadados de anexo caso exista para salvar no banco
         let contentToPersist = trimmed;
@@ -245,8 +248,12 @@ export function useIaChat() {
         }
 
         // Persistir a mensagem do usuário no banco em background
-        saveIaMessage(supabase, currentConv.id, "user", contentToPersist).catch((err) => {
-          console.error("[useIaChat] Falha ao persistir mensagem do usuário:", err);
+        conversationPromise.then((conv) => {
+          if (conv) {
+            saveIaMessage(supabase, conv.id, "user", contentToPersist).catch((err) => {
+              console.error("[useIaChat] Falha ao persistir mensagem do usuário:", err);
+            });
+          }
         });
 
         // Montar histórico recente para envio ao Gemini (últimas 10 mensagens)
@@ -264,6 +271,7 @@ export function useIaChat() {
           };
         });
 
+        // Disparo imediato da requisição ao backend (0ms de overhead no client)
         const response = await fetch("/api/ia/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -341,8 +349,11 @@ export function useIaChat() {
         );
 
         // Persistir a resposta gerada pela IA no banco preservando o payload completo com metadados
-        if (accumulatedText.trim() && currentConv) {
-          await saveIaMessage(supabase, currentConv.id, "ia", accumulatedText);
+        if (accumulatedText.trim()) {
+          const conv = await conversationPromise;
+          if (conv) {
+            await saveIaMessage(supabase, conv.id, "ia", accumulatedText);
+          }
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") {

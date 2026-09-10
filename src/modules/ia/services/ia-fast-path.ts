@@ -6,7 +6,6 @@
  * consultas de dados no Supabase.
  */
 
-// Conjunto estrito de saudações isoladas normalizadas
 const ISOLATED_GREETINGS = new Set([
   "oi",
   "ola",
@@ -25,6 +24,19 @@ const ISOLATED_GREETINGS = new Set([
   "ola ia",
   "olá ia",
   "oi ia",
+  "obrigado",
+  "obrigada",
+  "valeu",
+  "perfeito obrigado",
+  "entendi obrigado",
+  "obrigado pela ajuda",
+  "muito obrigado",
+  "ok obrigado",
+  "tudo bem",
+  "tudo certo",
+  "como vai",
+  "como voce esta",
+  "como você está",
 ]);
 
 /**
@@ -51,8 +63,14 @@ export function getFastPathGreeting(rawMessage: string): string | null {
     .replace(/\s+/g, " ")                 // colapsa múltiplos espaços em um só
     .trim();
 
-  // 3. Verifica se a frase inteira corresponde a uma saudação isolada conhecida
+  // 3. Verifica se a frase inteira corresponde a uma saudação ou agradecimento conhecido
   if (ISOLATED_GREETINGS.has(normalized)) {
+    if (normalized.includes("obrigad") || normalized.includes("valeu")) {
+      return "À disposição! Qualquer dúvida operacional sobre frentes de pintura, materiais ou cronograma, é só me chamar.";
+    }
+    if (normalized.includes("tudo bem") || normalized.includes("como vai") || normalized.includes("como voc")) {
+      return "Tudo ótimo por aqui na operação! Como posso apoiar seu turno hoje com atividades, estoque de materiais ou cronograma?";
+    }
     return "Olá! Sou o Assistente Operacional de Engenharia da Planta. Como posso apoiar seu turno hoje com atividades, frentes de trabalho, estoque de materiais ou cronograma?";
   }
 

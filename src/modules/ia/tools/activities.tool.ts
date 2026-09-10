@@ -209,10 +209,7 @@ export async function executeActivitiesTool(
             users (full_name)
           ),
           activity_photos (
-            id,
-            stage,
-            photo_url,
-            created_at
+            stage
           )
         `)
         .or(`order_number.ilike.%${cleanIdentificador}%,id.eq.${cleanIdentificador}`)

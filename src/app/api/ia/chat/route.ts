@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Montar contexto operacional da sessão
-    const context = await buildAiSessionContext(supabase, clientContext);
+    const context = await buildAiSessionContext(supabase, user, clientContext);
 
     // 4. Delegar ao AI Orchestrator
     return await orchestrateAiConversation(messages, context, supabase);
