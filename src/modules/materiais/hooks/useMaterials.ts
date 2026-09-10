@@ -58,9 +58,10 @@ export function useMaterials() {
   // Sincronização em tempo real (Supabase Realtime para materials)
   useEffect(() => {
     const supabase = createClient();
+    const channelId = `realtime-materials-${Math.random().toString(36).substring(2, 9)}`;
 
     const channel = supabase
-      .channel("realtime-materials-planning-channel")
+      .channel(channelId)
       .on(
         "postgres_changes",
         {
@@ -69,29 +70,42 @@ export function useMaterials() {
           table: "materials",
         },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            const newMaterial = mapRowToMaterial(payload.new as SupabaseMaterialRow);
-            setMaterials((prev) => {
-              if (prev.some((m) => m.id === newMaterial.id)) return prev;
-              return [newMaterial, ...prev];
-            });
-          } else if (payload.eventType === "UPDATE") {
-            const updatedMaterial = mapRowToMaterial(payload.new as SupabaseMaterialRow);
-            setMaterials((prev) =>
-              prev.map((m) => (m.id === updatedMaterial.id ? updatedMaterial : m))
-            );
-          } else if (payload.eventType === "DELETE") {
-            const deletedId = (payload.old as { id: string }).id;
-            setMaterials((prev) => prev.filter((m) => m.id !== deletedId));
+          try {
+            if (payload.eventType === "INSERT") {
+              const newMaterial = mapRowToMaterial(payload.new as SupabaseMaterialRow);
+              setMaterials((prev) => {
+                if (prev.some((m) => m.id === newMaterial.id)) return prev;
+                return [newMaterial, ...prev];
+              });
+            } else if (payload.eventType === "UPDATE") {
+              const updatedMaterial = mapRowToMaterial(payload.new as SupabaseMaterialRow);
+              setMaterials((prev) =>
+                prev.map((m) => (m.id === updatedMaterial.id ? updatedMaterial : m))
+              );
+            } else if (payload.eventType === "DELETE") {
+              const deletedId = (payload.old as { id: string }).id;
+              setMaterials((prev) => prev.filter((m) => m.id !== deletedId));
+            }
+            // Recarregar métricas para garantir sincronia física
+            loadMaterials();
+          } catch (err) {
+            console.warn("[useMaterials] Erro ao sincronizar evento Realtime:", err);
           }
-          // Recarregar métricas para garantir sincronia física
-          loadMaterials();
         }
-      )
-      .subscribe();
+      );
+
+    channel.subscribe((status) => {
+      if (status === "CHANNEL_ERROR") {
+        console.warn("[useMaterials] Falha ao conectar ao canal Realtime");
+      }
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        console.warn("[useMaterials] Erro ao remover canal Realtime:", e);
+      }
     };
   }, [loadMaterials]);
 

@@ -14,3 +14,4 @@ export function createClient() {
 
   return createBrowserClient(supabaseEnv.url, supabaseEnv.anonKey);
 }
+

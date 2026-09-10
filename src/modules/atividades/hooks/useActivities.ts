@@ -85,9 +85,10 @@ export function useActivities() {
   // ----------------------------------------------------------------------------
   useEffect(() => {
     const supabase = createClient();
+    const channelId = `realtime-activities-${Math.random().toString(36).substring(2, 9)}`;
 
     const channel = supabase
-      .channel("realtime-activities-channel")
+      .channel(channelId)
       .on(
         "postgres_changes",
         {
@@ -96,36 +97,49 @@ export function useActivities() {
           table: "activities",
         },
         async (payload) => {
-          if (payload.eventType === "INSERT") {
-            const newId = (payload.new as { id: string }).id;
-            const fullActivity = await getActivityById(newId);
-            if (fullActivity && !fullActivity.archivedAt) {
-              setActivities((prev) => upsertActivityInList(prev, fullActivity));
-            }
-          } else if (payload.eventType === "UPDATE") {
-            const updatedId = (payload.new as { id: string }).id;
-            const fullActivity = await getActivityById(updatedId);
-            if (fullActivity) {
-              if (fullActivity.archivedAt) {
-                // Se foi arquivada, remove da listagem operacional ativa
-                setActivities((prev) => prev.filter((a) => a.id !== updatedId));
-                setSelectedActivity((curr) => (curr?.id === updatedId ? null : curr));
-              } else {
+          try {
+            if (payload.eventType === "INSERT") {
+              const newId = (payload.new as { id: string }).id;
+              const fullActivity = await getActivityById(newId);
+              if (fullActivity && !fullActivity.archivedAt) {
                 setActivities((prev) => upsertActivityInList(prev, fullActivity));
-                setSelectedActivity((curr) => (curr?.id === updatedId ? fullActivity : curr));
               }
+            } else if (payload.eventType === "UPDATE") {
+              const updatedId = (payload.new as { id: string }).id;
+              const fullActivity = await getActivityById(updatedId);
+              if (fullActivity) {
+                if (fullActivity.archivedAt) {
+                  // Se foi arquivada, remove da listagem operacional ativa
+                  setActivities((prev) => prev.filter((a) => a.id !== updatedId));
+                  setSelectedActivity((curr) => (curr?.id === updatedId ? null : curr));
+                } else {
+                  setActivities((prev) => upsertActivityInList(prev, fullActivity));
+                  setSelectedActivity((curr) => (curr?.id === updatedId ? fullActivity : curr));
+                }
+              }
+            } else if (payload.eventType === "DELETE") {
+              const deletedId = (payload.old as { id: string }).id;
+              setActivities((prev) => prev.filter((a) => a.id !== deletedId));
+              setSelectedActivity((curr) => (curr?.id === deletedId ? null : curr));
             }
-          } else if (payload.eventType === "DELETE") {
-            const deletedId = (payload.old as { id: string }).id;
-            setActivities((prev) => prev.filter((a) => a.id !== deletedId));
-            setSelectedActivity((curr) => (curr?.id === deletedId ? null : curr));
+          } catch (err) {
+            console.warn("[useActivities] Erro ao sincronizar evento Realtime:", err);
           }
         }
-      )
-      .subscribe();
+      );
+
+    channel.subscribe((status) => {
+      if (status === "CHANNEL_ERROR") {
+        console.warn("[useActivities] Falha ao conectar ao canal Realtime");
+      }
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        console.warn("[useActivities] Erro ao remover canal Realtime:", e);
+      }
     };
   }, []);
 
