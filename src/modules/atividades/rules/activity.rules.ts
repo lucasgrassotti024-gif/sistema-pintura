@@ -26,8 +26,12 @@ export function calculateStatusByProgress(newProgress: number): ActivityStatus {
 }
 
 export function isActivityDelayed(activity: Activity, referenceDate: string = "2026-08-23"): boolean {
-  if (activity.status === "concluida" || activity.status === "cancelada") {
+  if (!activity || activity.status === "concluida" || activity.status === "cancelada") {
     return false;
   }
-  return activity.schedule.plannedEndDate < referenceDate;
+  const plannedEnd = activity.schedule?.plannedEndDate;
+  if (!plannedEnd) {
+    return false;
+  }
+  return plannedEnd < referenceDate;
 }

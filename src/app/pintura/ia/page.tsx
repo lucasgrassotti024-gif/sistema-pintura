@@ -62,33 +62,53 @@ export default function IAPage() {
   }, []);
 
   const summary = useMemo(() => {
-    const active = rawActivities.filter(
-      (a) =>
-        a.status === "programada" ||
-        a.status === "em_andamento" ||
-        a.status === "planejada" ||
-        a.status === "pausada"
-    );
+    try {
+      const active = (rawActivities || []).filter(
+        (a) =>
+          a &&
+          (a.status === "programada" ||
+            a.status === "em_andamento" ||
+            a.status === "planejada" ||
+            a.status === "pausada")
+      );
 
-    const delayed = active.filter((a) => isActivityDelayed(a, todayISO));
+      const delayed = active.filter((a) => {
+        try {
+          return isActivityDelayed(a, todayISO);
+        } catch {
+          return false;
+        }
+      });
 
-    const dueSoon = active.filter(
-      (a) =>
-        a.schedule.plannedEndDate >= todayISO &&
-        a.schedule.plannedEndDate <= tomorrowISO &&
-        Number(a.progressPercentage || 0) < 80
-    );
+      const dueSoon = active.filter((a) => {
+        const plannedEnd = a.schedule?.plannedEndDate;
+        if (!plannedEnd) return false;
+        return (
+          plannedEnd >= todayISO &&
+          plannedEnd <= tomorrowISO &&
+          Number(a.progressPercentage || 0) < 80
+        );
+      });
 
-    const criticalMaterials = materials.filter(
-      (m) => m.active && m.currentStock < m.minimumStock
-    );
+      const criticalMaterials = (materials || []).filter(
+        (m) => m && m.active && Number(m.currentStock || 0) < Number(m.minimumStock || 0)
+      );
 
-    return {
-      activeCount: active.length,
-      delayedCount: delayed.length,
-      dueSoonCount: dueSoon.length,
-      criticalMaterialsCount: criticalMaterials.length,
-    };
+      return {
+        activeCount: active.length,
+        delayedCount: delayed.length,
+        dueSoonCount: dueSoon.length,
+        criticalMaterialsCount: criticalMaterials.length,
+      };
+    } catch (err) {
+      console.warn("[IAPage] Falha defensiva ao calcular summary operacional:", err);
+      return {
+        activeCount: 0,
+        delayedCount: 0,
+        dueSoonCount: 0,
+        criticalMaterialsCount: 0,
+      };
+    }
   }, [rawActivities, materials, todayISO, tomorrowISO]);
 
   const dynamicSuggestions = useMemo(() => {
@@ -144,7 +164,7 @@ export default function IAPage() {
       status: act.status,
       priority: act.priority,
       progressPercentage: act.progressPercentage,
-      plannedEndDate: act.schedule.plannedEndDate,
+      plannedEndDate: act.schedule?.plannedEndDate || "",
       areaName: act.location?.area,
       assignedTo: act.assignedTo,
     });
