@@ -90,7 +90,7 @@ function parseMessageContent(rawContent: string): {
 }
 
 export function useIaChat() {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   // 1. Instância singleton estável do cliente Supabase para o Browser (evita re-instanciação a cada render)
   const supabase = useMemo(() => createClient(), []);
@@ -98,7 +98,7 @@ export function useIaChat() {
   const [activeConversation, setActiveConversation] = useState<IaConversation | null>(null);
   const [messages, setMessages] = useState<IaChatMessage[]>([INITIAL_WELCOME_MESSAGE]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -118,17 +118,29 @@ export function useIaChat() {
   }, [activeConversation]);
 
   /**
-   * 1. Carregar a conversa ativa mais recente do usuário autenticado
+   * 1. Carregar a conversa ativa mais recente do usuário autenticado em background
+   * NUNCA bloqueia a interface do chat: o chat permanece pronto para digitação imediatamente.
    */
   const loadActiveConversation = useCallback(async () => {
+    // Se a autenticação ainda estiver carregando, aguarda
+    if (authLoading) return;
+
+    // Se não há usuário autenticado após carregar o auth, finaliza
     if (!user) {
       setIsInitializing(false);
       return;
     }
 
+    setIsInitializing(true);
+
+    // Timeout de segurança defensivo (4s) para NUNCA prender a UI
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), 4000);
+    });
+
     try {
-      setIsInitializing(true);
-      const result = await getLatestActiveConversation(supabase, user.id);
+      const fetchPromise = getLatestActiveConversation(supabase, user.id);
+      const result = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (result && result.messages.length > 0) {
         setActiveConversation(result.conversation);
@@ -158,17 +170,13 @@ export function useIaChat() {
         setMessages(formatted);
       } else if (result && result.messages.length === 0) {
         setActiveConversation(result.conversation);
-        setMessages([INITIAL_WELCOME_MESSAGE]);
-      } else {
-        setActiveConversation(null);
-        setMessages([INITIAL_WELCOME_MESSAGE]);
       }
     } catch (err) {
-      console.error("[useIaChat] Erro ao carregar histórico persistido:", err);
+      console.warn("[useIaChat] Aviso ao carregar histórico em segundo plano:", err);
     } finally {
       setIsInitializing(false);
     }
-  }, [user, supabase]);
+  }, [user, authLoading, supabase]);
 
   useEffect(() => {
     loadActiveConversation();

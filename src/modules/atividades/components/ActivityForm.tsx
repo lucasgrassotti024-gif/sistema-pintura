@@ -17,9 +17,11 @@ import {
   deleteActivityPhotos,
   getActivityPhotos,
 } from "../services/activity.service";
+import { ImageLightboxModal } from "@/modules/chat/components/ImageLightboxModal";
 
 interface ActivityFormProps {
   initialActivity?: Activity | null; // Quando fornecido, atua em modo de EDIÇÃO da atividade
+  readOnly?: boolean; // Quando true, formulário atua em modo SOMENTE LEITURA ("Ver detalhes")
   onSave: (activity: Activity) => Promise<void> | void;
   onCancel: () => void;
 }
@@ -66,7 +68,7 @@ const PRESET_TEAMS = [
   "Equipe de Manutenção Rápida",
 ];
 
-export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityFormProps) {
+export function ActivityForm({ initialActivity, readOnly = false, onSave, onCancel }: ActivityFormProps) {
   const isEditing = Boolean(initialActivity);
 
   // Identificação
@@ -183,8 +185,9 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
       setLoadingUsers(true);
       try {
         const users = await getAssignableUsers();
-        if (!isMounted) return;
-        setAssignableUsers(users);
+        if (isMounted) {
+          setAssignableUsers(users);
+        }
 
         // Se houver initialActivity com assignedUserId mas sem assignedTo, resolve o nome
         if (initialActivity?.assignedUserId && !initialActivity?.assignedTo) {
@@ -244,12 +247,13 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
   // Observações
   const [observations, setObservations] = useState(initialActivity?.observations || "");
 
-  // Fotos da Atividade
+  // Fotos da Atividade e Lightbox
   const [existingPhotos, setExistingPhotos] = useState<ActivityPhotoItem[]>(initialActivity?.photos || []);
   const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([]);
   const [newPhotoPreviews, setNewPhotoPreviews] = useState<{ id: string; file: File; previewUrl: string }[]>([]);
   const [photoIdsToDelete, setPhotoIdsToDelete] = useState<string[]>([]);
   const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name?: string } | null>(null);
 
   // Carregar fotos existentes caso não venham em initialActivity
   useEffect(() => {
@@ -445,6 +449,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (readOnly) return;
     if (isSubmittingRef.current) return;
     setError(null);
 
@@ -652,11 +657,24 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
     <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-6 space-y-6 shadow-sm max-w-4xl mx-auto transition-colors duration-200">
       <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-3">
         <div>
-          <h2 className="text-lg font-bold text-[var(--text-primary)]">
-            {isEditing ? `Editar Atividade: ${initialActivity?.orderNumber}` : "Cadastrar Nova Atividade"}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">
+              {readOnly
+                ? `Detalhes da Atividade: ${initialActivity?.orderNumber}`
+                : isEditing
+                ? `Editar Atividade: ${initialActivity?.orderNumber}`
+                : "Cadastrar Nova Atividade"}
+            </h2>
+            {readOnly && (
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                Modo Somente Leitura
+              </span>
+            )}
+          </div>
           <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            {isEditing
+            {readOnly
+              ? "Visualização operacional detalhada de todos os parâmetros, responsáveis, materiais e fotos da atividade."
+              : isEditing
               ? "Altere os dados operacionais ou datas da atividade. O identificador, progresso físico e consumos serão preservados."
               : "Preencha os dados operacionais. A atividade iniciará com status PROGRAMADA e 0% de progresso."}
           </p>
@@ -666,7 +684,7 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
           onClick={onCancel}
           className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-3 py-1.5 bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-subtle)] transition-colors cursor-pointer"
         >
-          Cancelar
+          {readOnly ? "Fechar" : "Cancelar"}
         </button>
       </div>
 
@@ -691,9 +709,9 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
-                disabled={isEditing} // Regra: Nota é imutável em edição para preservar a identidade da OS
+                disabled={isEditing || readOnly} // Regra: Nota é imutável em edição para preservar a identidade da OS
                 className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
-                  isEditing ? "opacity-60 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                  isEditing || readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
                 }`}
                 required
               />
@@ -709,7 +727,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
                 required
               />
             </div>
@@ -723,7 +744,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <select
                 value={serviceType}
                 onChange={(e) => setServiceType(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               >
                 {PRESET_SERVICE_TYPES.map((st) => (
                   <option key={st} value={st}>
@@ -740,7 +764,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={originReference}
                 onChange={(e) => setOriginReference(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               />
             </div>
           </div>
@@ -753,7 +780,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+              disabled={readOnly}
+              className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+              }`}
             />
           </div>
         </div>
@@ -772,7 +802,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               >
                 {PRESET_AREAS.map((a) => (
                   <option key={a} value={a}>
@@ -786,7 +819,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customArea}
                   onChange={(e) => setCustomArea(e.target.value)}
-                  className="mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  disabled={readOnly}
+                  className={`mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                    readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                  }`}
                   required
                 />
               )}
@@ -800,7 +836,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <select
                 value={selectedLocal}
                 onChange={(e) => setSelectedLocal(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               >
                 {PRESET_LOCALS.map((l) => (
                   <option key={l} value={l}>
@@ -814,7 +853,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customLocal}
                   onChange={(e) => setCustomLocal(e.target.value)}
-                  className="mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  disabled={readOnly}
+                  className={`mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                    readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                  }`}
                 />
               )}
             </div>
@@ -827,7 +869,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <select
                 value={selectedEquipment}
                 onChange={(e) => setSelectedEquipment(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               >
                 {PRESET_EQUIPMENTS.map((eq) => (
                   <option key={eq} value={eq}>
@@ -841,7 +886,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   type="text"
                   value={customEquipment}
                   onChange={(e) => setCustomEquipment(e.target.value)}
-                  className="mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  disabled={readOnly}
+                  className={`mt-1.5 w-full text-xs border border-[var(--border-medium)] rounded px-2.5 py-1 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                    readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                  }`}
                 />
               )}
             </div>
@@ -862,7 +910,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="text"
                 value={mainTag}
                 onChange={(e) => setMainTag(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               />
             </div>
 
@@ -870,22 +921,24 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
                 Tags Adicionais (Opcionais)
               </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={newAdditionalTag}
-                  onChange={(e) => setNewAdditionalTag(e.target.value)}
-                  className="flex-1 text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddAdditionalTag}
-                  className="px-3 py-1.5 text-xs font-semibold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] border border-[var(--border-medium)] rounded text-[var(--text-primary)] transition-colors cursor-pointer"
-                >
-                  + Adicionar
-                </button>
-              </div>
-              {additionalTags.length > 0 && (
+              {!readOnly && (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newAdditionalTag}
+                    onChange={(e) => setNewAdditionalTag(e.target.value)}
+                    className="flex-1 text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 uppercase font-mono focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddAdditionalTag}
+                    className="px-3 py-1.5 text-xs font-semibold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] border border-[var(--border-medium)] rounded text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    + Adicionar
+                  </button>
+                </div>
+              )}
+              {additionalTags.length > 0 ? (
                 <div className="flex gap-1.5 flex-wrap mt-2">
                   {additionalTags.map((tag, idx) => (
                     <span
@@ -893,17 +946,21 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                       className="inline-flex items-center gap-1 text-xs font-mono bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] px-2 py-0.5 rounded text-[var(--text-primary)]"
                     >
                       {tag}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveAdditionalTag(idx)}
-                        className="text-[var(--text-muted)] hover:text-rose-500 font-bold ml-1 cursor-pointer"
-                      >
-                        ×
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveAdditionalTag(idx)}
+                          className="text-[var(--text-muted)] hover:text-rose-500 font-bold ml-1 cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      )}
                     </span>
                   ))}
                 </div>
-              )}
+              ) : readOnly ? (
+                <p className="text-xs text-[var(--text-muted)] italic mt-1.5">Nenhuma tag adicional.</p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -922,7 +979,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="date"
                 value={plannedStartDate}
                 onChange={(e) => setPlannedStartDate(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
                 required
               />
             </div>
@@ -935,7 +995,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 type="date"
                 value={plannedEndDate}
                 onChange={(e) => setPlannedEndDate(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-2.5 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
                 required
               />
             </div>
@@ -947,7 +1010,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as ActivityPriority)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               >
                 <option value="baixa">Baixa</option>
                 <option value="media">Média</option>
@@ -965,36 +1031,44 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <div className="relative">
                 <button
                   type="button"
+                  disabled={readOnly}
                   onClick={() => {
+                    if (readOnly) return;
                     setIsUserDropdownOpen((prev) => !prev);
                     setUserSearchTerm("");
                   }}
-                  className="w-full text-left text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 bg-[var(--bg-surface)] hover:border-slate-500 focus:ring-1 focus:ring-blue-500 focus:outline-hidden flex items-center justify-between cursor-pointer transition-colors"
+                  className={`w-full text-left text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 bg-[var(--bg-surface)] focus:ring-1 focus:ring-blue-500 focus:outline-hidden flex items-center justify-between transition-colors ${
+                    readOnly
+                      ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed"
+                      : "hover:border-slate-500 cursor-pointer"
+                  }`}
                 >
                   <span className={assignedTo ? "text-[var(--text-primary)] font-medium truncate" : "text-[var(--text-muted)] truncate"}>
-                    {assignedTo || "Selecione um responsável..."}
+                    {assignedTo || (readOnly ? "Não atribuído" : "Selecione um responsável...")}
                   </span>
                   
-                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                    {assignedUserId && (
-                      <span
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAssignedUserId("");
-                          setAssignedTo("");
-                        }}
-                        title="Remover responsável"
-                        className="text-xs text-[var(--text-muted)] hover:text-rose-400 p-0.5 rounded cursor-pointer transition-colors"
-                      >
-                        ×
-                      </span>
-                    )}
-                    <span className="text-[10px] text-[var(--text-muted)]">▼</span>
-                  </div>
+                  {!readOnly && (
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      {assignedUserId && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssignedUserId("");
+                            setAssignedTo("");
+                          }}
+                          title="Remover responsável"
+                          className="text-xs text-[var(--text-muted)] hover:text-rose-400 p-0.5 rounded cursor-pointer transition-colors"
+                        >
+                          ×
+                        </span>
+                      )}
+                      <span className="text-[10px] text-[var(--text-muted)]">▼</span>
+                    </div>
+                  )}
                 </button>
 
                 {/* Dropdown Flutuante Pesquisável */}
-                {isUserDropdownOpen && (
+                {!readOnly && isUserDropdownOpen && (
                   <div className="absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-hidden bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-md shadow-xl flex flex-col">
                     {/* Campo de Pesquisa Interna */}
                     <div className="p-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-raised)]">
@@ -1082,7 +1156,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <select
                 value={team}
                 onChange={(e) => setTeam(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               >
                 {PRESET_TEAMS.map((t) => (
                   <option key={t} value={t}>
@@ -1102,7 +1179,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 min="0"
                 value={serviceQuantity}
                 onChange={(e) => setServiceQuantity(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               />
             </div>
 
@@ -1113,7 +1193,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
               <select
                 value={serviceUnit}
                 onChange={(e) => setServiceUnit(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                disabled={readOnly}
+                className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+                  readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+                }`}
               >
                 <option value="m²">m² (Metros quadrados)</option>
                 <option value="m">m (Metros lineares)</option>
@@ -1130,127 +1213,129 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
             <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
               5. Materiais Planejados (Insumos do Catálogo)
             </h3>
-            {loadingCatalog && (
+            {loadingCatalog && !readOnly && (
               <span className="text-[11px] text-[var(--text-muted)] font-mono">Carregando catálogo...</span>
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-            {/* Campo de Pesquisa / Autocomplete */}
-            <div className="sm:col-span-6 relative">
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                Pesquisar Material no Catálogo
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={materialSearch}
-                  onChange={(e) => {
-                    setMaterialSearch(e.target.value);
-                    setIsSearchDropdownOpen(true);
-                    if (selectedCatalogMaterial && e.target.value !== `${selectedCatalogMaterial.code} - ${selectedCatalogMaterial.name}`) {
-                      setSelectedCatalogMaterial(null);
-                    }
-                  }}
-                  onFocus={() => setIsSearchDropdownOpen(true)}
-                  className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-                />
-                {selectedCatalogMaterial && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedCatalogMaterial(null);
-                      setMaterialSearch("");
+          {!readOnly && (
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+              {/* Campo de Pesquisa / Autocomplete */}
+              <div className="sm:col-span-6 relative">
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                  Pesquisar Material no Catálogo
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={materialSearch}
+                    onChange={(e) => {
+                      setMaterialSearch(e.target.value);
+                      setIsSearchDropdownOpen(true);
+                      if (selectedCatalogMaterial && e.target.value !== `${selectedCatalogMaterial.code} - ${selectedCatalogMaterial.name}`) {
+                        setSelectedCatalogMaterial(null);
+                      }
                     }}
-                    className="absolute right-2.5 top-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold cursor-pointer"
-                  >
-                    ×
-                  </button>
+                    onFocus={() => setIsSearchDropdownOpen(true)}
+                    className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                  />
+                  {selectedCatalogMaterial && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCatalogMaterial(null);
+                        setMaterialSearch("");
+                      }}
+                      className="absolute right-2.5 top-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold cursor-pointer"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {/* Dropdown de Autocomplete */}
+                {isSearchDropdownOpen && filteredCatalog.length > 0 && !selectedCatalogMaterial && (
+                  <div className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-md shadow-lg divide-y divide-[var(--border-subtle)] text-xs">
+                    {filteredCatalog.map((mat) => (
+                      <button
+                        key={mat.id}
+                        type="button"
+                        onClick={() => handleSelectMaterial(mat)}
+                        className="w-full text-left p-2.5 hover:bg-[var(--bg-surface-raised)] flex justify-between items-center transition-colors cursor-pointer"
+                      >
+                        <div>
+                          <span className="font-mono font-bold text-blue-600 dark:text-blue-400 mr-2">{mat.code}</span>
+                          <span className="text-[var(--text-primary)] font-medium">{mat.name}</span>
+                          <span className="text-[var(--text-muted)] text-[10px] block">{mat.type}</span>
+                        </div>
+                        <span className="text-[var(--text-secondary)] font-mono text-[11px] px-1.5 py-0.5 bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] rounded">
+                          Estoque: {mat.currentStock} {mat.unit}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
 
-              {/* Dropdown de Autocomplete */}
-              {isSearchDropdownOpen && filteredCatalog.length > 0 && !selectedCatalogMaterial && (
-                <div className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-md shadow-lg divide-y divide-[var(--border-subtle)] text-xs">
-                  {filteredCatalog.map((mat) => (
-                    <button
-                      key={mat.id}
-                      type="button"
-                      onClick={() => handleSelectMaterial(mat)}
-                      className="w-full text-left p-2.5 hover:bg-[var(--bg-surface-raised)] flex justify-between items-center transition-colors cursor-pointer"
-                    >
-                      <div>
-                        <span className="font-mono font-bold text-blue-600 dark:text-blue-400 mr-2">{mat.code}</span>
-                        <span className="text-[var(--text-primary)] font-medium">{mat.name}</span>
-                        <span className="text-[var(--text-muted)] text-[10px] block">{mat.type}</span>
-                      </div>
-                      <span className="text-[var(--text-secondary)] font-mono text-[11px] px-1.5 py-0.5 bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] rounded">
-                        Estoque: {mat.currentStock} {mat.unit}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+              {/* Quantidade Estimada */}
+              <div className="sm:col-span-3">
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                  Qtd. Estimada
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  value={matQty}
+                  onChange={(e) => setMatQty(e.target.value)}
+                  className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                />
+              </div>
 
-            {/* Quantidade Estimada */}
-            <div className="sm:col-span-3">
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                Qtd. Estimada
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                min="0.1"
-                value={matQty}
-                onChange={(e) => setMatQty(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-              />
-            </div>
+              {/* Unidade */}
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                  Unidade
+                </label>
+                <select
+                  value={matUnit}
+                  onChange={(e) => setMatUnit(e.target.value)}
+                  className="w-full text-sm border border-[var(--border-medium)] rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+                >
+                  <option value="L">L (Litros)</option>
+                  <option value="kg">kg</option>
+                  <option value="gl">Galão</option>
+                  <option value="un">Unidade</option>
+                </select>
+              </div>
 
-            {/* Unidade */}
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                Unidade
-              </label>
-              <select
-                value={matUnit}
-                onChange={(e) => setMatUnit(e.target.value)}
-                className="w-full text-sm border border-[var(--border-medium)] rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-              >
-                <option value="L">L (Litros)</option>
-                <option value="kg">kg</option>
-                <option value="gl">Galão</option>
-                <option value="un">Unidade</option>
-              </select>
-            </div>
-
-            {/* Botão de Adicionar / Salvar Edição */}
-            <div className="sm:col-span-1 flex gap-1">
-              <button
-                type="button"
-                onClick={handleAddPlannedMaterial}
-                title={editingPlannedId ? "Atualizar item" : "Adicionar material"}
-                className={`w-full py-1.5 text-xs font-bold rounded text-white transition-colors cursor-pointer ${
-                  editingPlannedId
-                    ? "bg-emerald-600 hover:bg-emerald-700"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {editingPlannedId ? "✓" : "+"}
-              </button>
-              {editingPlannedId && (
+              {/* Botão de Adicionar / Salvar Edição */}
+              <div className="sm:col-span-1 flex gap-1">
                 <button
                   type="button"
-                  onClick={handleCancelEditPlanned}
-                  title="Cancelar edição"
-                  className="py-1.5 px-2 text-xs font-bold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-pointer"
+                  onClick={handleAddPlannedMaterial}
+                  title={editingPlannedId ? "Atualizar item" : "Adicionar material"}
+                  className={`w-full py-1.5 text-xs font-bold rounded text-white transition-colors cursor-pointer ${
+                    editingPlannedId
+                      ? "bg-emerald-600 hover:bg-emerald-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
                 >
-                  ✕
+                  {editingPlannedId ? "✓" : "+"}
                 </button>
-              )}
+                {editingPlannedId && (
+                  <button
+                    type="button"
+                    onClick={handleCancelEditPlanned}
+                    title="Cancelar edição"
+                    className="py-1.5 px-2 text-xs font-bold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Lista de Materiais Adicionados */}
           {plannedMaterials.length > 0 ? (
@@ -1269,22 +1354,26 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                     <span className="text-[var(--text-secondary)] font-mono font-semibold">
                       {m.quantity} {m.unit}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => handleStartEditPlannedMaterial(m)}
-                      title="Editar quantidade"
-                      className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs cursor-pointer"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePlannedMaterial(m.id)}
-                      title="Remover material"
-                      className="text-[var(--text-muted)] hover:text-rose-500 font-bold text-sm leading-none cursor-pointer"
-                    >
-                      ×
-                    </button>
+                    {!readOnly && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleStartEditPlannedMaterial(m)}
+                          title="Editar quantidade"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs cursor-pointer"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePlannedMaterial(m.id)}
+                          title="Remover material"
+                          className="text-[var(--text-muted)] hover:text-rose-500 font-bold text-sm leading-none cursor-pointer"
+                        >
+                          ×
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -1305,7 +1394,10 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
             rows={2}
             value={observations}
             onChange={(e) => setObservations(e.target.value)}
-            className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
+            disabled={readOnly}
+            className={`w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden ${
+              readOnly ? "opacity-75 bg-[var(--bg-surface-raised)] cursor-not-allowed" : ""
+            }`}
           />
         </div>
 
@@ -1320,7 +1412,9 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                 </span>
               </h3>
               <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
-                Formatos permitidos: JPG, PNG, WEBP (máximo de 5 MB por arquivo).
+                {readOnly
+                  ? "Clique em qualquer foto para ampliá-la em alta resolução."
+                  : "Formatos permitidos: JPG, PNG, WEBP (máximo de 5 MB por arquivo)."}
               </p>
             </div>
 
@@ -1331,26 +1425,28 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
             )}
           </div>
 
-          {/* Input de Seleção de Arquivos */}
-          <div className="relative">
-            <input
-              type="file"
-              multiple
-              accept="image/jpeg,image/png,image/webp"
-              onChange={handlePhotoChange}
-              disabled={
-                isSubmitting ||
-                existingPhotos.length - photoIdsToDelete.length + newPhotoFiles.length >= 8
-              }
-              className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            />
-          </div>
+          {/* Input de Seleção de Arquivos (Apenas em modo de edição/criação) */}
+          {!readOnly && (
+            <div className="relative">
+              <input
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoChange}
+                disabled={
+                  isSubmitting ||
+                  existingPhotos.length - photoIdsToDelete.length + newPhotoFiles.length >= 8
+                }
+                className="block w-full text-xs text-[var(--text-secondary)] file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          )}
 
-          {/* Galeria de Fotos Existentes (Modo Edição) */}
-          {existingPhotos.length > 0 && (
+          {/* Galeria de Fotos Existentes */}
+          {existingPhotos.length > 0 ? (
             <div className="space-y-1.5 pt-2 border-t border-[var(--border-subtle)]">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)] font-mono">
-                Fotos Cadastradas Anteriormente:
+                {readOnly ? "Fotos Registradas:" : "Fotos Cadastradas Anteriormente:"}
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {existingPhotos.map((photo) => {
@@ -1358,44 +1454,62 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
                   return (
                     <div
                       key={photo.id}
-                      className={`relative group rounded-md overflow-hidden border transition-all ${
+                      onClick={() => {
+                        if (photo.signedUrl) {
+                          setLightboxImage({ url: photo.signedUrl, name: photo.originalFilename });
+                        }
+                      }}
+                      className={`relative group rounded-md overflow-hidden border transition-all cursor-pointer ${
                         isMarkedForDeletion
                           ? "border-rose-500/60 opacity-40 grayscale"
-                          : "border-[var(--border-subtle)] hover:border-blue-500/40 bg-[var(--bg-surface)]"
+                          : "border-[var(--border-subtle)] hover:border-blue-500/60 bg-[var(--bg-surface)] hover:shadow-md"
                       }`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={photo.signedUrl || ""}
                         alt={photo.originalFilename}
-                        className="w-full h-24 object-cover"
+                        className="w-full h-24 object-cover transition-transform duration-200 group-hover:scale-105"
                       />
                       <div className="p-1.5 bg-[var(--bg-surface-raised)]/95 flex items-center justify-between text-[10px]">
                         <span className="truncate max-w-[100px] text-[var(--text-secondary)]" title={photo.originalFilename}>
                           {photo.originalFilename}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleDeleteExistingPhoto(photo.id)}
-                          title={isMarkedForDeletion ? "Desfazer remoção" : "Remover foto"}
-                          className={`px-1.5 py-0.5 rounded font-bold cursor-pointer transition-colors ${
-                            isMarkedForDeletion
-                              ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
-                              : "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
-                          }`}
-                        >
-                          {isMarkedForDeletion ? "Restaurar" : "✕ Excluir"}
-                        </button>
+                        {!readOnly ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleDeleteExistingPhoto(photo.id);
+                            }}
+                            title={isMarkedForDeletion ? "Desfazer remoção" : "Remover foto"}
+                            className={`px-1.5 py-0.5 rounded font-bold cursor-pointer transition-colors ${
+                              isMarkedForDeletion
+                                ? "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30"
+                                : "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+                            }`}
+                          >
+                            {isMarkedForDeletion ? "Restaurar" : "✕ Excluir"}
+                          </button>
+                        ) : (
+                          <span className="text-[10px] text-blue-400 font-semibold group-hover:underline">
+                            🔍 Ver
+                          </span>
+                        )}
                       </div>
                     </div>
                   );
                 })}
               </div>
             </div>
-          )}
+          ) : readOnly ? (
+            <p className="text-xs text-[var(--text-muted)] italic pt-1">
+              Nenhuma foto anexada a esta atividade.
+            </p>
+          ) : null}
 
           {/* Galeria de Novas Fotos Pré-selecionadas */}
-          {newPhotoPreviews.length > 0 && (
+          {!readOnly && newPhotoPreviews.length > 0 && (
             <div className="space-y-1.5 pt-2 border-t border-[var(--border-subtle)]">
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 font-mono">
                 Novas Fotos Prontas para Envio:
@@ -1434,30 +1548,51 @@ export function ActivityForm({ initialActivity, onSave, onCancel }: ActivityForm
 
         {/* Ações do Formulário */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-subtle)]">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isSubmitting}
-            className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-subtle)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-5 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-md shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95"
-          >
-            {isSubmitting && (
-              <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            )}
-            {isSubmitting
-              ? "Salvando..."
-              : isEditing
-              ? "Salvar Alterações"
-              : "Cadastrar Atividade"}
-          </button>
+          {readOnly ? (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="px-5 py-2 text-xs font-semibold text-[var(--text-primary)] bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-subtle)] transition-colors cursor-pointer"
+            >
+              Fechar Visualização
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isSubmitting}
+                className="px-4 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded border border-[var(--border-subtle)] transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2 text-xs font-bold text-white bg-orange-500 hover:bg-orange-600 rounded-md shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 active:scale-95"
+              >
+                {isSubmitting && (
+                  <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {isSubmitting
+                  ? "Salvando..."
+                  : isEditing
+                  ? "Salvar Alterações"
+                  : "Cadastrar Atividade"}
+              </button>
+            </>
+          )}
         </div>
       </form>
+
+      {/* Visualizador Modal de Imagem (Lightbox) */}
+      {lightboxImage && (
+        <ImageLightboxModal
+          imageUrl={lightboxImage.url}
+          imageName={lightboxImage.name}
+          onClose={() => setLightboxImage(null)}
+        />
+      )}
     </div>
   );
 }

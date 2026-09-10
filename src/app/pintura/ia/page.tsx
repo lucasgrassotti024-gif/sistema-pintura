@@ -203,7 +203,7 @@ export default function IAPage() {
   };
 
   return (
-    <div className="space-y-3 sm:space-y-4 max-w-5xl mx-auto flex flex-col h-[calc(100dvh-7rem)] sm:h-[calc(100vh-6.5rem)]">
+    <div className="flex flex-col h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-7rem)] min-h-[520px] max-w-5xl mx-auto w-full gap-3 transition-all duration-200">
       {/* 1. CABEÇALHO TÉCNICO */}
       <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-sm shrink-0">
         <div>
@@ -222,6 +222,12 @@ export default function IAPage() {
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-center">
+          {isInitializing && (
+            <span className="text-[11px] font-mono text-emerald-500 animate-pulse flex items-center gap-1.5 mr-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Sincronizando histórico...
+            </span>
+          )}
           <button
             type="button"
             onClick={clearChat}
@@ -255,16 +261,10 @@ export default function IAPage() {
       </div>
 
       {/* 3. JANELA DE CONVERSA PRINCIPAL */}
-      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg shadow-md flex flex-col flex-1 min-h-[250px] sm:min-h-[420px] overflow-hidden">
+      <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg shadow-md flex flex-col flex-1 min-h-[300px] overflow-hidden">
         <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4 bg-[var(--bg-base)]">
-          {isInitializing ? (
-            <div className="h-full flex items-center justify-center text-xs text-[var(--text-muted)] font-mono py-12">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-2" />
-              Recuperando histórico da conversa...
-            </div>
-          ) : (
-            messages.map((msg) => {
-              const isUser = msg.sender === "user";
+          {messages.map((msg) => {
+            const isUser = msg.sender === "user";
 
               return (
                 <div
@@ -359,8 +359,7 @@ export default function IAPage() {
                   )}
                 </div>
               );
-            })
-          )}
+            })}
 
           <div ref={chatBottomRef} />
         </div>

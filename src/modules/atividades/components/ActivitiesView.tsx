@@ -38,6 +38,7 @@ export function ActivitiesView() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [viewingActivity, setViewingActivity] = useState<Activity | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [exportWarning, setExportWarning] = useState<string | null>(null);
   const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>([]);
@@ -98,7 +99,13 @@ export function ActivitiesView() {
   };
 
   const handleStartEdit = (activity: Activity) => {
+    setViewingActivity(null);
     setEditingActivity(activity);
+  };
+
+  const handleViewDetails = (activity: Activity) => {
+    setEditingActivity(null);
+    setViewingActivity(activity);
   };
 
   const handleSaveEdit = async (updated: Activity) => {
@@ -152,7 +159,7 @@ export function ActivitiesView() {
         </div>
 
         {/* Ações do Cabeçalho: Exportar Excel e Nova Atividade */}
-        {!isCreating && !editingActivity && (
+        {!isCreating && !editingActivity && !viewingActivity && (
           <div className="flex items-center gap-2.5 flex-wrap self-start sm:self-auto">
             {/* Botão Exportar Excel */}
             <button
@@ -219,7 +226,7 @@ export function ActivitiesView() {
         </div>
       )}
 
-      {/* 3. FLUXO DE FORMULÁRIO (Criação / Edição) OU LISTA OPERACIONAL */}
+      {/* 3. FLUXO DE FORMULÁRIO (Criação / Edição / Visualização) OU LISTA OPERACIONAL */}
       {isCreating ? (
         <div className="py-2">
           <ActivityForm
@@ -233,6 +240,15 @@ export function ActivitiesView() {
             initialActivity={editingActivity}
             onSave={handleSaveEdit}
             onCancel={() => setEditingActivity(null)}
+          />
+        </div>
+      ) : viewingActivity ? (
+        <div className="py-2">
+          <ActivityForm
+            initialActivity={viewingActivity}
+            readOnly={true}
+            onSave={async () => {}}
+            onCancel={() => setViewingActivity(null)}
           />
         </div>
       ) : (
@@ -333,6 +349,7 @@ export function ActivitiesView() {
                   activity={selectedActivity}
                   onUpdateActivity={updateActivity}
                   onStartEdit={handleStartEdit}
+                  onViewDetails={handleViewDetails}
                   onArchiveActivity={archiveActivity}
                   onClose={() => setSelectedActivity(null)}
                 />

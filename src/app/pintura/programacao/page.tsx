@@ -47,6 +47,7 @@ export default function ProgramacaoPage() {
   // Estado da data de referência para navegação temporal
   const [referenceDate, setReferenceDate] = useState<Date>(new Date());
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [viewingActivity, setViewingActivity] = useState<Activity | null>(null);
 
   // Modo de Edição e Alterações Pendentes (Map por activityId)
   const [isEditMode, setIsEditMode] = useState(false);
@@ -290,7 +291,13 @@ export default function ProgramacaoPage() {
   };
 
   const handleStartEditModal = (act: Activity) => {
+    setViewingActivity(null);
     setEditingActivity(act);
+  };
+
+  const handleViewDetailsModal = (act: Activity) => {
+    setEditingActivity(null);
+    setViewingActivity(act);
   };
 
   const handleSaveEditModal = async (updated: Activity) => {
@@ -542,6 +549,7 @@ export default function ProgramacaoPage() {
                 activity={selectedActivity}
                 onUpdateActivity={updateActivity}
                 onStartEdit={handleStartEditModal}
+                onViewDetails={handleViewDetailsModal}
                 onArchiveActivity={archiveActivity}
                 onClose={() => setSelectedActivity(null)}
               />
@@ -662,7 +670,20 @@ export default function ProgramacaoPage() {
           </div>
         </div>
       )}
+
+      {/* 9. MODAL DE VISUALIZAÇÃO DETALHADA (SOMENTE LEITURA) */}
+      {viewingActivity && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-xl p-4 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl transition-colors duration-200">
+            <ActivityForm
+              initialActivity={viewingActivity}
+              readOnly={true}
+              onSave={async () => {}}
+              onCancel={() => setViewingActivity(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
