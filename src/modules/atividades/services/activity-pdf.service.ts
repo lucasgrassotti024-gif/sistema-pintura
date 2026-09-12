@@ -24,85 +24,138 @@ interface LoadedPdfImage {
  * - Retorna null em caso de falha para NÃO quebrar a geração do PDF.
  */
 async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImage | null> {
-  if (!photo.signedUrl) return null;
+  if (!photo.signedUrl) {
+    console.warn(`[loadPdfImageSafe] Foto "${photo.originalFilename}" sem signedUrl disponível.`);
+    return null;
+  }
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout por imagem
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
+    console.info(`[loadPdfImageSafe] Baixando imagem: "${photo.originalFilename}"...`);
     const response = await fetch(photo.signedUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
 
+    console.info(`[loadPdfImageSafe] HTTP Status ${response.status} para "${photo.originalFilename}"`);
+
     if (!response.ok) {
-      console.warn(`[loadPdfImageSafe] Falha ao baixar imagem "${photo.originalFilename}": HTTP ${response.status}`);
+      console.warn(`[loadPdfImageSafe] Resposta HTTP ${response.status} ao baixar foto "${photo.originalFilename}".`);
       return null;
     }
 
     const blob = await response.blob();
+    console.info(`[loadPdfImageSafe] Blob obtido: tamanho=${blob.size} bytes, MIME=${blob.type}`);
+
     if (!blob.type.startsWith("image/")) {
-      console.warn(`[loadPdfImageSafe] Tipo MIME não suportado: ${blob.type}`);
+      console.warn(`[loadPdfImageSafe] Tipo MIME não suportado para "${photo.originalFilename}": ${blob.type}`);
       return null;
     }
 
-    // Carregar em elemento Image e desenhar em canvas com compressão profilática
-    return await new Promise<LoadedPdfImage | null>((resolve) => {
-      const blobUrl = URL.createObjectURL(blob);
-      const img = new Image();
-
-      img.onload = () => {
-        URL.revokeObjectURL(blobUrl);
-
-        try {
-          const maxDim = 1200; // Máxima dimensão para o PDF manter alta definição e arquivo leve
-          let w = img.naturalWidth || img.width;
-          let h = img.naturalHeight || img.height;
-
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
-          }
-
-          const canvas = document.createElement("canvas");
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d");
-
-          if (!ctx) {
-            resolve(null);
-            return;
-          }
-
-          ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-
-          resolve({
-            dataUrl,
-            width: w,
-            height: h,
-            format: "JPEG",
-            filename: photo.originalFilename,
-          });
-        } catch (canvasErr) {
-          console.warn("[loadPdfImageSafe] Falha no processamento via canvas:", canvasErr);
+    // 1. Converter o Blob diretamente em DataURL via FileReader (nativo e sem contaminação de canvas)
+    const rawDataUrl = await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+        } else {
           resolve(null);
         }
       };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
 
-      img.onerror = () => {
-        URL.revokeObjectURL(blobUrl);
-        console.warn(`[loadPdfImageSafe] Falha ao decodificar imagem "${photo.originalFilename}".`);
-        resolve(null);
+    if (!rawDataUrl) {
+      console.warn(`[loadPdfImageSafe] Falha ao converter blob em DataURL para "${photo.originalFilename}".`);
+      return null;
+    }
+
+    // 2. Determinar dimensões reais e realizar conversão/redimensionamento seguro
+    return await new Promise<LoadedPdfImage | null>((resolve) => {
+      const img = new Image();
+
+      img.onload = () => {
+        const naturalW = img.naturalWidth || img.width || 800;
+        const naturalH = img.naturalHeight || img.height || 600;
+
+        // Se a imagem for WebP ou maior que 1600px, tenta otimizar via canvas para JPEG compatível com jsPDF
+        const isWebP = blob.type.toLowerCase().includes("webp") || photo.originalFilename.toLowerCase().endsWith(".webp");
+        const maxDim = 1200;
+        const needsResize = naturalW > maxDim || naturalH > maxDim;
+
+        if (isWebP || needsResize) {
+          try {
+            let w = naturalW;
+            let h = naturalH;
+
+            if (needsResize) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, w, h);
+              const convertedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+              console.info(`[loadPdfImageSafe] Conversão via canvas concluída com sucesso para "${photo.originalFilename}" (${w}x${h})`);
+              resolve({
+                dataUrl: convertedDataUrl,
+                width: w,
+                height: h,
+                format: "JPEG",
+                filename: photo.originalFilename,
+              });
+              return;
+            }
+          } catch (canvasErr) {
+            console.warn(`[loadPdfImageSafe] Exceção no canvas para "${photo.originalFilename}", utilizando fallback DataURL direto:`, canvasErr);
+          }
+        }
+
+        // Fallback robusto e direto com DataURL original
+        const detectedFormat: "JPEG" | "PNG" | "WEBP" = blob.type.includes("png")
+          ? "PNG"
+          : blob.type.includes("webp")
+          ? "WEBP"
+          : "JPEG";
+
+        console.info(`[loadPdfImageSafe] Imagem decodificada diretamente: "${photo.originalFilename}" formato=${detectedFormat}`);
+        resolve({
+          dataUrl: rawDataUrl,
+          width: naturalW,
+          height: naturalH,
+          format: detectedFormat,
+          filename: photo.originalFilename,
+        });
       };
 
-      img.src = blobUrl;
+      img.onerror = (e) => {
+        console.warn(`[loadPdfImageSafe] Falha ao decodificar imagem "${photo.originalFilename}":`, e);
+        // Último fallback: se Image falhar ao decodificar no browser, mas temos rawDataUrl, retorna com dimensões padrão
+        resolve({
+          dataUrl: rawDataUrl,
+          width: 800,
+          height: 600,
+          format: "JPEG",
+          filename: photo.originalFilename,
+        });
+      };
+
+      img.src = rawDataUrl;
     });
   } catch (err) {
-    console.warn(`[loadPdfImageSafe] Erro ao carregar foto "${photo.originalFilename}":`, err);
+    console.warn(`[loadPdfImageSafe] Erro geral ao processar foto "${photo.originalFilename}":`, err);
     return null;
   }
 }
@@ -202,6 +255,13 @@ function sanitizeFileName(orderNumber: string): string {
   return orderNumber.replace(/[^a-zA-Z0-9_-]/g, "_");
 }
 
+interface PhotoLoadState {
+  hasAttempted: boolean;
+  totalFound: number;
+  loadedCount: number;
+  failedCount: number;
+}
+
 /**
  * Renderiza o conteúdo completo de uma atividade individual em um documento jsPDF.
  * Garante que a atividade comece em uma nova página (exceto na primeira página limpa)
@@ -211,7 +271,8 @@ function renderActivityContent(
   doc: jsPDF,
   activity: Activity,
   pageStartInfo: { activityStartPage: number; isFirstActivity: boolean },
-  loadedPhotos?: LoadedPdfImage[]
+  loadedPhotos?: LoadedPdfImage[],
+  photoLoadState?: PhotoLoadState
 ): { startPage: number; endPage: number } {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -611,67 +672,87 @@ function renderActivityContent(
   // ============================================================================
   // 7.1. FOTOS / REGISTROS FOTOGRÁFICOS (EVIDÊNCIAS DE CAMPO)
   // ============================================================================
-  if (loadedPhotos && loadedPhotos.length > 0) {
-    renderSectionHeader("6. Fotos e Registros Fotográficos");
+  if (photoLoadState?.hasAttempted) {
+    if (loadedPhotos && loadedPhotos.length > 0) {
+      renderSectionHeader("6. Fotos e Registros Fotográficos");
 
-    const colCount = loadedPhotos.length === 1 ? 1 : 2;
-    const gap = 4;
-    const photoW = colCount === 1 ? Math.min(contentWidth, 120) : (contentWidth - gap) / 2;
-    const photoH = colCount === 1 ? 75 : 55; // Altura fixa de card para uniformidade visual
-    const cardH = photoH + 7; // Foto + barra de legenda/nome
+      const colCount = loadedPhotos.length === 1 ? 1 : 2;
+      const gap = 4;
+      const photoW = colCount === 1 ? Math.min(contentWidth, 120) : (contentWidth - gap) / 2;
+      const photoH = colCount === 1 ? 75 : 55; // Altura uniforme de card
+      const cardH = photoH + 7; // Foto + barra de legenda
 
-    for (let i = 0; i < loadedPhotos.length; i++) {
-      const item = loadedPhotos[i];
-      const isCol2 = colCount === 2 && i % 2 === 1;
-      const x = isCol2 ? marginLeft + photoW + gap : marginLeft;
+      for (let i = 0; i < loadedPhotos.length; i++) {
+        const item = loadedPhotos[i];
+        const isCol2 = colCount === 2 && i % 2 === 1;
+        const x = isCol2 ? marginLeft + photoW + gap : marginLeft;
 
-      // Se for a primeira coluna ou foto única, verificar quebra de página
-      if (!isCol2) {
-        checkPageBreak(cardH + 4);
+        // Ao iniciar uma nova linha (coluna 1), checar quebra de página para o card inteiro
+        if (!isCol2) {
+          checkPageBreak(cardH + 6);
+        }
+
+        // 1. Fundo do card da foto
+        doc.setFillColor(248, 250, 252);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, currentY, photoW, cardH, 1.5, 1.5, "FD");
+
+        // 2. Proporção e redimensionamento mantendo aspect ratio sem distorção
+        const padding = 2;
+        const availW = photoW - padding * 2;
+        const availH = photoH - padding * 2;
+
+        let drawW = availW;
+        let drawH = (item.height * availW) / item.width;
+
+        if (drawH > availH) {
+          drawH = availH;
+          drawW = (item.width * availH) / item.height;
+        }
+
+        const drawX = x + padding + (availW - drawW) / 2;
+        const drawY = currentY + padding + (availH - drawH) / 2;
+
+        try {
+          doc.addImage(item.dataUrl, item.format, drawX, drawY, drawW, drawH);
+        } catch (imgAddErr) {
+          console.warn(`[renderActivityContent] Falha ao renderizar imagem no jsPDF para "${item.filename}":`, imgAddErr);
+        }
+
+        // 3. Legenda com nome do arquivo
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.8);
+        doc.setTextColor(100, 116, 139);
+        const cleanName = doc.splitTextToSize(item.filename, photoW - 6);
+        doc.text(cleanName[0] || "Foto de Evidência", x + 3, currentY + photoH + 4.5);
+
+        // Avançar cursor Y ao finalizar a linha (após coluna 2 ou na última foto da lista)
+        if (isCol2 || i === loadedPhotos.length - 1) {
+          currentY += cardH + 5;
+        }
       }
 
-      // 1. Fundo do card
+      currentY += 2;
+    } else if (photoLoadState.failedCount > 0) {
+      // Mensagem discreta quando a atividade possui fotos cadastradas mas nenhuma pôde ser carregada
+      renderSectionHeader("6. Fotos e Registros Fotográficos");
+      checkPageBreak(14);
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
       doc.setLineWidth(0.3);
-      doc.roundedRect(x, currentY, photoW, cardH, 1.5, 1.5, "FD");
+      doc.roundedRect(marginLeft, currentY, contentWidth, 11, 1.5, 1.5, "FD");
 
-      // 2. Calcular redimensionamento para caber perfeitamente mantendo aspect ratio
-      const padding = 2;
-      const availW = photoW - padding * 2;
-      const availH = photoH - padding * 2;
-
-      let drawW = availW;
-      let drawH = (item.height * availW) / item.width;
-
-      if (drawH > availH) {
-        drawH = availH;
-        drawW = (item.width * availH) / item.height;
-      }
-
-      const drawX = x + padding + (availW - drawW) / 2;
-      const drawY = currentY + padding + (availH - drawH) / 2;
-
-      try {
-        doc.addImage(item.dataUrl, item.format, drawX, drawY, drawW, drawH);
-      } catch (imgAddErr) {
-        console.warn(`[renderActivityContent] Falha ao renderizar imagem no jsPDF:`, imgAddErr);
-      }
-
-      // 3. Legenda com nome do arquivo
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(6.8);
-      doc.setTextColor(100, 116, 139);
-      const cleanName = doc.splitTextToSize(item.filename, photoW - 6);
-      doc.text(cleanName[0] || "Foto de Evidência", x + 3, currentY + photoH + 4.5);
-
-      // Avançar cursor Y ao finalizar a linha (após col2 ou se for a última foto em col1)
-      if (isCol2 || i === loadedPhotos.length - 1) {
-        currentY += cardH + 4;
-      }
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7.5);
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.text(
+        "Não foi possível carregar as fotos desta atividade para o relatório.",
+        marginLeft + 4,
+        currentY + 6.8
+      );
+      currentY += 16;
     }
-
-    currentY += 2;
   }
 
   // ============================================================================
@@ -790,6 +871,7 @@ export async function generateActivityPdf(
 
   const pageActivityMap = new Map<number, string>();
   let loadedPhotos: LoadedPdfImage[] | undefined = undefined;
+  let photoLoadState: PhotoLoadState | undefined = undefined;
 
   // Se fotos estiverem habilitadas, carregar de forma protegida e eficiente
   if (options?.includePhotos) {
@@ -805,6 +887,8 @@ export async function generateActivityPdf(
       }
     }
 
+    const totalFound = activityPhotos?.length || 0;
+
     if (activityPhotos && activityPhotos.length > 0) {
       const loadPromises = activityPhotos.map((photo) => loadPdfImageSafe(photo));
       const results = await Promise.all(loadPromises);
@@ -812,6 +896,19 @@ export async function generateActivityPdf(
       if (validImages.length > 0) {
         loadedPhotos = validImages;
       }
+      photoLoadState = {
+        hasAttempted: true,
+        totalFound,
+        loadedCount: validImages.length,
+        failedCount: totalFound - validImages.length,
+      };
+    } else {
+      photoLoadState = {
+        hasAttempted: false,
+        totalFound: 0,
+        loadedCount: 0,
+        failedCount: 0,
+      };
     }
   }
 
@@ -822,7 +919,8 @@ export async function generateActivityPdf(
       activityStartPage: 1,
       isFirstActivity: true,
     },
-    loadedPhotos
+    loadedPhotos,
+    photoLoadState
   );
 
   for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {
@@ -865,6 +963,7 @@ export async function generateActivitiesPdf(
     const isFirstActivity = index === 0;
 
     let loadedPhotos: LoadedPdfImage[] | undefined = undefined;
+    let photoLoadState: PhotoLoadState | undefined = undefined;
 
     if (options?.includePhotos) {
       let activityPhotos = activity.photos;
@@ -877,6 +976,8 @@ export async function generateActivitiesPdf(
         }
       }
 
+      const totalFound = activityPhotos?.length || 0;
+
       if (activityPhotos && activityPhotos.length > 0) {
         const loadPromises = activityPhotos.map((photo) => loadPdfImageSafe(photo));
         const results = await Promise.all(loadPromises);
@@ -884,6 +985,19 @@ export async function generateActivitiesPdf(
         if (validImages.length > 0) {
           loadedPhotos = validImages;
         }
+        photoLoadState = {
+          hasAttempted: true,
+          totalFound,
+          loadedCount: validImages.length,
+          failedCount: totalFound - validImages.length,
+        };
+      } else {
+        photoLoadState = {
+          hasAttempted: false,
+          totalFound: 0,
+          loadedCount: 0,
+          failedCount: 0,
+        };
       }
     }
 
@@ -894,7 +1008,8 @@ export async function generateActivitiesPdf(
         activityStartPage: doc.getNumberOfPages(),
         isFirstActivity,
       },
-      loadedPhotos
+      loadedPhotos,
+      photoLoadState
     );
 
     for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {

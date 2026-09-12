@@ -1224,27 +1224,59 @@ export async function getActivityPhotos(
   // Se solicitado gerar Signed URLs para acesso seguro ao bucket privado
   if (generateSignedUrls && photos.length > 0) {
     try {
-      const paths = photos.map((p) => p.storagePath);
+      // Normalização auxiliar de path para casamento seguro
+      const normalizePath = (p: string) => p.replace(/^\/+/, "").trim();
+
+      const paths = photos.map((p) => normalizePath(p.storagePath));
       const { data: signedData, error: signedErr } = await supabase.storage
         .from("activity-photos")
         .createSignedUrls(paths, 3600);
 
-      if (!signedErr && signedData) {
-        const signedMap = new Map<string, string>();
-        signedData.forEach((item) => {
-          if (item.path && item.signedUrl) {
-            signedMap.set(item.path, item.signedUrl);
+      const signedMap = new Map<string, string>();
+
+      if (!signedErr && Array.isArray(signedData)) {
+        signedData.forEach((item, idx) => {
+          if (item?.signedUrl) {
+            // Se vier o path do item, mapeia por ele
+            if (item.path) {
+              signedMap.set(normalizePath(item.path), item.signedUrl);
+            }
+            // Mapeia também pelo path da mesma posição no array de entrada (preservação posicional)
+            if (paths[idx]) {
+              signedMap.set(paths[idx], item.signedUrl);
+            }
           }
         });
-
-        photos.forEach((p) => {
-          p.signedUrl = signedMap.get(p.storagePath);
-        });
       } else if (signedErr) {
-        console.warn("[getActivityPhotos] Erro ao gerar URLs assinadas em lote:", signedErr);
+        console.warn("[getActivityPhotos] Erro na geração em lote de URLs assinadas:", signedErr.message || signedErr);
+      }
+
+      // Atribuir URLs e executar fallback individual para qualquer foto que não tenha recebido URL
+      for (const p of photos) {
+        const normP = normalizePath(p.storagePath);
+        const resolvedUrl = signedMap.get(normP);
+
+        if (resolvedUrl) {
+          p.signedUrl = resolvedUrl;
+        } else {
+          // Fallback individual controlado caso o lote falhe ou omita este item
+          try {
+            const { data: singleSigned, error: singleErr } = await supabase.storage
+              .from("activity-photos")
+              .createSignedUrl(normP, 3600);
+
+            if (!singleErr && singleSigned?.signedUrl) {
+              p.signedUrl = singleSigned.signedUrl;
+            } else if (singleErr) {
+              console.warn(`[getActivityPhotos] Fallback individual falhou para ${p.originalFilename}:`, singleErr.message || singleErr);
+            }
+          } catch (indivErr) {
+            console.warn(`[getActivityPhotos] Exceção no fallback individual para ${p.originalFilename}:`, indivErr);
+          }
+        }
       }
     } catch (urlErr) {
-      console.warn("[getActivityPhotos] Falha ao processar URLs assinadas:", urlErr);
+      console.warn("[getActivityPhotos] Falha geral ao processar URLs assinadas:", urlErr);
     }
   }
 
