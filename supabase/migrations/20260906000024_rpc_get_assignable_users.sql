@@ -26,7 +26,7 @@ BEGIN
     SELECT u.id, u.full_name
     FROM public.users u
     WHERE u.active = true
-    ORDER BY u.full_name ASC;
+    ORDER BY u.full_name ASC;necessário
 END;
 $$;
 
