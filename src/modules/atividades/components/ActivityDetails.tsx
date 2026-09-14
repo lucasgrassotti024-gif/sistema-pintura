@@ -274,20 +274,35 @@ export function ActivityDetails({
               return (
                 <div
                   key={pm.id || idx}
-                  className="flex justify-between items-center text-[11px] py-1 border-b border-white/5 last:border-0"
+                  className="py-1.5 border-b border-white/5 last:border-0 space-y-1"
                 >
-                  <span className="font-medium text-slate-300 truncate max-w-[150px]" title={pm.materialName}>
-                    {pm.materialName}
-                  </span>
-                  <div className="font-mono text-right space-x-1.5">
-                    <span className="text-orange-400 font-bold">
-                      {consumedQty.toFixed(1)}
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="font-medium text-slate-300 truncate max-w-[200px]" title={pm.materialName}>
+                      {pm.materialName}
                     </span>
-                    <span className="text-slate-500">/</span>
-                    <span className="text-slate-400">
-                      {pm.quantity} {pm.unit}
-                    </span>
+                    <div className="font-mono text-right space-x-1.5">
+                      <span className="text-orange-400 font-bold">
+                        {consumedQty.toFixed(1)}
+                      </span>
+                      <span className="text-slate-500">/</span>
+                      <span className="text-slate-400">
+                        {pm.quantity} {pm.unit}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Detalhes do snapshot de planejamento técnico */}
+                  {(pm.areaM2 || pm.packagesRequired) && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono flex-wrap">
+                      {pm.areaM2 && <span>{pm.areaM2} m²</span>}
+                      {pm.coats && <span>• {pm.coats} demão{pm.coats > 1 ? "s" : ""}</span>}
+                      {pm.packagesRequired && pm.packageVolume && (
+                        <span className="text-emerald-400 font-semibold">
+                          • {pm.packagesRequired} {pm.packageType || "emb."} ({pm.packageVolume} L)
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

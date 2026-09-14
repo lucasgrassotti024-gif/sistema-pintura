@@ -94,6 +94,12 @@ interface SupabaseActivityRow {
     custom_material_name: string;
     planned_quantity: number;
     unit: string;
+    area_m2?: number | null;
+    coats?: number | null;
+    consumption_per_m2_per_coat?: number | null;
+    package_type?: string | null;
+    package_volume?: number | null;
+    packages_required?: number | null;
     materials: { id?: string; code?: string; name: string } | null;
   }> | null;
   activity_consumptions?: Array<{
@@ -156,6 +162,12 @@ function mapRowToActivity(row: SupabaseActivityRow, userMap?: Map<string, string
       materialName: pm.materials?.name || pm.custom_material_name,
       quantity: Number(pm.planned_quantity),
       unit: pm.unit,
+      areaM2: pm.area_m2 !== null && pm.area_m2 !== undefined ? Number(pm.area_m2) : undefined,
+      coats: pm.coats !== null && pm.coats !== undefined ? Number(pm.coats) : undefined,
+      consumptionPerM2PerCoat: pm.consumption_per_m2_per_coat !== null && pm.consumption_per_m2_per_coat !== undefined ? Number(pm.consumption_per_m2_per_coat) : undefined,
+      packageType: pm.package_type || undefined,
+      packageVolume: pm.package_volume !== null && pm.package_volume !== undefined ? Number(pm.package_volume) : undefined,
+      packagesRequired: pm.packages_required !== null && pm.packages_required !== undefined ? Number(pm.packages_required) : undefined,
     })),
     schedule: {
       plannedStartDate: row.planned_start_date,
@@ -616,6 +628,12 @@ export async function createActivity(activity: Activity): Promise<Activity> {
           custom_material_name: pm.materialName,
           planned_quantity: pm.quantity,
           unit: pm.unit,
+          area_m2: pm.areaM2 ? Number(pm.areaM2) : null,
+          coats: pm.coats ? Number(pm.coats) : null,
+          consumption_per_m2_per_coat: pm.consumptionPerM2PerCoat ? Number(pm.consumptionPerM2PerCoat) : null,
+          package_type: pm.packageType || null,
+          package_volume: pm.packageVolume ? Number(pm.packageVolume) : null,
+          packages_required: pm.packagesRequired !== undefined && pm.packagesRequired !== null ? Number(pm.packagesRequired) : null,
         });
       }
 
@@ -850,6 +868,12 @@ export async function updateActivity(activity: Activity): Promise<Activity> {
           custom_material_name: pm.materialName,
           planned_quantity: pm.quantity,
           unit: pm.unit,
+          area_m2: pm.areaM2 ? Number(pm.areaM2) : null,
+          coats: pm.coats ? Number(pm.coats) : null,
+          consumption_per_m2_per_coat: pm.consumptionPerM2PerCoat ? Number(pm.consumptionPerM2PerCoat) : null,
+          package_type: pm.packageType || null,
+          package_volume: pm.packageVolume ? Number(pm.packageVolume) : null,
+          packages_required: pm.packagesRequired !== undefined && pm.packagesRequired !== null ? Number(pm.packagesRequired) : null,
         });
       }
 

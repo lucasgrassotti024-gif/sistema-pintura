@@ -14,6 +14,10 @@ export interface Material {
   minimumStock: number;
   location?: string;
   technicalInfo?: string;
+  consumptionPerM2PerCoat?: number;
+  consumptionUnit?: string;
+  packageType?: string;
+  packageVolume?: number;
   active: boolean;
   status: MaterialStockStatus;
   createdAt?: string;
@@ -47,6 +51,10 @@ export interface NewMaterialInput {
   minimumStock: number;
   location?: string;
   technicalInfo?: string;
+  consumptionPerM2PerCoat?: number;
+  consumptionUnit?: string;
+  packageType?: string;
+  packageVolume?: number;
 }
 
 export interface StockEntryInput {

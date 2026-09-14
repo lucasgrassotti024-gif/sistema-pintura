@@ -145,6 +145,31 @@ export function MaterialPlanningDetailPanel({
         </div>
       </div>
 
+      {/* 4.1 PARÂMETROS TÉCNICOS DE CONSUMO & EMBALAGEM */}
+      {(material.consumptionPerM2PerCoat || material.packageVolume) && (
+        <div className="bg-[#070c14] border border-blue-500/15 rounded-md p-3.5 space-y-2 text-xs">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 font-mono block border-b border-blue-500/10 pb-1">
+            Parâmetros Técnicos de Pintura
+          </span>
+          {material.consumptionPerM2PerCoat && (
+            <div className="flex justify-between items-center py-0.5">
+              <span className="text-slate-400 font-mono">Consumo Teórico:</span>
+              <span className="font-semibold text-slate-200 font-mono">
+                {material.consumptionPerM2PerCoat} {material.consumptionUnit || "L/m²/demão"}
+              </span>
+            </div>
+          )}
+          {material.packageVolume && (
+            <div className="flex justify-between items-center py-0.5">
+              <span className="text-slate-400 font-mono">Embalagem Comercial:</span>
+              <span className="font-semibold text-slate-200 font-mono">
+                {material.packageType || "Embalagem"} de {material.packageVolume} L
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 5. AÇÃO DE MOVIMENTAÇÃO */}
       <PermissionGate permission="estoque.movimentar">
         <div>

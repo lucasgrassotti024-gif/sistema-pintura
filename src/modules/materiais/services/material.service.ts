@@ -14,6 +14,10 @@ export interface SupabaseMaterialRow {
   minimum_stock: number;
   location: string | null;
   technical_info: string | null;
+  consumption_per_m2_per_coat?: number | null;
+  consumption_unit?: string | null;
+  package_type?: string | null;
+  package_volume?: number | null;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -50,6 +54,10 @@ export function mapRowToMaterial(row: SupabaseMaterialRow): Material {
     minimumStock,
     location: row.location || undefined,
     technicalInfo: row.technical_info || undefined,
+    consumptionPerM2PerCoat: row.consumption_per_m2_per_coat !== null && row.consumption_per_m2_per_coat !== undefined ? Number(row.consumption_per_m2_per_coat) : undefined,
+    consumptionUnit: row.consumption_unit || undefined,
+    packageType: row.package_type || undefined,
+    packageVolume: row.package_volume !== null && row.package_volume !== undefined ? Number(row.package_volume) : undefined,
     active: row.active ?? true,
     status: calculateStockStatus(currentStock, minimumStock),
     createdAt: row.created_at,
@@ -93,6 +101,13 @@ export async function createMaterial(input: NewMaterialInput): Promise<Material>
   if (!type) throw new Error("Tipo do material é obrigatório.");
   if (!unit) throw new Error("Unidade de medida é obrigatória.");
 
+  const consumptionPerM2 = input.consumptionPerM2PerCoat !== undefined && input.consumptionPerM2PerCoat !== null && !isNaN(Number(input.consumptionPerM2PerCoat))
+    ? Number(input.consumptionPerM2PerCoat)
+    : null;
+  const packageVol = input.packageVolume !== undefined && input.packageVolume !== null && !isNaN(Number(input.packageVolume))
+    ? Number(input.packageVolume)
+    : null;
+
   const { data, error } = await supabase
     .from("materials")
     .insert({
@@ -106,6 +121,10 @@ export async function createMaterial(input: NewMaterialInput): Promise<Material>
       minimum_stock: minimumStock,
       location: input.location?.trim() || null,
       technical_info: input.technicalInfo?.trim() || null,
+      consumption_per_m2_per_coat: consumptionPerM2,
+      consumption_unit: input.consumptionUnit?.trim() || (consumptionPerM2 ? "L/m²/demão" : null),
+      package_type: input.packageType?.trim() || null,
+      package_volume: packageVol,
       active: true,
     })
     .select("*")
@@ -142,6 +161,13 @@ export async function updateMaterial(
   if (!type) throw new Error("Tipo do material é obrigatório.");
   if (!unit) throw new Error("Unidade de medida é obrigatória.");
 
+  const consumptionPerM2 = input.consumptionPerM2PerCoat !== undefined && input.consumptionPerM2PerCoat !== null && !isNaN(Number(input.consumptionPerM2PerCoat))
+    ? Number(input.consumptionPerM2PerCoat)
+    : null;
+  const packageVol = input.packageVolume !== undefined && input.packageVolume !== null && !isNaN(Number(input.packageVolume))
+    ? Number(input.packageVolume)
+    : null;
+
   const { data, error } = await supabase
     .from("materials")
     .update({
@@ -154,6 +180,10 @@ export async function updateMaterial(
       minimum_stock: minimumStock,
       location: input.location?.trim() || null,
       technical_info: input.technicalInfo?.trim() || null,
+      consumption_per_m2_per_coat: consumptionPerM2,
+      consumption_unit: input.consumptionUnit?.trim() || (consumptionPerM2 ? "L/m²/demão" : null),
+      package_type: input.packageType?.trim() || null,
+      package_volume: packageVol,
       active: input.active ?? true,
       updated_at: new Date().toISOString(),
     })

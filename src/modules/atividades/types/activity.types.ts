@@ -34,6 +34,13 @@ export interface ActivityPlannedMaterial {
   materialName: string;
   quantity: number;
   unit: string;
+  // Snapshot técnico do dimensionamento
+  areaM2?: number;
+  coats?: number;
+  consumptionPerM2PerCoat?: number;
+  packageType?: string;
+  packageVolume?: number;
+  packagesRequired?: number;
 }
 
 export interface ActivitySchedule {

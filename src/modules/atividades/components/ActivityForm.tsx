@@ -17,6 +17,7 @@ import {
   deleteActivityPhotos,
   getActivityPhotos,
 } from "../services/activity.service";
+import { calculateMaterialRequirement } from "@/modules/materiais/rules/consumption-calculator.rules";
 import { ImageLightboxModal } from "@/modules/chat/components/ImageLightboxModal";
 
 interface ActivityFormProps {
@@ -155,6 +156,12 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
   const [matQty, setMatQty] = useState("");
   const [matUnit, setMatUnit] = useState("L");
   const [editingPlannedId, setEditingPlannedId] = useState<string | null>(null);
+
+  // Estados de Dimensionamento Técnico de Pintura por Material
+  const [matAreaM2, setMatAreaM2] = useState(() => {
+    return serviceQuantity && serviceUnit === "m²" ? serviceQuantity : "";
+  });
+  const [matCoats, setMatCoats] = useState("2");
 
   // Carregar catálogo de materiais para seleção rápida
   useEffect(() => {
@@ -300,7 +307,50 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
     setMatUnit(mat.unit || "L");
     setIsSearchDropdownOpen(false);
     setError(null);
+
+    // Se o material possui consumo técnico cadastrado e a atividade tem área (ou serviceQuantity), calcula previamente
+    const effectiveArea = matAreaM2 ? Number(matAreaM2) : (serviceQuantity && serviceUnit === "m²" ? Number(serviceQuantity) : 0);
+    if (!matAreaM2 && effectiveArea > 0) {
+      setMatAreaM2(String(effectiveArea));
+    }
+
+    if (mat.consumptionPerM2PerCoat && effectiveArea > 0) {
+      const calc = calculateMaterialRequirement({
+        areaM2: effectiveArea,
+        coats: Number(matCoats) || 2,
+        consumptionPerM2PerCoat: mat.consumptionPerM2PerCoat,
+        packageVolume: mat.packageVolume,
+        packageType: mat.packageType,
+      });
+      if (calc.isValid) {
+        setMatQty(String(calc.litersRequired));
+      }
+    }
   };
+
+  // Cálculo reativo em tempo real para o material selecionado
+  const activeCalculation = React.useMemo(() => {
+    if (!selectedCatalogMaterial?.consumptionPerM2PerCoat) return null;
+    const area = Number(matAreaM2);
+    const coats = Number(matCoats);
+    if (isNaN(area) || area <= 0 || isNaN(coats) || coats <= 0) return null;
+
+    return calculateMaterialRequirement({
+      areaM2: area,
+      coats,
+      consumptionPerM2PerCoat: selectedCatalogMaterial.consumptionPerM2PerCoat,
+      packageVolume: selectedCatalogMaterial.packageVolume,
+      packageType: selectedCatalogMaterial.packageType,
+    });
+  }, [selectedCatalogMaterial, matAreaM2, matCoats]);
+
+  // Atualiza automaticamente o campo de quantidade estimada quando o cálculo for válido
+  useEffect(() => {
+    if (activeCalculation?.isValid) {
+      setMatQty(String(activeCalculation.litersRequired));
+      setMatUnit("L");
+    }
+  }, [activeCalculation]);
 
   const handleAddPlannedMaterial = () => {
     if (!selectedCatalogMaterial) {
@@ -314,6 +364,14 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
       return;
     }
 
+    // Preparar dados do snapshot técnico
+    const areaNum = matAreaM2 ? Number(matAreaM2) : undefined;
+    const coatsNum = matCoats ? Number(matCoats) : undefined;
+    const consumptionNum = selectedCatalogMaterial.consumptionPerM2PerCoat;
+    const pkgType = selectedCatalogMaterial.packageType;
+    const pkgVol = selectedCatalogMaterial.packageVolume;
+    const pkgsReq = activeCalculation?.packagesRequired ?? (pkgVol && pkgVol > 0 ? Math.ceil(qtyNum / pkgVol) : undefined);
+
     // Se estiver editando um item existente da lista
     if (editingPlannedId) {
       setPlannedMaterials((prev) =>
@@ -326,6 +384,12 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
                 materialName: selectedCatalogMaterial.name,
                 quantity: qtyNum,
                 unit: matUnit,
+                areaM2: areaNum,
+                coats: coatsNum,
+                consumptionPerM2PerCoat: consumptionNum,
+                packageType: pkgType,
+                packageVolume: pkgVol,
+                packagesRequired: pkgsReq,
               }
             : item
         )
@@ -361,6 +425,12 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
         materialName: selectedCatalogMaterial.name,
         quantity: qtyNum,
         unit: matUnit,
+        areaM2: areaNum,
+        coats: coatsNum,
+        consumptionPerM2PerCoat: consumptionNum,
+        packageType: pkgType,
+        packageVolume: pkgVol,
+        packagesRequired: pkgsReq,
       },
     ]);
 
@@ -383,6 +453,8 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
     }
     setMatQty(String(item.quantity));
     setMatUnit(item.unit);
+    if (item.areaM2) setMatAreaM2(String(item.areaM2));
+    if (item.coats) setMatCoats(String(item.coats));
   };
 
   const handleCancelEditPlanned = () => {
@@ -1207,176 +1279,305 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
           </div>
         </div>
 
-        {/* Bloco 5: Materiais Planejados (Seleção via Catálogo) */}
+        {/* Bloco 5: Materiais Planejados & Dimensionamento Técnico de Pintura */}
         <div className="space-y-3">
           <div className="flex justify-between items-center border-b border-[var(--border-subtle)] pb-1">
-            <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-              5. Materiais Planejados (Insumos do Catálogo)
-            </h3>
+            <div>
+              <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                Planejamento & Dimensionamento Técnico
+              </span>
+              <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                5. Insumos e Consumo de Pintura por Área
+              </h3>
+            </div>
             {loadingCatalog && !readOnly && (
               <span className="text-[11px] text-[var(--text-muted)] font-mono">Carregando catálogo...</span>
             )}
           </div>
 
           {!readOnly && (
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
-              {/* Campo de Pesquisa / Autocomplete */}
-              <div className="sm:col-span-6 relative">
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                  Pesquisar Material no Catálogo
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={materialSearch}
-                    onChange={(e) => {
-                      setMaterialSearch(e.target.value);
-                      setIsSearchDropdownOpen(true);
-                      if (selectedCatalogMaterial && e.target.value !== `${selectedCatalogMaterial.code} - ${selectedCatalogMaterial.name}`) {
-                        setSelectedCatalogMaterial(null);
-                      }
-                    }}
-                    onFocus={() => setIsSearchDropdownOpen(true)}
-                    className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-                  />
-                  {selectedCatalogMaterial && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedCatalogMaterial(null);
-                        setMaterialSearch("");
+            <div className="bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] rounded-lg p-3.5 space-y-3">
+              {/* Linha 1: Seletor de Material e Parâmetros de Aplicação */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-start">
+                {/* Campo de Pesquisa / Autocomplete */}
+                <div className="sm:col-span-6 relative">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                    Selecionar Material / Tinta no Catálogo *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Pesquise por nome ou código..."
+                      value={materialSearch}
+                      onChange={(e) => {
+                        setMaterialSearch(e.target.value);
+                        setIsSearchDropdownOpen(true);
+                        if (selectedCatalogMaterial && e.target.value !== `${selectedCatalogMaterial.code} - ${selectedCatalogMaterial.name}`) {
+                          setSelectedCatalogMaterial(null);
+                        }
                       }}
-                      className="absolute right-2.5 top-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold cursor-pointer"
-                    >
-                      ×
-                    </button>
+                      onFocus={() => setIsSearchDropdownOpen(true)}
+                      className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden bg-[var(--bg-surface)]"
+                    />
+                    {selectedCatalogMaterial && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCatalogMaterial(null);
+                          setMaterialSearch("");
+                          setMatQty("");
+                        }}
+                        className="absolute right-2.5 top-2 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] font-bold cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Dropdown de Autocomplete */}
+                  {isSearchDropdownOpen && filteredCatalog.length > 0 && !selectedCatalogMaterial && (
+                    <div className="absolute z-20 left-0 right-0 mt-1 max-h-52 overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-md shadow-lg divide-y divide-[var(--border-subtle)] text-xs">
+                      {filteredCatalog.map((mat) => (
+                        <button
+                          key={mat.id}
+                          type="button"
+                          onClick={() => handleSelectMaterial(mat)}
+                          className="w-full text-left p-2.5 hover:bg-[var(--bg-surface-raised)] flex justify-between items-center transition-colors cursor-pointer"
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{mat.code}</span>
+                              <span className="text-[var(--text-primary)] font-medium">{mat.name}</span>
+                            </div>
+                            <span className="text-[var(--text-muted)] text-[10px] block">
+                              {mat.type} {mat.consumptionPerM2PerCoat ? `• ${mat.consumptionPerM2PerCoat} ${mat.consumptionUnit || "L/m²/demão"}` : "• Sem consumo técnico"}
+                            </span>
+                          </div>
+                          <span className="text-[var(--text-secondary)] font-mono text-[11px] px-1.5 py-0.5 bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] rounded shrink-0 ml-2">
+                            Estoque: {mat.currentStock} {mat.unit}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
 
-                {/* Dropdown de Autocomplete */}
-                {isSearchDropdownOpen && filteredCatalog.length > 0 && !selectedCatalogMaterial && (
-                  <div className="absolute z-20 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-[var(--bg-surface)] border border-[var(--border-medium)] rounded-md shadow-lg divide-y divide-[var(--border-subtle)] text-xs">
-                    {filteredCatalog.map((mat) => (
-                      <button
-                        key={mat.id}
-                        type="button"
-                        onClick={() => handleSelectMaterial(mat)}
-                        className="w-full text-left p-2.5 hover:bg-[var(--bg-surface-raised)] flex justify-between items-center transition-colors cursor-pointer"
-                      >
-                        <div>
-                          <span className="font-mono font-bold text-blue-600 dark:text-blue-400 mr-2">{mat.code}</span>
-                          <span className="text-[var(--text-primary)] font-medium">{mat.name}</span>
-                          <span className="text-[var(--text-muted)] text-[10px] block">{mat.type}</span>
-                        </div>
-                        <span className="text-[var(--text-secondary)] font-mono text-[11px] px-1.5 py-0.5 bg-[var(--bg-surface-raised)] border border-[var(--border-subtle)] rounded">
-                          Estoque: {mat.currentStock} {mat.unit}
+                {/* Área para Aplicação (m²) */}
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                    Área da Atividade (m²)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0.1"
+                    placeholder={serviceQuantity && serviceUnit === "m²" ? serviceQuantity : "Ex: 250"}
+                    value={matAreaM2}
+                    onChange={(e) => setMatAreaM2(e.target.value)}
+                    className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-mono bg-[var(--bg-surface)]"
+                  />
+                  <span className="text-[10px] text-[var(--text-muted)] block mt-0.5">Área de pintura</span>
+                </div>
+
+                {/* Quantidade de Demãos */}
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                    Demãos
+                  </label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="1"
+                    placeholder="2"
+                    value={matCoats}
+                    onChange={(e) => setMatCoats(e.target.value)}
+                    className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-mono bg-[var(--bg-surface)]"
+                  />
+                  <span className="text-[10px] text-[var(--text-muted)] block mt-0.5">Nº de demãos</span>
+                </div>
+              </div>
+
+              {/* Linha 2: Diagnóstico do Material & Painel do Cálculo */}
+              {selectedCatalogMaterial && (
+                <div>
+                  {selectedCatalogMaterial.consumptionPerM2PerCoat ? (
+                    <div className="bg-blue-500/10 border border-blue-500/25 rounded-md p-3 space-y-1.5 text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono font-bold text-blue-400">
+                          DIMENSIONAMENTO AUTOMÁTICO DE CONSUMO
                         </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+                        <span className="text-[11px] text-slate-300 font-mono">
+                          Consumo: <strong>{selectedCatalogMaterial.consumptionPerM2PerCoat} {selectedCatalogMaterial.consumptionUnit || "L/m²/demão"}</strong>
+                          {selectedCatalogMaterial.packageVolume ? ` • Embalagem: ${selectedCatalogMaterial.packageType || "Galão"} de ${selectedCatalogMaterial.packageVolume} L` : ""}
+                        </span>
+                      </div>
 
-              {/* Quantidade Estimada */}
-              <div className="sm:col-span-3">
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                  Qtd. Estimada
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={matQty}
-                  onChange={(e) => setMatQty(e.target.value)}
-                  className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-                />
-              </div>
+                      {activeCalculation?.isValid ? (
+                        <div className="pt-1 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-blue-500/20">
+                          <div className="space-y-0.5">
+                            <p className="text-[11px] text-slate-300 font-mono">
+                              {activeCalculation.formulaDescription}
+                            </p>
+                            {activeCalculation.packageSummary && (
+                              <p className="text-xs font-bold text-emerald-400 font-mono">
+                                Quantidade estimada: {activeCalculation.packageSummary}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono italic">
+                            * Não arredonda litros; arredonda apenas embalagens para cima.
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-[11px] text-amber-300">
+                          Informe a área (m²) e o número de demãos acima para calcular automaticamente os litros e embalagens.
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-slate-500/10 border border-slate-500/20 rounded-md p-2.5 text-xs text-slate-300 flex items-center justify-between">
+                      <span>ℹ️ Consumo técnico não cadastrado para este material. Informe a quantidade estimada manualmente abaixo.</span>
+                      <span className="text-[10px] font-mono text-slate-400">Entrada manual</span>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              {/* Unidade */}
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
-                  Unidade
-                </label>
-                <select
-                  value={matUnit}
-                  onChange={(e) => setMatUnit(e.target.value)}
-                  className="w-full text-sm border border-[var(--border-medium)] rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden"
-                >
-                  <option value="L">L (Litros)</option>
-                  <option value="kg">kg</option>
-                  <option value="gl">Galão</option>
-                  <option value="un">Unidade</option>
-                </select>
-              </div>
+              {/* Linha 3: Confirmação de Quantidade, Unidade e Ação */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end pt-1">
+                {/* Quantidade Estimada */}
+                <div className="sm:col-span-6">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                    Quantidade Necessária Estimada *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={matQty}
+                    onChange={(e) => setMatQty(e.target.value)}
+                    placeholder="Litros necessários"
+                    className="w-full text-sm border border-[var(--border-medium)] rounded px-3 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden font-mono bg-[var(--bg-surface)]"
+                  />
+                </div>
 
-              {/* Botão de Adicionar / Salvar Edição */}
-              <div className="sm:col-span-1 flex gap-1">
-                <button
-                  type="button"
-                  onClick={handleAddPlannedMaterial}
-                  title={editingPlannedId ? "Atualizar item" : "Adicionar material"}
-                  className={`w-full py-1.5 text-xs font-bold rounded text-white transition-colors cursor-pointer ${
-                    editingPlannedId
-                      ? "bg-emerald-600 hover:bg-emerald-700"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  }`}
-                >
-                  {editingPlannedId ? "✓" : "+"}
-                </button>
-                {editingPlannedId && (
+                {/* Unidade */}
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">
+                    Unidade
+                  </label>
+                  <select
+                    value={matUnit}
+                    onChange={(e) => setMatUnit(e.target.value)}
+                    className="w-full text-sm border border-[var(--border-medium)] rounded px-2 py-1.5 focus:ring-1 focus:ring-blue-500 focus:outline-hidden bg-[var(--bg-surface)]"
+                  >
+                    <option value="L">L (Litros)</option>
+                    <option value="kg">kg</option>
+                    <option value="gl">Galão</option>
+                    <option value="un">Unidade</option>
+                  </select>
+                </div>
+
+                {/* Botão de Adicionar / Salvar Edição */}
+                <div className="sm:col-span-3 flex gap-1">
                   <button
                     type="button"
-                    onClick={handleCancelEditPlanned}
-                    title="Cancelar edição"
-                    className="py-1.5 px-2 text-xs font-bold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-pointer"
+                    onClick={handleAddPlannedMaterial}
+                    title={editingPlannedId ? "Atualizar item" : "Adicionar material planejado"}
+                    className={`w-full py-2 text-xs font-bold rounded text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                      editingPlannedId
+                        ? "bg-emerald-600 hover:bg-emerald-700"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
                   >
-                    ✕
+                    <span>{editingPlannedId ? "Atualizar Item" : "+ Adicionar ao Planejamento"}</span>
                   </button>
-                )}
+                  {editingPlannedId && (
+                    <button
+                      type="button"
+                      onClick={handleCancelEditPlanned}
+                      title="Cancelar edição"
+                      className="py-2 px-2.5 text-xs font-bold bg-[var(--bg-surface-raised)] hover:bg-[var(--bg-surface-highlight)] rounded text-[var(--text-secondary)] border border-[var(--border-subtle)] cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Lista de Materiais Adicionados */}
+          {/* Lista de Materiais Adicionados com Detalhamento de Dimensionamento */}
           {plannedMaterials.length > 0 ? (
             <div className="border border-[var(--border-subtle)] rounded divide-y divide-[var(--border-subtle)] text-xs bg-[var(--bg-surface-raised)]">
-              {plannedMaterials.map((m) => (
-                <div key={m.id} className="p-2.5 flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    {m.materialCode && (
-                      <span className="font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded">
-                        {m.materialCode}
-                      </span>
-                    )}
-                    <span className="font-medium text-[var(--text-primary)]">{m.materialName}</span>
+              {plannedMaterials.map((m) => {
+                const hasTechData = Boolean(m.consumptionPerM2PerCoat && m.areaM2);
+                return (
+                  <div key={m.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {m.materialCode && (
+                          <span className="font-mono text-[11px] font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 rounded">
+                            {m.materialCode}
+                          </span>
+                        )}
+                        <span className="font-bold text-[var(--text-primary)]">{m.materialName}</span>
+                      </div>
+
+                      {hasTechData ? (
+                        <div className="text-[11px] text-[var(--text-muted)] font-mono flex items-center gap-2 flex-wrap">
+                          <span>Área: {m.areaM2} m²</span>
+                          <span>•</span>
+                          <span>{m.coats} demão{Number(m.coats) > 1 ? "s" : ""}</span>
+                          <span>•</span>
+                          <span>Consumo: {m.consumptionPerM2PerCoat} L/m²</span>
+                          {m.packagesRequired !== undefined && m.packagesRequired !== null && m.packageVolume && (
+                            <>
+                              <span>•</span>
+                              <span className="text-emerald-500 dark:text-emerald-400 font-semibold">
+                                {m.packagesRequired} {m.packageType || "embalagem(ns)"} de {m.packageVolume} L
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-[var(--text-muted)] font-mono italic">
+                          Quantidade estimada informada manualmente
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right font-mono">
+                        <span className="text-sm font-bold text-[var(--text-primary)]">
+                          {m.quantity} {m.unit}
+                        </span>
+                      </div>
+
+                      {!readOnly && (
+                        <div className="flex items-center gap-2 border-l border-[var(--border-subtle)] pl-2">
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditPlannedMaterial(m)}
+                            title="Editar quantidade ou cálculo"
+                            className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs cursor-pointer"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePlannedMaterial(m.id)}
+                            title="Remover material"
+                            className="text-[var(--text-muted)] hover:text-rose-500 font-bold text-sm leading-none cursor-pointer"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[var(--text-secondary)] font-mono font-semibold">
-                      {m.quantity} {m.unit}
-                    </span>
-                    {!readOnly && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => handleStartEditPlannedMaterial(m)}
-                          title="Editar quantidade"
-                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs cursor-pointer"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemovePlannedMaterial(m.id)}
-                          title="Remover material"
-                          className="text-[var(--text-muted)] hover:text-rose-500 font-bold text-sm leading-none cursor-pointer"
-                        >
-                          ×
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <p className="text-xs text-[var(--text-muted)] italic">

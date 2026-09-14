@@ -29,6 +29,25 @@ const PRESET_LOCATIONS = [
   "Outro",
 ];
 
+const PRESET_PACKAGE_TYPES = [
+  "Galão",
+  "Balde",
+  "Lata",
+  "Quarto (0,9 L)",
+  "Tambor",
+  "Outro",
+];
+
+const PRESET_PACKAGE_VOLUMES = [
+  "3.6",
+  "18",
+  "0.9",
+  "1",
+  "5",
+  "20",
+  "Outro",
+];
+
 export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialFormProps) {
   const isEditing = Boolean(initialMaterial);
 
@@ -47,6 +66,34 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
   const [color, setColor] = useState(initialMaterial?.color || "");
   const [unit, setUnit] = useState(initialMaterial?.unit || "L");
   const [active, setActive] = useState(initialMaterial?.active ?? true);
+
+  // Dados Técnicos de Consumo e Embalagem
+  const [consumptionPerM2, setConsumptionPerM2] = useState(
+    initialMaterial?.consumptionPerM2PerCoat !== undefined && initialMaterial?.consumptionPerM2PerCoat !== null
+      ? String(initialMaterial.consumptionPerM2PerCoat)
+      : ""
+  );
+  const [consumptionUnit, setConsumptionUnit] = useState(
+    initialMaterial?.consumptionUnit || "L/m²/demão"
+  );
+  const [packageType, setPackageType] = useState(() => {
+    if (!initialMaterial?.packageType) return "Galão";
+    return PRESET_PACKAGE_TYPES.includes(initialMaterial.packageType) ? initialMaterial.packageType : "Outro";
+  });
+  const [customPackageType, setCustomPackageType] = useState(() => {
+    if (!initialMaterial?.packageType) return "";
+    return PRESET_PACKAGE_TYPES.includes(initialMaterial.packageType) ? "" : initialMaterial.packageType;
+  });
+  const [packageVolume, setPackageVolume] = useState(() => {
+    if (initialMaterial?.packageVolume === undefined || initialMaterial?.packageVolume === null) return "3.6";
+    const strVal = String(initialMaterial.packageVolume);
+    return PRESET_PACKAGE_VOLUMES.includes(strVal) ? strVal : "Outro";
+  });
+  const [customPackageVolume, setCustomPackageVolume] = useState(() => {
+    if (initialMaterial?.packageVolume === undefined || initialMaterial?.packageVolume === null) return "";
+    const strVal = String(initialMaterial.packageVolume);
+    return PRESET_PACKAGE_VOLUMES.includes(strVal) ? "" : strVal;
+  });
 
   // Configuração de Estoque Mínimo
   const [minimumStock, setMinimumStock] = useState(
@@ -76,6 +123,8 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
     const finalCode = code.trim().toUpperCase();
     const finalType = type === "Outro" ? customType.trim() : type;
     const finalLocation = location === "Outro" ? customLocation.trim() : location;
+    const finalPackageType = packageType === "Outro" ? customPackageType.trim() : packageType;
+    const finalPackageVolume = packageVolume === "Outro" ? customPackageVolume.trim() : packageVolume;
 
     if (!finalName) {
       setError("O Nome do material é obrigatório.");
@@ -94,6 +143,28 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
       return;
     }
 
+    // Validação de consumo (se informado)
+    let finalConsumption: number | undefined = undefined;
+    if (consumptionPerM2.trim() !== "") {
+      const parsedCons = Number(consumptionPerM2.replace(",", "."));
+      if (isNaN(parsedCons) || parsedCons <= 0) {
+        setError("O Consumo por m²/demão deve ser um número positivo maior que zero.");
+        return;
+      }
+      finalConsumption = parsedCons;
+    }
+
+    // Validação de volume de embalagem (se informado)
+    let parsedPkgVolume: number | undefined = undefined;
+    if (finalPackageVolume.trim() !== "") {
+      const parsedVol = Number(finalPackageVolume.replace(",", "."));
+      if (isNaN(parsedVol) || parsedVol <= 0) {
+        setError("O Volume da embalagem deve ser um número positivo maior que zero.");
+        return;
+      }
+      parsedPkgVolume = parsedVol;
+    }
+
     setIsSubmitting(true);
     try {
       await onSave({
@@ -106,6 +177,10 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
         minimumStock: Number(minimumStock),
         location: finalLocation || undefined,
         technicalInfo: technicalInfo.trim() || undefined,
+        consumptionPerM2PerCoat: finalConsumption,
+        consumptionUnit: finalConsumption ? consumptionUnit.trim() : undefined,
+        packageType: finalPackageType || undefined,
+        packageVolume: parsedPkgVolume,
         active,
       });
     } catch (err) {
@@ -293,6 +368,117 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
                 required
               />
             )}
+          </div>
+        </div>
+
+        {/* Dados Técnicos de Consumo & Embalagem (Cálculo Automático de Pintura) */}
+        <div className="bg-[#070c14] border border-blue-500/20 rounded-lg p-4 space-y-3">
+          <div className="flex items-center justify-between border-b border-blue-500/15 pb-2">
+            <div>
+              <span className="text-[10px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                Cálculo de Consumo & Embalagem
+              </span>
+              <h3 className="text-xs font-bold text-white">
+                Parâmetros Técnicos de Rendimento
+              </h3>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono">
+              Opcional para não-tintas
+            </span>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            Configure o consumo teórico por demão e a embalagem comercial para que as ordens de serviço calculem automaticamente a quantidade de litros e embalagens necessárias.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+            {/* Consumo por m² por demão */}
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Consumo por m²/demão
+              </label>
+              <input
+                type="number"
+                step="0.001"
+                min="0.001"
+                value={consumptionPerM2}
+                onChange={(e) => setConsumptionPerM2(e.target.value)}
+                placeholder="Ex: 0.20"
+                className="w-full bg-[#0c1524] text-white border border-blue-500/20 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
+              />
+              <span className="text-[10px] text-slate-500 block mt-0.5">Ex: 0,20 L/m²/demão</span>
+            </div>
+
+            {/* Unidade de Consumo */}
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Unidade do Consumo
+              </label>
+              <input
+                type="text"
+                value={consumptionUnit}
+                onChange={(e) => setConsumptionUnit(e.target.value)}
+                placeholder="L/m²/demão"
+                className="w-full bg-[#0c1524] text-white border border-blue-500/20 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
+              />
+              <span className="text-[10px] text-slate-500 block mt-0.5">Padrão: L/m²/demão</span>
+            </div>
+
+            {/* Tipo de Embalagem */}
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Tipo de Embalagem
+              </label>
+              <select
+                value={packageType}
+                onChange={(e) => setPackageType(e.target.value)}
+                className="w-full bg-[#0c1524] text-white border border-blue-500/20 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
+              >
+                {PRESET_PACKAGE_TYPES.map((pkg) => (
+                  <option key={pkg} value={pkg}>{pkg}</option>
+                ))}
+              </select>
+              {packageType === "Outro" && (
+                <input
+                  type="text"
+                  value={customPackageType}
+                  onChange={(e) => setCustomPackageType(e.target.value)}
+                  placeholder="Ex: Frasco, Tambor..."
+                  className="w-full mt-1.5 bg-[#0c1524] text-white border border-blue-500/20 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden text-xs"
+                  required
+                />
+              )}
+            </div>
+
+            {/* Volume por Embalagem */}
+            <div>
+              <label className="block font-semibold text-slate-300 mb-1">
+                Volume por Embalagem (L)
+              </label>
+              <select
+                value={packageVolume}
+                onChange={(e) => setPackageVolume(e.target.value)}
+                className="w-full bg-[#0c1524] text-white border border-blue-500/20 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
+              >
+                {PRESET_PACKAGE_VOLUMES.map((vol) => (
+                  <option key={vol} value={vol}>
+                    {vol === "Outro" ? "Outro volume..." : `${vol} Litros`}
+                  </option>
+                ))}
+              </select>
+              {packageVolume === "Outro" && (
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  value={customPackageVolume}
+                  onChange={(e) => setCustomPackageVolume(e.target.value)}
+                  placeholder="Litros por embalagem"
+                  className="w-full mt-1.5 bg-[#0c1524] text-white border border-blue-500/20 rounded px-2 py-1 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden text-xs font-mono"
+                  required
+                />
+              )}
+            </div>
           </div>
         </div>
 
