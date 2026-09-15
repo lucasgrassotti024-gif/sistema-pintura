@@ -80,7 +80,6 @@ export function calculateMaterialRequirement(
   if (packageVolume && packageVolume > 0) {
     // Arredondamento estritamente para cima para quantidade de embalagens fechadas
     packagesRequired = Math.ceil(litersRequired / packageVolume);
-    const typeLabel = packageType ? `${packageType.toLowerCase()}${packagesRequired > 1 ? "ões" : ""}` : "embalagens";
     // Ajuste de plural amigável para galão/balde/lata
     let pluralLabel = packageType || "embalagem(ns)";
     if (packageType) {

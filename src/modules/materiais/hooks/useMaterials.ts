@@ -34,7 +34,7 @@ export function useMaterials() {
   const [statusFilter, setStatusFilter] = useState("todos");
 
   // Carregar materiais e consolidar com planejamento
-  const loadMaterials = useCallback(async () => {
+  const loadMaterials = useCallback(async (): Promise<MaterialPlanningMetrics[]> => {
     setIsLoading(true);
     setError(null);
     try {
@@ -43,9 +43,11 @@ export function useMaterials() {
 
       const metrics = await getMaterialsPlanningMetrics(mats, period);
       setPlanningMetricsList(metrics);
+      return metrics;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao carregar catálogo e planejamento.";
       setError(msg);
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -119,14 +121,14 @@ export function useMaterials() {
   const editMaterial = async (
     id: string,
     input: NewMaterialInput & { active?: boolean }
-  ): Promise<Material> => {
+  ): Promise<{ updated: Material; refreshedMetrics: MaterialPlanningMetrics[] }> => {
     const updated = await updateMaterialService(id, input);
-    await loadMaterials();
-    return updated;
+    const refreshedMetrics = await loadMaterials();
+    return { updated, refreshedMetrics };
   };
 
   const removeMaterial = async (id: string): Promise<void> => {
-    const inactived = await deleteMaterialService(id);
+    await deleteMaterialService(id);
     await loadMaterials();
     if (selectedMaterialId === id) {
       setSelectedMaterialId(null);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Material, NewMaterialInput } from "../types/material.types";
 
 interface MaterialFormProps {
@@ -77,7 +77,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
     initialMaterial?.consumptionUnit || "L/m²/demão"
   );
   const [packageType, setPackageType] = useState(() => {
-    if (!initialMaterial?.packageType) return "Galão";
+    if (!initialMaterial?.packageType) return "";
     return PRESET_PACKAGE_TYPES.includes(initialMaterial.packageType) ? initialMaterial.packageType : "Outro";
   });
   const [customPackageType, setCustomPackageType] = useState(() => {
@@ -85,7 +85,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
     return PRESET_PACKAGE_TYPES.includes(initialMaterial.packageType) ? "" : initialMaterial.packageType;
   });
   const [packageVolume, setPackageVolume] = useState(() => {
-    if (initialMaterial?.packageVolume === undefined || initialMaterial?.packageVolume === null) return "3.6";
+    if (initialMaterial?.packageVolume === undefined || initialMaterial?.packageVolume === null) return "";
     const strVal = String(initialMaterial.packageVolume);
     return PRESET_PACKAGE_VOLUMES.includes(strVal) ? strVal : "Outro";
   });
@@ -111,12 +111,14 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
   // Informações Técnicas
   const [technicalInfo, setTechnicalInfo] = useState(initialMaterial?.technicalInfo || "");
 
-  // Validação
+  // Validação e Proteção contra Duplo Submit
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingRef.current) return;
     setError(null);
 
     const finalName = name.trim();
@@ -144,7 +146,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
     }
 
     // Validação de consumo (se informado)
-    let finalConsumption: number | undefined = undefined;
+    let finalConsumption: number | null = null;
     if (consumptionPerM2.trim() !== "") {
       const parsedCons = Number(consumptionPerM2.replace(",", "."));
       if (isNaN(parsedCons) || parsedCons <= 0) {
@@ -155,7 +157,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
     }
 
     // Validação de volume de embalagem (se informado)
-    let parsedPkgVolume: number | undefined = undefined;
+    let parsedPkgVolume: number | null = null;
     if (finalPackageVolume.trim() !== "") {
       const parsedVol = Number(finalPackageVolume.replace(",", "."));
       if (isNaN(parsedVol) || parsedVol <= 0) {
@@ -165,21 +167,23 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
       parsedPkgVolume = parsedVol;
     }
 
+    // Trava síncrona imediata contra cliques simultâneos
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     try {
       await onSave({
         code: finalCode,
         name: finalName,
         type: finalType,
-        manufacturer: manufacturer.trim() || undefined,
-        color: color.trim() || undefined,
+        manufacturer: manufacturer.trim() || null,
+        color: color.trim() || null,
         unit,
         minimumStock: Number(minimumStock),
-        location: finalLocation || undefined,
-        technicalInfo: technicalInfo.trim() || undefined,
+        location: finalLocation || null,
+        technicalInfo: technicalInfo.trim() || null,
         consumptionPerM2PerCoat: finalConsumption,
-        consumptionUnit: finalConsumption ? consumptionUnit.trim() : undefined,
-        packageType: finalPackageType || undefined,
+        consumptionUnit: finalConsumption ? (consumptionUnit.trim() || "L/m²/demão") : null,
+        packageType: finalPackageType ? finalPackageType.trim() : null,
         packageVolume: parsedPkgVolume,
         active,
       });
@@ -187,6 +191,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
       const msg = err instanceof Error ? err.message : "Erro ao salvar material.";
       setError(msg);
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -434,6 +439,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
                 onChange={(e) => setPackageType(e.target.value)}
                 className="w-full bg-[#0c1524] text-white border border-blue-500/20 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden"
               >
+                <option value="">Não especificado</option>
                 {PRESET_PACKAGE_TYPES.map((pkg) => (
                   <option key={pkg} value={pkg}>{pkg}</option>
                 ))}
@@ -460,6 +466,7 @@ export function MaterialForm({ initialMaterial, onSave, onCancel }: MaterialForm
                 onChange={(e) => setPackageVolume(e.target.value)}
                 className="w-full bg-[#0c1524] text-white border border-blue-500/20 rounded px-2.5 py-1.5 focus:ring-1 focus:ring-emerald-500 focus:outline-hidden font-mono"
               >
+                <option value="">Não especificado</option>
                 {PRESET_PACKAGE_VOLUMES.map((vol) => (
                   <option key={vol} value={vol}>
                     {vol === "Outro" ? "Outro volume..." : `${vol} Litros`}

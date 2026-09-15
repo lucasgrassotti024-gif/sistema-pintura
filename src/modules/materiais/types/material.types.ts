@@ -45,16 +45,16 @@ export interface NewMaterialInput {
   code: string;
   name: string;
   type: string;
-  manufacturer?: string;
-  color?: string;
+  manufacturer?: string | null;
+  color?: string | null;
   unit: string;
   minimumStock: number;
-  location?: string;
-  technicalInfo?: string;
-  consumptionPerM2PerCoat?: number;
-  consumptionUnit?: string;
-  packageType?: string;
-  packageVolume?: number;
+  location?: string | null;
+  technicalInfo?: string | null;
+  consumptionPerM2PerCoat?: number | null;
+  consumptionUnit?: string | null;
+  packageType?: string | null;
+  packageVolume?: number | null;
 }
 
 export interface StockEntryInput {

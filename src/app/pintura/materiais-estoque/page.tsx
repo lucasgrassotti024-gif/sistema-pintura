@@ -103,8 +103,17 @@ export default function MateriaisEstoquePage() {
 
   const handleSaveMaterial = async (data: NewMaterialInput & { active?: boolean }) => {
     if (editingMaterial) {
-      await editMaterial(editingMaterial.id, data);
+      const { updated, refreshedMetrics } = await editMaterial(editingMaterial.id, data);
       setEditingMaterial(null);
+      // Sincroniza imediatamente o painel de detalhes com os dados recém-salvos
+      if (selectedMetrics && selectedMetrics.material.id === editingMaterial.id) {
+        const found = refreshedMetrics.find((pm) => pm.material.id === editingMaterial.id);
+        if (found) {
+          setSelectedMetrics(found);
+        } else {
+          setSelectedMetrics((prev) => (prev ? { ...prev, material: updated } : null));
+        }
+      }
     } else {
       await addNewMaterial(data);
       setIsCreatingMaterial(false);

@@ -5,7 +5,7 @@ function runTests() {
   let passed = 0;
   let total = 0;
 
-  function assert(condition: boolean, testName: string, detail?: any) {
+  function assert(condition: boolean, testName: string, detail?: unknown) {
     total++;
     if (condition) {
       console.log(`✅ [PASS] ${testName}`);

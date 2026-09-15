@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { Activity, ActivityPhotoItem } from "../types/activity.types";
 import { getActivityPhotos } from "./activity.service";
+import { RSS3_LOGO_BASE64 } from "../constants/rss3-logo.constant";
 
 export interface GeneratePdfOptions {
   includePhotos?: boolean;
@@ -20,7 +21,7 @@ interface LoadedPdfImage {
  * Possui proteções contra:
  * - URL expirada ou inválida
  * - Erro de rede / CORS
- * - Imagens excessivamente grandes (redimensiona no canvas se ultrapassar 1600px para economizar memória e PDF size)
+ * - Imagens excessivamente grandes (redimensiona no canvas se ultrapassar 1200px para economizar memória e tamanho do PDF)
  * - Retorna null em caso de falha para NÃO quebrar a geração do PDF.
  */
 async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImage | null> {
@@ -33,11 +34,8 @@ async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImag
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
 
-    console.info(`[loadPdfImageSafe] Baixando imagem: "${photo.originalFilename}"...`);
     const response = await fetch(photo.signedUrl, { signal: controller.signal });
     clearTimeout(timeoutId);
-
-    console.info(`[loadPdfImageSafe] HTTP Status ${response.status} para "${photo.originalFilename}"`);
 
     if (!response.ok) {
       console.warn(`[loadPdfImageSafe] Resposta HTTP ${response.status} ao baixar foto "${photo.originalFilename}".`);
@@ -45,14 +43,12 @@ async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImag
     }
 
     const blob = await response.blob();
-    console.info(`[loadPdfImageSafe] Blob obtido: tamanho=${blob.size} bytes, MIME=${blob.type}`);
-
     if (!blob.type.startsWith("image/")) {
       console.warn(`[loadPdfImageSafe] Tipo MIME não suportado para "${photo.originalFilename}": ${blob.type}`);
       return null;
     }
 
-    // 1. Converter o Blob diretamente em DataURL via FileReader (nativo e sem contaminação de canvas)
+    // 1. Converter o Blob diretamente em DataURL via FileReader
     const rawDataUrl = await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -79,7 +75,6 @@ async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImag
         const naturalW = img.naturalWidth || img.width || 800;
         const naturalH = img.naturalHeight || img.height || 600;
 
-        // Se a imagem for WebP ou maior que 1600px, tenta otimizar via canvas para JPEG compatível com jsPDF
         const isWebP = blob.type.toLowerCase().includes("webp") || photo.originalFilename.toLowerCase().endsWith(".webp");
         const maxDim = 1200;
         const needsResize = naturalW > maxDim || naturalH > maxDim;
@@ -108,7 +103,6 @@ async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImag
               ctx.drawImage(img, 0, 0, w, h);
               const convertedDataUrl = canvas.toDataURL("image/jpeg", 0.85);
 
-              console.info(`[loadPdfImageSafe] Conversão via canvas concluída com sucesso para "${photo.originalFilename}" (${w}x${h})`);
               resolve({
                 dataUrl: convertedDataUrl,
                 width: w,
@@ -123,14 +117,12 @@ async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImag
           }
         }
 
-        // Fallback robusto e direto com DataURL original
         const detectedFormat: "JPEG" | "PNG" | "WEBP" = blob.type.includes("png")
           ? "PNG"
           : blob.type.includes("webp")
           ? "WEBP"
           : "JPEG";
 
-        console.info(`[loadPdfImageSafe] Imagem decodificada diretamente: "${photo.originalFilename}" formato=${detectedFormat}`);
         resolve({
           dataUrl: rawDataUrl,
           width: naturalW,
@@ -142,7 +134,6 @@ async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImag
 
       img.onerror = (e) => {
         console.warn(`[loadPdfImageSafe] Falha ao decodificar imagem "${photo.originalFilename}":`, e);
-        // Último fallback: se Image falhar ao decodificar no browser, mas temos rawDataUrl, retorna com dimensões padrão
         resolve({
           dataUrl: rawDataUrl,
           width: 800,
@@ -161,91 +152,32 @@ async function loadPdfImageSafe(photo: ActivityPhotoItem): Promise<LoadedPdfImag
 }
 
 /**
- * Formata datas ISO (YYYY-MM-DD ou YYYY-MM-DD HH:mm) para padrão brasileiro DD/MM/YYYY.
+ * Formata datas ISO (YYYY-MM-DD ou YYYY-MM-DD HH:mm) para padrão brasileiro DD/MM/YYYY [HH:mm].
  */
-function formatDateBR(dateStr?: string): string {
+function formatDateBR(dateStr?: string, includeTime = true): string {
   if (!dateStr || dateStr === "-" || dateStr.trim() === "") return "-";
   const [datePart, timePart] = dateStr.split(" ");
   const cleanDate = (datePart || "").split("T")[0].trim();
   const parts = cleanDate.split("-");
   if (parts.length === 3 && parts[0].length === 4) {
     const formatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
-    return timePart ? `${formatted} às ${timePart}` : formatted;
+    if (includeTime && timePart) {
+      return `${formatted} ${timePart.slice(0, 5)}`;
+    }
+    return formatted;
   }
   return dateStr;
 }
 
 /**
- * Tradução oficial de status operacional da atividade
+ * Retorna data atual no formato DD/MM/YYYY
  */
-function formatStatus(status: string): string {
-  const map: Record<string, string> = {
-    planejada: "Planejada",
-    programada: "Programada",
-    em_andamento: "Em Andamento",
-    pausada: "Pausada",
-    concluida: "Concluída",
-    cancelada: "Cancelada",
-  };
-  return map[status] || status;
-}
-
-/**
- * Tradução de prioridade
- */
-function formatPriority(priority: string): string {
-  const map: Record<string, string> = {
-    baixa: "Baixa",
-    media: "Média",
-    alta: "Alta",
-    urgente: "Urgente",
-  };
-  return map[priority] || priority;
-}
-
-/**
- * Cores discretas para os badges de Status
- */
-function getStatusBadgeColors(status: string): {
-  bg: [number, number, number];
-  text: [number, number, number];
-  border: [number, number, number];
-} {
-  switch (status) {
-    case "planejada":
-    case "programada":
-      return { bg: [254, 243, 199], text: [180, 83, 9], border: [253, 230, 138] }; // Amarelo discreto (#FEF3C7)
-    case "em_andamento":
-      return { bg: [219, 234, 254], text: [29, 78, 216], border: [191, 219, 254] }; // Azul discreto (#DBEAFE)
-    case "concluida":
-      return { bg: [209, 250, 229], text: [4, 120, 87], border: [167, 243, 208] }; // Verde discreto (#D1FAE5)
-    case "cancelada":
-      return { bg: [254, 226, 226], text: [185, 28, 28], border: [254, 202, 202] }; // Vermelho discreto (#FEE2E2)
-    default:
-      return { bg: [241, 245, 249], text: [71, 85, 105], border: [226, 232, 240] };
-  }
-}
-
-/**
- * Cores discretas para os badges de Prioridade
- */
-function getPriorityBadgeColors(priority: string): {
-  bg: [number, number, number];
-  text: [number, number, number];
-  border: [number, number, number];
-} {
-  switch (priority) {
-    case "urgente":
-      return { bg: [254, 226, 226], text: [185, 28, 28], border: [254, 202, 202] }; // Vermelho discreto
-    case "alta":
-      return { bg: [255, 237, 213], text: [194, 65, 12], border: [254, 215, 170] }; // Laranja discreto (#FFEDD5)
-    case "media":
-      return { bg: [254, 243, 199], text: [180, 83, 9], border: [253, 230, 138] }; // Amarelo discreto
-    case "baixa":
-      return { bg: [241, 245, 249], text: [71, 85, 105], border: [226, 232, 240] }; // Cinza/azul discreto
-    default:
-      return { bg: [241, 245, 249], text: [71, 85, 105], border: [226, 232, 240] };
-  }
+function getTodayFormattedBR(): string {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 /**
@@ -263,601 +195,596 @@ interface PhotoLoadState {
 }
 
 /**
- * Renderiza o conteúdo completo de uma atividade individual em um documento jsPDF.
- * Garante que a atividade comece em uma nova página (exceto na primeira página limpa)
- * e compartilha 100% da identidade visual corporativa RSS3.
+ * Desenha uma célula de tabela industrial oficial RSS3 com rótulo em negrito e valor legível.
  */
-function renderActivityContent(
+function drawGridCell(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  value: string,
+  options?: {
+    drawRightBorder?: boolean;
+    drawBottomBorder?: boolean;
+    maxLines?: number;
+  }
+): void {
+  const drawRight = options?.drawRightBorder ?? true;
+  const drawBottom = options?.drawBottomBorder ?? true;
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+
+  // Bordas da célula
+  if (drawRight) {
+    doc.line(x + w, y, x + w, y + h);
+  }
+  if (drawBottom) {
+    doc.line(x, y + h, x + w, y + h);
+  }
+
+  // Label (Caixa alta, negrito discreto, estilo documento técnico)
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.8);
+  doc.setTextColor(20, 24, 33);
+  doc.text(label.toUpperCase(), x + 2, y + 3.8);
+
+  // Valor
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.8);
+  doc.setTextColor(15, 23, 42);
+
+  const maxW = w - 4;
+  const lines = doc.splitTextToSize(value || "-", maxW);
+  const maxLines = options?.maxLines || 2;
+  const displayLines = lines.slice(0, maxLines);
+
+  let textY = y + 7.5;
+  for (let i = 0; i < displayLines.length; i++) {
+    doc.text(displayLines[i], x + 2, textY);
+    textY += 3.4;
+  }
+}
+
+/**
+ * Desenha o cabeçalho oficial do documento RSS3 na página especificada.
+ */
+function drawOfficialHeader(
+  doc: jsPDF,
+  orderNumber: string,
+  pageStr: string,
+  isContinuation = false
+): void {
+  const x = 10;
+  const y = 10;
+  const totalW = 190;
+  const headerH = 22;
+
+  // Linhas divisórias do cabeçalho
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.4);
+
+  // Linha inferior do cabeçalho
+  doc.line(x, y + headerH, x + totalW, y + headerH);
+
+  // Coluna 1: Logo RSS3 (largura 50mm)
+  const col1W = 50;
+  doc.line(x + col1W, y, x + col1W, y + headerH);
+
+  try {
+    // Renderiza a imagem do logo oficial RSS3
+    doc.addImage(RSS3_LOGO_BASE64, "PNG", x + 2, y + 1.8, 46, 18.4);
+  } catch (err) {
+    console.warn("[drawOfficialHeader] Falha ao renderizar logo base64, usando fallback:", err);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(11, 31, 58);
+    doc.text("RSS3", x + 15, y + 13);
+  }
+
+  // Coluna 2: Título centralizado (largura 92mm)
+  const col2W = 92;
+  const col2X = x + col1W;
+  doc.line(col2X + col2W, y, col2X + col2W, y + headerH);
+
+  const titleCenterX = col2X + col2W / 2;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(0, 0, 0);
+  const mainTitle = isContinuation
+    ? "RELATÓRIO DE ATIVIDADE — CONTINUAÇÃO"
+    : "RELATÓRIO DE ATIVIDADE";
+  doc.text(mainTitle, titleCenterX, y + 9.5, { align: "center" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text("PINTURA INDUSTRIAL", titleCenterX, y + 16, { align: "center" });
+
+  // Coluna 3: Metadados OS / DATA / PÁGINA (largura 48mm)
+  const col3W = 48;
+  const col3X = col2X + col2W;
+  const rowH = headerH / 3; // ~7.33mm
+
+  // Linhas horizontais dos metadados
+  doc.setLineWidth(0.3);
+  doc.line(col3X, y + rowH, col3X + col3W, y + rowH);
+  doc.line(col3X, y + rowH * 2, col3X + col3W, y + rowH * 2);
+
+  // Linha 1: Nº DA OS
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.2);
+  doc.setTextColor(0, 0, 0);
+  doc.text("Nº DA OS:", col3X + 2, y + 5);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.text(orderNumber || "-", col3X + col3W - 2, y + 5, { align: "right" });
+
+  // Linha 2: DATA
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.2);
+  doc.text("DATA:", col3X + 2, y + rowH + 5);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(getTodayFormattedBR(), col3X + col3W - 2, y + rowH + 5, { align: "right" });
+
+  // Linha 3: PÁGINA
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7.2);
+  doc.text("PÁGINA:", col3X + 2, y + rowH * 2 + 5);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text(pageStr, col3X + col3W - 2, y + rowH * 2 + 5, { align: "right" });
+}
+
+/**
+ * Desenha o bloco oficial de assinaturas no rodapé da página final (3 colunas iguais).
+ */
+function drawSignaturesFooter(doc: jsPDF, yStart: number): void {
+  const x = 10;
+  const totalW = 190;
+  const totalH = 287 - yStart; // Preenche até a margem inferior (287)
+  const colW = totalW / 3; // ~63.33mm
+
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.4);
+
+  // Linha divisória horizontal superior
+  doc.line(x, yStart, x + totalW, yStart);
+
+  // Linhas verticais entre as 3 colunas
+  doc.line(x + colW, yStart, x + colW, yStart + totalH);
+  doc.line(x + colW * 2, yStart, x + colW * 2, yStart + totalH);
+
+  const titles = [
+    "ASSINATURA DO EXECUTANTE",
+    "ASSINATURA DO RESPONSÁVEL",
+    "ASSINATURA DO CLIENTE / FISCAL",
+  ];
+
+  for (let c = 0; c < 3; c++) {
+    const colX = x + c * colW;
+    const centerX = colX + colW / 2;
+
+    // Linha de assinatura
+    const lineY = yStart + 11;
+    doc.setLineWidth(0.3);
+    doc.line(colX + 5, lineY, colX + colW - 5, lineY);
+
+    // Título da coluna
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.2);
+    doc.setTextColor(0, 0, 0);
+    doc.text(titles[c], centerX, lineY + 3.8, { align: "center" });
+
+    // NOME:
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6.8);
+    doc.text("NOME:", colX + 4, yStart + 20.5);
+    doc.setLineWidth(0.25);
+    doc.line(colX + 15, yStart + 21, colX + colW - 4, yStart + 21);
+
+    // DATA:
+    doc.text("DATA:", colX + 4, yStart + 26);
+    doc.line(colX + 15, yStart + 26.5, colX + 24, yStart + 26.5);
+    doc.text("/", colX + 24.5, yStart + 26);
+    doc.line(colX + 26.5, yStart + 26.5, colX + 35.5, yStart + 26.5);
+    doc.text("/", colX + 36, yStart + 26);
+    doc.line(colX + 38, yStart + 26.5, colX + 54, yStart + 26.5);
+  }
+}
+
+/**
+ * Desenha a grade com todas as informações reais da atividade (conforme a ficha de referência industrial).
+ * Retorna a coordenada Y final onde termina a grade de informações.
+ */
+function drawActivityInfoGrid(doc: jsPDF, activity: Activity, startY: number): number {
+  const x = 10;
+  const totalW = 190;
+  let currentY = startY;
+
+  // -------------------------------------------------------------
+  // LINHA 1: CLIENTE / ÁREA | LOCAL | TIPO DE ATIVIDADE
+  // -------------------------------------------------------------
+  const row1H = 11;
+  const col1_1W = 68;
+  const col1_2W = 68;
+  const col1_3W = totalW - col1_1W - col1_2W; // 54mm
+
+  const clienteAreaVal = activity.location?.area || "-";
+  const localVal = [activity.location?.local, activity.location?.equipment]
+    .filter((v) => Boolean(v && v.trim() && v !== "-"))
+    .join(" - ") || "-";
+  const tipoAtivVal = activity.serviceType || activity.name || "-";
+
+  drawGridCell(doc, x, currentY, col1_1W, row1H, "CLIENTE / ÁREA", clienteAreaVal);
+  drawGridCell(doc, x + col1_1W, currentY, col1_2W, row1H, "LOCAL", localVal);
+  drawGridCell(doc, x + col1_1W + col1_2W, currentY, col1_3W, row1H, "TIPO DE ATIVIDADE", tipoAtivVal, {
+    drawRightBorder: false,
+  });
+
+  currentY += row1H;
+
+  // -------------------------------------------------------------
+  // LINHA 2: INÍCIO | TÉRMINO | EQUIPE | RESPONSÁVEL
+  // -------------------------------------------------------------
+  const row2H = 11;
+  const col2_1W = 45;
+  const col2_2W = 45;
+  const col2_3W = 45;
+  const col2_4W = totalW - (col2_1W + col2_2W + col2_3W); // 55mm
+
+  const inicioVal = formatDateBR(activity.schedule?.actualStartDate || activity.schedule?.plannedStartDate);
+  const terminoVal = formatDateBR(activity.schedule?.actualEndDate || activity.schedule?.plannedEndDate);
+  const equipeVal = activity.team || activity.schedule?.teamName || "-";
+  const responsavelVal = activity.assignedTo || "-";
+
+  drawGridCell(doc, x, currentY, col2_1W, row2H, "INÍCIO", inicioVal);
+  drawGridCell(doc, x + col2_1W, currentY, col2_2W, row2H, "TÉRMINO", terminoVal);
+  drawGridCell(doc, x + col2_1W + col2_2W, currentY, col2_3W, row2H, "EQUIPE", equipeVal);
+  drawGridCell(doc, x + col2_1W + col2_2W + col2_3W, currentY, col2_4W, row2H, "RESPONSÁVEL", responsavelVal, {
+    drawRightBorder: false,
+  });
+
+  currentY += row2H;
+
+  // -------------------------------------------------------------
+  // LINHA 3: DESCRIÇÃO DA ATIVIDADE | MATERIAIS UTILIZADOS | ÁREA (m²) | Nº DE DEMÃOS
+  // -------------------------------------------------------------
+  const descRaw = activity.description && activity.description.trim() ? activity.description.trim() : "-";
+  
+  // Lista de materiais concatenada
+  let matStr = "-";
+  if (activity.plannedMaterials && activity.plannedMaterials.length > 0) {
+    matStr = activity.plannedMaterials.map((m) => m.materialName).join(" / ");
+  } else if (activity.consumptions && activity.consumptions.length > 0) {
+    matStr = activity.consumptions.map((c) => c.materialName).join(" / ");
+  }
+
+  // Extrair coats e área dos materiais ou da atividade
+  const areaVal = activity.serviceQuantity !== undefined && activity.serviceQuantity !== null
+    ? `${activity.serviceQuantity} ${activity.serviceUnit || "m²"}`
+    : activity.plannedMaterials?.find((m) => m.areaM2)?.areaM2
+    ? `${activity.plannedMaterials.find((m) => m.areaM2)!.areaM2} m²`
+    : "-";
+
+  const demãosVal = activity.plannedMaterials?.find((m) => m.coats)?.coats
+    ? String(activity.plannedMaterials.find((m) => m.coats)!.coats)
+    : "-";
+
+  // Calcular altura dinâmica da linha 3 baseada no texto da descrição e dos materiais
+  const col3_1W = 86;
+  const col3_2W = 58;
+  const col3_3W = 24;
+  const col3_4W = totalW - (col3_1W + col3_2W + col3_3W); // 22mm
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.8);
+  const descLines = doc.splitTextToSize(descRaw, col3_1W - 4);
+  const matLines = doc.splitTextToSize(matStr, col3_2W - 4);
+  const maxContentLines = Math.max(descLines.length, matLines.length, 1);
+  const row3H = Math.min(26, Math.max(12, 7.5 + maxContentLines * 3.5));
+
+  drawGridCell(doc, x, currentY, col3_1W, row3H, "DESCRIÇÃO DA ATIVIDADE", descRaw, {
+    maxLines: Math.floor((row3H - 7) / 3.4),
+  });
+  drawGridCell(doc, x + col3_1W, currentY, col3_2W, row3H, "MATERIAIS UTILIZADOS", matStr, {
+    maxLines: Math.floor((row3H - 7) / 3.4),
+  });
+  drawGridCell(doc, x + col3_1W + col3_2W, currentY, col3_3W, row3H, "ÁREA", areaVal);
+  drawGridCell(doc, x + col3_1W + col3_2W + col3_3W, currentY, col3_4W, row3H, "Nº DE DEMÃOS", demãosVal, {
+    drawRightBorder: false,
+  });
+
+  currentY += row3H;
+
+  // -------------------------------------------------------------
+  // LINHA 4: OBSERVAÇÕES
+  // -------------------------------------------------------------
+  const obsRaw = activity.observations && activity.observations.trim() ? activity.observations.trim() : "-";
+  const obsLines = doc.splitTextToSize(obsRaw, totalW - 4);
+  const row4H = Math.min(22, Math.max(10, 7.5 + obsLines.length * 3.4));
+
+  drawGridCell(doc, x, currentY, totalW, row4H, "OBSERVAÇÕES", obsRaw, {
+    drawRightBorder: false,
+    maxLines: Math.floor((row4H - 7) / 3.4),
+  });
+
+  currentY += row4H;
+
+  return currentY;
+}
+
+/**
+ * Desenha a barra de título da seção fotográfica ("REGISTRO FOTOGRÁFICO" ou "REGISTRO FOTOGRÁFICO — CONTINUAÇÃO").
+ */
+function drawPhotoSectionHeader(doc: jsPDF, y: number, isContinuation = false): number {
+  const x = 10;
+  const totalW = 190;
+  const barH = 6;
+
+  // Fundo cinza suave industrial
+  doc.setFillColor(235, 238, 242);
+  doc.rect(x, y, totalW, barH, "F");
+
+  // Linhas delimitadoras
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.4);
+  doc.line(x, y, x + totalW, y);
+  doc.line(x, y + barH, x + totalW, y + barH);
+
+  // Texto
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+  const text = isContinuation ? "REGISTRO FOTOGRÁFICO — CONTINUAÇÃO" : "REGISTRO FOTOGRÁFICO";
+  doc.text(text, x + 2.5, y + 4.2);
+
+  return y + barH;
+}
+
+/**
+ * Renderiza uma foto dentro da caixa delimitadora com proporções preservadas e legenda.
+ */
+function renderPhotoBox(
+  doc: jsPDF,
+  photo: LoadedPdfImage,
+  boxX: number,
+  boxY: number,
+  boxW: number,
+  boxH: number
+): void {
+  // Borda da caixa de foto
+  doc.setDrawColor(200, 205, 215);
+  doc.setLineWidth(0.3);
+  doc.rect(boxX, boxY, boxW, boxH);
+
+  const captionH = 5;
+  const availW = boxW - 2;
+  const availH = boxH - captionH - 2;
+
+  // Manter proporção original (aspect ratio) da imagem
+  let drawW = availW;
+  let drawH = (photo.height * availW) / photo.width;
+
+  if (drawH > availH) {
+    drawH = availH;
+    drawW = (photo.width * availH) / photo.height;
+  }
+
+  const imgX = boxX + 1 + (availW - drawW) / 2;
+  const imgY = boxY + 1 + (availH - drawH) / 2;
+
+  try {
+    doc.addImage(photo.dataUrl, photo.format, imgX, imgY, drawW, drawH);
+  } catch (err) {
+    console.warn(`[renderPhotoBox] Erro ao renderizar imagem "${photo.filename}":`, err);
+  }
+
+  // Linha da legenda
+  doc.setDrawColor(220, 225, 230);
+  doc.setLineWidth(0.2);
+  doc.line(boxX, boxY + boxH - captionH, boxX + boxW, boxY + boxH - captionH);
+
+  // Texto da legenda (nome do arquivo legível)
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(70, 80, 95);
+  const captionLines = doc.splitTextToSize(photo.filename, boxW - 4);
+  doc.text(captionLines[0] || "Registro de Campo", boxX + 2, boxY + boxH - 1.5);
+}
+
+/**
+ * Renderiza o documento completo de uma atividade individual seguindo a referência visual oficial RSS3.
+ * Suporta múltiplas páginas caso o número de fotos exceda a capacidade da página 1.
+ * Retorna as páginas de início e fim da atividade.
+ */
+function renderOfficialActivityDocument(
   doc: jsPDF,
   activity: Activity,
-  pageStartInfo: { activityStartPage: number; isFirstActivity: boolean },
-  loadedPhotos?: LoadedPdfImage[],
-  photoLoadState?: PhotoLoadState
+  pageStartInfo: { isFirstActivity: boolean },
+  loadedPhotos?: LoadedPdfImage[]
 ): { startPage: number; endPage: number } {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 14;
-  const marginRight = 14;
-  const contentWidth = pageWidth - marginLeft - marginRight;
-  const marginBottom = 16;
-
-  // Se não for a primeira atividade, adiciona uma nova página obrigatória
   if (!pageStartInfo.isFirstActivity) {
     doc.addPage();
   }
 
-  const actStartPage = doc.getNumberOfPages();
-  let currentY = 0;
+  const startPageNum = doc.getNumberOfPages();
+  const photos = loadedPhotos || [];
+  const signatureFooterH = 30; // Altura reservada para assinaturas no rodapé da página final (257 a 287)
+  const bottomMargin = 287; // Y máximo da borda externa
 
-  // Helper para checar necessidade de quebra de página
-  const checkPageBreak = (neededHeight: number): boolean => {
-    if (currentY + neededHeight > pageHeight - marginBottom) {
-      doc.addPage();
-      currentY = 16;
-      return true;
-    }
-    return false;
-  };
+  // ==========================================================================
+  // PÁGINA 1
+  // ==========================================================================
+  const infoEndY = drawActivityInfoGrid(doc, activity, 32); // Cabeçalho termina em Y=32
+  const photoBarEndY = drawPhotoSectionHeader(doc, infoEndY, false);
 
-  // Helper para títulos de seção com barra lateral azul/laranja institucional
-  const renderSectionHeader = (title: string): void => {
-    checkPageBreak(12);
+  // Espaço disponível para fotos na página 1 (se houver apenas 1 página, desconta as assinaturas)
+  // Capacidade da página 1 com assinaturas:
+  // Altura disponível: (287 - 30) - photoBarEndY
+  const availHPage1WithSig = bottomMargin - signatureFooterH - photoBarEndY;
 
-    doc.setFillColor(241, 245, 249); // #f1f5f9
-    doc.roundedRect(marginLeft, currentY, contentWidth, 6.5, 1, 1, "F");
+  // Decisão de Paginação:
+  // Se tivermos 0 a 4 fotos: cabe tudo na página 1 com assinaturas.
+  // Se tivermos mais de 4 fotos:
+  //   Página 1: pode conter 4 fotos (2x2) aproveitando o espaço até antes das assinaturas,
+  //   ou as fotos continuam em páginas seguintes, e as assinaturas vão para a ÚLTIMA página.
+  const photosPerPage1 = 4;
+  const photosPerSubsequentPage = 6; // Páginas adicionais têm cabeçalho curto e sem tabela de info
 
-    // Acento lateral: Azul escuro (#0B1F3A) + Laranja (#F97316)
-    doc.setFillColor(11, 31, 58);
-    doc.rect(marginLeft, currentY, 2.5, 6.5, "F");
-
-    doc.setFillColor(249, 115, 22);
-    doc.rect(marginLeft + 2.5, currentY, 1.2, 6.5, "F");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(11, 31, 58);
-    doc.text(title.toUpperCase(), marginLeft + 6.5, currentY + 4.5);
-
-    currentY += 9.5;
-  };
-
-  // Helper para renderizar Cards de Informação estruturados
-  const renderInfoCard = (
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    label: string,
-    value: string
-  ): void => {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, w, h, 1.5, 1.5, "FD");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(6.8);
-    doc.setTextColor(100, 116, 139);
-    doc.text(label.toUpperCase(), x + 3.5, y + 4.2);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8.5);
-    doc.setTextColor(15, 23, 42);
-    const valText = doc.splitTextToSize(value || "-", w - 7);
-    doc.text(valText[0] || "-", x + 3.5, y + 9);
-  };
-
-  // Helper para renderizar badges de status e prioridade
-  const renderBadge = (
-    x: number,
-    y: number,
-    text: string,
-    colors: { bg: [number, number, number]; text: [number, number, number]; border: [number, number, number] }
-  ): number => {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    const textWidth = doc.getTextWidth(text);
-    const badgeW = textWidth + 8;
-    const badgeH = 5.5;
-
-    doc.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2]);
-    doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, badgeW, badgeH, 1, 1, "FD");
-
-    doc.setTextColor(colors.text[0], colors.text[1], colors.text[2]);
-    doc.text(text, x + 4, y + 3.9);
-
-    return badgeW;
-  };
-
-  // ============================================================================
-  // 1. CABEÇALHO INSTITUCIONAL RSS3
-  // ============================================================================
-  const headerHeight = 24;
-  doc.setFillColor(11, 31, 58); // Azul escuro #0B1F3A
-  doc.rect(0, 0, pageWidth, headerHeight, "F");
-
-  // Linha de acento laranja RSS3 inferior
-  doc.setFillColor(249, 115, 22); // #F97316
-  doc.rect(0, headerHeight - 1.2, pageWidth, 1.2, "F");
-
-  // Logo / Tag "R3" estilizado
-  doc.setFillColor(249, 115, 22);
-  doc.roundedRect(marginLeft, 4.5, 10, 10, 1.5, 1.5, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(255, 255, 255);
-  doc.text("R3", marginLeft + 2.5, 11.2);
-
-  // Nome institucional e sistema
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(255, 255, 255);
-  doc.text("RSS3 SOLUÇÕES INDUSTRIAIS", marginLeft + 13, 9.5);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7.5);
-  doc.setTextColor(148, 163, 184);
-  doc.text("SISTEMA DE PINTURA INDUSTRIAL  •  FICHA OPERACIONAL", marginLeft + 13, 14);
-
-  // Número da OS e Emissão à direita
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.setTextColor(255, 255, 255);
-  doc.text(activity.orderNumber || "OS-N/A", pageWidth - marginRight, 9.5, { align: "right" });
-
-  const nowBR = new Date().toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(148, 163, 184);
-  doc.text(`Emissão: ${nowBR}`, pageWidth - marginRight, 14, { align: "right" });
-
-  currentY = headerHeight + 5;
-
-  // ============================================================================
-  // 2. IDENTIFICAÇÃO DA ATIVIDADE (CARD HERO)
-  // ============================================================================
-  const heroH = 26;
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.4);
-  doc.roundedRect(marginLeft, currentY, contentWidth, heroH, 2, 2, "FD");
-
-  // Barra lateral azul destaque
-  doc.setFillColor(37, 99, 235); // #2563EB
-  doc.rect(marginLeft, currentY, 2.5, heroH, "F");
-
-  // OS número pequeno em destaque
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(37, 99, 235);
-  doc.text((activity.orderNumber || "").toUpperCase(), marginLeft + 6, currentY + 6);
-
-  // Nome da Atividade grande
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(15, 23, 42);
-
-  // Badges de Status e Prioridade alinhados no lado direito do Card Hero
-  const statusColors = getStatusBadgeColors(activity.status);
-  const priorityColors = getPriorityBadgeColors(activity.priority);
-
-  const statusText = formatStatus(activity.status).toUpperCase();
-  const priorityText = `PRIORIDADE ${formatPriority(activity.priority).toUpperCase()}`;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7.5);
-  const statusW = doc.getTextWidth(statusText) + 8;
-  const priorityW = doc.getTextWidth(priorityText) + 8;
-  const totalBadgesW = statusW + 3 + priorityW;
-
-  const badgeX = pageWidth - marginRight - totalBadgesW - 4;
-  const badgeY = currentY + (heroH - 5.5) / 2;
-
-  renderBadge(badgeX, badgeY, statusText, statusColors);
-  renderBadge(badgeX + statusW + 3, badgeY, priorityText, priorityColors);
-
-  // Nome da Atividade com quebra de linha ajustada ao espaço livre
-  const maxNameWidth = badgeX - (marginLeft + 6) - 4;
-  const nameLines = doc.splitTextToSize(activity.name, maxNameWidth);
-  doc.text(nameLines.slice(0, 2), marginLeft + 6, currentY + 12.5);
-
-  currentY += heroH + 6;
-
-  // ============================================================================
-  // 3. DADOS PRINCIPAIS (GRADE DE CARDS)
-  // ============================================================================
-  renderSectionHeader("1. Dados Principais da Ordem de Serviço");
-
-  const cardW = (contentWidth - 4) / 2;
-  const cardH = 12.5;
-
-  const locationParts = [activity.location?.local, activity.location?.equipment]
-    .filter((v) => Boolean(v && v.trim() && v !== "-"))
-    .join(" / ");
-
-  const qtyStr =
-    activity.serviceQuantity !== undefined &&
-    activity.serviceQuantity !== null &&
-    !isNaN(Number(activity.serviceQuantity))
-      ? `${activity.serviceQuantity} ${activity.serviceUnit || ""}`.trim()
-      : "-";
-
-  renderInfoCard(marginLeft, currentY, cardW, cardH, "Área", activity.location?.area || "-");
-  renderInfoCard(marginLeft + cardW + 4, currentY, cardW, cardH, "Local / Equipamento", locationParts || "-");
-  currentY += cardH + 3;
-
-  renderInfoCard(marginLeft, currentY, cardW, cardH, "Responsável", activity.assignedTo || "-");
-  renderInfoCard(
-    marginLeft + cardW + 4,
-    currentY,
-    cardW,
-    cardH,
-    "Equipe Operacional",
-    activity.team || activity.schedule?.teamName || "-"
-  );
-  currentY += cardH + 3;
-
-  renderInfoCard(marginLeft, currentY, cardW, cardH, "Origem / Referência", activity.originReference || "-");
-  renderInfoCard(
-    marginLeft + cardW + 4,
-    currentY,
-    cardW,
-    cardH,
-    "Tipo de Serviço / Quantidade",
-    `${activity.serviceType || "-"} (${qtyStr})`
-  );
-  currentY += cardH + 5;
-
-  // ============================================================================
-  // 4. CRONOGRAMA OPERACIONAL
-  // ============================================================================
-  renderSectionHeader("2. Cronograma Operacional");
-
-  const cronoCardW = (contentWidth - 9) / 4;
-  const cronoCardH = 13.5;
-
-  renderInfoCard(
-    marginLeft,
-    currentY,
-    cronoCardW,
-    cronoCardH,
-    "Início Planejado",
-    formatDateBR(activity.schedule?.plannedStartDate)
-  );
-  renderInfoCard(
-    marginLeft + cronoCardW + 3,
-    currentY,
-    cronoCardW,
-    cronoCardH,
-    "Término Planejado",
-    formatDateBR(activity.schedule?.plannedEndDate)
-  );
-  renderInfoCard(
-    marginLeft + (cronoCardW + 3) * 2,
-    currentY,
-    cronoCardW,
-    cronoCardH,
-    "Início Real",
-    formatDateBR(activity.schedule?.actualStartDate)
-  );
-  renderInfoCard(
-    marginLeft + (cronoCardW + 3) * 3,
-    currentY,
-    cronoCardW,
-    cronoCardH,
-    "Conclusão Real",
-    formatDateBR(activity.schedule?.actualEndDate)
-  );
-
-  currentY += cronoCardH + 5;
-
-  // ============================================================================
-  // 5. MATERIAIS PLANEJADOS
-  // ============================================================================
-  renderSectionHeader("3. Materiais Planejados");
-
-  const planned = activity.plannedMaterials || [];
-  if (planned.length === 0) {
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(226, 232, 240);
-    doc.roundedRect(marginLeft, currentY, contentWidth, 9, 1.5, 1.5, "FD");
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text("Nenhum material planejado cadastrado para esta atividade.", marginLeft + 4, currentY + 5.5);
-    currentY += 13;
-  } else {
-    const tableBody = planned.map((pm, idx) => [
-      String(idx + 1).padStart(2, "0"),
-      pm.materialName || "-",
-      pm.quantity !== undefined ? String(pm.quantity) : "-",
-      pm.unit || "-",
-    ]);
-
-    autoTable(doc, {
-      startY: currentY,
-      margin: { left: marginLeft, right: marginRight },
-      head: [["Item", "Material / Insumo", "Qtd. Planejada", "Unidade"]],
-      body: tableBody,
-      theme: "striped",
-      headStyles: {
-        fillColor: [11, 31, 58], // Azul escuro #0B1F3A
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 7.8,
-        halign: "left",
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
-      },
-      styles: {
-        fontSize: 7.8,
-        textColor: [15, 23, 42],
-        cellPadding: 2.5,
-        lineColor: [226, 232, 240],
-        lineWidth: 0.2,
-      },
-      columnStyles: {
-        0: { cellWidth: 12, halign: "center" },
-        1: { cellWidth: "auto" },
-        2: { cellWidth: 28, halign: "right" },
-        3: { cellWidth: 22, halign: "center" },
-      },
-    });
-
-    // @ts-expect-error autoTable plugin attaches lastAutoTable
-    currentY = doc.lastAutoTable.finalY + 5;
+  let totalPagesForActivity = 1;
+  if (photos.length > photosPerPage1) {
+    const remainingPhotos = photos.length - photosPerPage1;
+    // Na última página, se o número de fotos restantes deixar espaço para assinaturas:
+    totalPagesForActivity = 1 + Math.ceil(remainingPhotos / photosPerSubsequentPage);
   }
 
-  // ============================================================================
-  // 6. DESCRIÇÃO DA ATIVIDADE
-  // ============================================================================
-  renderSectionHeader("4. Descrição da Atividade");
+  // Renderizar Página 1
+  const isLastPage = totalPagesForActivity === 1;
 
-  const descText =
-    activity.description && activity.description.trim()
-      ? activity.description.trim()
-      : "Sem descrição cadastrada.";
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.2);
-  const descLines = doc.splitTextToSize(descText, contentWidth - 8);
-  const descBoxH = Math.max(12, descLines.length * 4.2 + 6);
+  // Borda externa página 1
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.5);
+  doc.rect(10, 10, 190, 277);
 
-  checkPageBreak(descBoxH + 4);
+  // Cabeçalho da página 1 (placeholder de página temporário ou definitivo)
+  // Guardamos informações de página para atualizar no final
+  drawOfficialHeader(doc, activity.orderNumber, `1/${totalPagesForActivity}`, false);
 
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(marginLeft, currentY, contentWidth, descBoxH, 1.5, 1.5, "FD");
+  // Renderizar fotos da Página 1
+  const page1Photos = photos.slice(0, photosPerPage1);
+  const currentPhotoAreaTop = photoBarEndY + 2;
+  const currentPhotoAreaBottom = isLastPage ? bottomMargin - signatureFooterH - 2 : bottomMargin - 4;
+  const currentPhotoAreaH = currentPhotoAreaBottom - currentPhotoAreaTop;
 
-  doc.setTextColor(30, 41, 59);
-  doc.text(descLines, marginLeft + 4, currentY + 5.2);
-
-  currentY += descBoxH + 5;
-
-  // ============================================================================
-  // 7. OBSERVAÇÕES
-  // ============================================================================
-  renderSectionHeader("5. Observações");
-
-  const obsText =
-    activity.observations && activity.observations.trim()
-      ? activity.observations.trim()
-      : "Sem observações cadastradas.";
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.2);
-  const obsLines = doc.splitTextToSize(obsText, contentWidth - 8);
-  const obsBoxH = Math.max(10, obsLines.length * 4.2 + 5.5);
-
-  checkPageBreak(obsBoxH + 4);
-
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.3);
-  doc.roundedRect(marginLeft, currentY, contentWidth, obsBoxH, 1.5, 1.5, "FD");
-
-  doc.setTextColor(30, 41, 59);
-  doc.text(obsLines, marginLeft + 4, currentY + 5.2);
-
-  currentY += obsBoxH + 5;
-
-  // ============================================================================
-  // 7.1. FOTOS / REGISTROS FOTOGRÁFICOS (EVIDÊNCIAS DE CAMPO)
-  // ============================================================================
-  if (photoLoadState?.hasAttempted) {
-    if (loadedPhotos && loadedPhotos.length > 0) {
-      renderSectionHeader("6. Fotos e Registros Fotográficos");
-
-      const colCount = loadedPhotos.length === 1 ? 1 : 2;
+  if (page1Photos.length > 0) {
+    const count = page1Photos.length;
+    if (count === 1) {
+      // 1 foto centralizada e ampla
+      const boxW = 140;
+      const boxH = Math.min(currentPhotoAreaH - 4, 110);
+      const boxX = 10 + (190 - boxW) / 2;
+      const boxY = currentPhotoAreaTop + (currentPhotoAreaH - boxH) / 2;
+      renderPhotoBox(doc, page1Photos[0], boxX, boxY, boxW, boxH);
+    } else if (count === 2) {
+      // 2 fotos lado a lado
       const gap = 4;
-      const photoW = colCount === 1 ? Math.min(contentWidth, 120) : (contentWidth - gap) / 2;
-      const photoH = colCount === 1 ? 75 : 55; // Altura uniforme de card
-      const cardH = photoH + 7; // Foto + barra de legenda
+      const boxW = (190 - gap - 6) / 2;
+      const boxH = Math.min(currentPhotoAreaH - 4, 90);
+      const boxY = currentPhotoAreaTop + (currentPhotoAreaH - boxH) / 2;
+      renderPhotoBox(doc, page1Photos[0], 13, boxY, boxW, boxH);
+      renderPhotoBox(doc, page1Photos[1], 13 + boxW + gap, boxY, boxW, boxH);
+    } else {
+      // 3 ou 4 fotos em grade 2x2
+      const gap = 4;
+      const boxW = (190 - gap - 6) / 2;
+      const rowH = (currentPhotoAreaH - gap - 4) / 2;
+      const boxH = Math.min(rowH, 80);
 
-      for (let i = 0; i < loadedPhotos.length; i++) {
-        const item = loadedPhotos[i];
-        const isCol2 = colCount === 2 && i % 2 === 1;
-        const x = isCol2 ? marginLeft + photoW + gap : marginLeft;
-
-        // Ao iniciar uma nova linha (coluna 1), checar quebra de página para o card inteiro
-        if (!isCol2) {
-          checkPageBreak(cardH + 6);
-        }
-
-        // 1. Fundo do card da foto
-        doc.setFillColor(248, 250, 252);
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.3);
-        doc.roundedRect(x, currentY, photoW, cardH, 1.5, 1.5, "FD");
-
-        // 2. Proporção e redimensionamento mantendo aspect ratio sem distorção
-        const padding = 2;
-        const availW = photoW - padding * 2;
-        const availH = photoH - padding * 2;
-
-        let drawW = availW;
-        let drawH = (item.height * availW) / item.width;
-
-        if (drawH > availH) {
-          drawH = availH;
-          drawW = (item.width * availH) / item.height;
-        }
-
-        const drawX = x + padding + (availW - drawW) / 2;
-        const drawY = currentY + padding + (availH - drawH) / 2;
-
-        try {
-          doc.addImage(item.dataUrl, item.format, drawX, drawY, drawW, drawH);
-        } catch (imgAddErr) {
-          console.warn(`[renderActivityContent] Falha ao renderizar imagem no jsPDF para "${item.filename}":`, imgAddErr);
-        }
-
-        // 3. Legenda com nome do arquivo
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(6.8);
-        doc.setTextColor(100, 116, 139);
-        const cleanName = doc.splitTextToSize(item.filename, photoW - 6);
-        doc.text(cleanName[0] || "Foto de Evidência", x + 3, currentY + photoH + 4.5);
-
-        // Avançar cursor Y ao finalizar a linha (após coluna 2 ou na última foto da lista)
-        if (isCol2 || i === loadedPhotos.length - 1) {
-          currentY += cardH + 5;
-        }
+      // Linha 1
+      renderPhotoBox(doc, page1Photos[0], 13, currentPhotoAreaTop + 2, boxW, boxH);
+      if (page1Photos[1]) {
+        renderPhotoBox(doc, page1Photos[1], 13 + boxW + gap, currentPhotoAreaTop + 2, boxW, boxH);
       }
-
-      currentY += 2;
-    } else if (photoLoadState.failedCount > 0) {
-      // Mensagem discreta quando a atividade possui fotos cadastradas mas nenhuma pôde ser carregada
-      renderSectionHeader("6. Fotos e Registros Fotográficos");
-      checkPageBreak(14);
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(marginLeft, currentY, contentWidth, 11, 1.5, 1.5, "FD");
-
-      doc.setFont("helvetica", "italic");
-      doc.setFontSize(7.5);
-      doc.setTextColor(148, 163, 184); // slate-400
-      doc.text(
-        "Não foi possível carregar as fotos desta atividade para o relatório.",
-        marginLeft + 4,
-        currentY + 6.8
-      );
-      currentY += 16;
+      // Linha 2
+      if (page1Photos[2]) {
+        renderPhotoBox(doc, page1Photos[2], 13, currentPhotoAreaTop + 2 + boxH + gap, boxW, boxH);
+      }
+      if (page1Photos[3]) {
+        renderPhotoBox(doc, page1Photos[3], 13 + boxW + gap, currentPhotoAreaTop + 2 + boxH + gap, boxW, boxH);
+      }
     }
   }
 
-  // ============================================================================
-  // 8. HISTÓRICO DA ATIVIDADE (AUDITORIA OPERACIONAL COMPACTA)
-  // ============================================================================
-  const history = activity.history || [];
-  if (history.length > 0) {
-    const historySectionNum = loadedPhotos && loadedPhotos.length > 0 ? "7" : "6";
-    renderSectionHeader(`${historySectionNum}. Histórico Operacional e Auditoria`);
-
-    const historyBody = history.map((h) => [
-      formatDateBR(h.timestamp),
-      h.userName || "Sistema",
-      h.action || "-",
-      h.observation || h.newValue || "-",
-    ]);
-
-    autoTable(doc, {
-      startY: currentY,
-      margin: { left: marginLeft, right: marginRight },
-      head: [["Data/Hora", "Responsável", "Ação", "Observação / Detalhe"]],
-      body: historyBody,
-      theme: "striped",
-      headStyles: {
-        fillColor: [11, 31, 58],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 7.2,
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252],
-      },
-      styles: {
-        fontSize: 7.2,
-        textColor: [15, 23, 42],
-        cellPadding: 2,
-        lineColor: [226, 232, 240],
-        lineWidth: 0.2,
-      },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 32 },
-        2: { cellWidth: 35 },
-        3: { cellWidth: "auto" },
-      },
-    });
-
-    // @ts-expect-error autoTable plugin attaches lastAutoTable
-    currentY = doc.lastAutoTable.finalY + 5;
+  // Se houver apenas 1 página, desenha as assinaturas no rodapé da página 1
+  if (isLastPage) {
+    drawSignaturesFooter(doc, bottomMargin - signatureFooterH);
   }
 
-  const actEndPage = doc.getNumberOfPages();
-  return { startPage: actStartPage, endPage: actEndPage };
-}
+  // ==========================================================================
+  // PÁGINAS ADICIONAIS (SE HOUVER MAIS FOTOS)
+  // ==========================================================================
+  let photoIndex = photosPerPage1;
+  let currentPageIndex = 2;
 
+  while (photoIndex < photos.length) {
+    doc.addPage();
 
-/**
- * Aplica o rodapé institucional contínuo em todas as páginas do documento com paginação global "Página X de Y".
- */
-function applyDocumentFooter(
-  doc: jsPDF,
-  pageActivityMap?: Map<number, string>
-): void {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const marginLeft = 14;
-  const marginRight = 14;
-  const totalPages = doc.getNumberOfPages();
+    // Borda externa
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.rect(10, 10, 190, 277);
 
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
+    // Cabeçalho de continuação
+    drawOfficialHeader(doc, activity.orderNumber, `${currentPageIndex}/${totalPagesForActivity}`, true);
 
-    // Linha superior do rodapé: cinza sutil
-    doc.setDrawColor(203, 213, 225); // slate-300
-    doc.setLineWidth(0.4);
-    doc.line(marginLeft, pageHeight - 11, pageWidth - marginRight, pageHeight - 11);
+    const isThisLastPage = currentPageIndex === totalPagesForActivity;
 
-    // Detalhe laranja à esquerda
-    doc.setFillColor(249, 115, 22); // #F97316
-    doc.rect(marginLeft, pageHeight - 11.2, 18, 0.8, "F");
+    // Seção de continuação fotográfica
+    const barY = drawPhotoSectionHeader(doc, 32, true);
+    const subPhotoAreaTop = barY + 3;
+    const subPhotoAreaBottom = isThisLastPage ? bottomMargin - signatureFooterH - 2 : bottomMargin - 4;
+    const subPhotoAreaH = subPhotoAreaBottom - subPhotoAreaTop;
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139); // slate-500
+    // Quantas fotos nesta página?
+    // Se for a última página e tiver assinaturas, cabem até 4 fotos (2x2).
+    // Se não for a última página, cabem até 6 fotos (3x2).
+    const maxPhotosThisPage = isThisLastPage ? 4 : 6;
+    const currentBatch = photos.slice(photoIndex, photoIndex + maxPhotosThisPage);
 
-    // Texto rodapé esquerdo: inclui número da OS se disponível no mapeamento de página
-    const orderNum = pageActivityMap?.get(i);
-    const osSuffix = orderNum ? `  •  OS: ${orderNum}` : "";
+    const gap = 4;
+    const boxW = (190 - gap - 6) / 2;
 
-    doc.text(
-      `RSS3 SOLUÇÕES INDUSTRIAIS  |  Sistema de Pintura${osSuffix}`,
-      marginLeft,
-      pageHeight - 6.5
-    );
+    if (currentBatch.length <= 2) {
+      const boxH = Math.min(subPhotoAreaH - 6, 95);
+      const boxY = subPhotoAreaTop + (subPhotoAreaH - boxH) / 2;
+      renderPhotoBox(doc, currentBatch[0], 13, boxY, boxW, boxH);
+      if (currentBatch[1]) {
+        renderPhotoBox(doc, currentBatch[1], 13 + boxW + gap, boxY, boxW, boxH);
+      }
+    } else if (currentBatch.length <= 4) {
+      const rowH = (subPhotoAreaH - gap - 4) / 2;
+      const boxH = Math.min(rowH, 80);
+      renderPhotoBox(doc, currentBatch[0], 13, subPhotoAreaTop + 2, boxW, boxH);
+      renderPhotoBox(doc, currentBatch[1], 13 + boxW + gap, subPhotoAreaTop + 2, boxW, boxH);
+      if (currentBatch[2]) {
+        renderPhotoBox(doc, currentBatch[2], 13, subPhotoAreaTop + 2 + boxH + gap, boxW, boxH);
+      }
+      if (currentBatch[3]) {
+        renderPhotoBox(doc, currentBatch[3], 13 + boxW + gap, subPhotoAreaTop + 2 + boxH + gap, boxW, boxH);
+      }
+    } else {
+      // 5 ou 6 fotos (3 linhas x 2 colunas)
+      const rowH = (subPhotoAreaH - gap * 2 - 4) / 3;
+      const boxH = Math.min(rowH, 65);
+      for (let bi = 0; bi < currentBatch.length; bi++) {
+        const row = Math.floor(bi / 2);
+        const col = bi % 2;
+        const bX = col === 0 ? 13 : 13 + boxW + gap;
+        const bY = subPhotoAreaTop + 2 + row * (boxH + gap);
+        renderPhotoBox(doc, currentBatch[bi], bX, bY, boxW, boxH);
+      }
+    }
 
-    // Texto rodapé direito: Paginação Global Página X de Y
-    doc.text(`Página ${i} de ${totalPages}`, pageWidth - marginRight, pageHeight - 6.5, {
-      align: "right",
-    });
+    // Se for a última página, desenha o bloco de assinaturas
+    if (isThisLastPage) {
+      drawSignaturesFooter(doc, bottomMargin - signatureFooterH);
+    }
+
+    photoIndex += currentBatch.length;
+    currentPageIndex++;
   }
+
+  const endPageNum = doc.getNumberOfPages();
+  return { startPage: startPageNum, endPage: endPageNum };
 }
 
 /**
- * Gera e realiza o download do relatório profissional corporativo de uma atividade individual em PDF
- * com a identidade visual da RSS3 Soluções Industriais.
+ * Gera e realiza o download do relatório oficial corporativo de uma atividade individual em PDF.
  */
 export async function generateActivityPdf(
   activity: Activity,
@@ -869,15 +796,12 @@ export async function generateActivityPdf(
     format: "a4",
   });
 
-  const pageActivityMap = new Map<number, string>();
   let loadedPhotos: LoadedPdfImage[] | undefined = undefined;
-  let photoLoadState: PhotoLoadState | undefined = undefined;
 
-  // Se fotos estiverem habilitadas, carregar de forma protegida e eficiente
+  // Carregamento protegido e eficiente de fotos
   if (options?.includePhotos) {
     let activityPhotos = activity.photos;
 
-    // Se ainda não foram buscadas ou faltarem URLs assinadas, buscar agora
     if (!activityPhotos || activityPhotos.length === 0 || !activityPhotos.some((p) => p.signedUrl)) {
       try {
         activityPhotos = await getActivityPhotos(activity.id, true);
@@ -887,8 +811,6 @@ export async function generateActivityPdf(
       }
     }
 
-    const totalFound = activityPhotos?.length || 0;
-
     if (activityPhotos && activityPhotos.length > 0) {
       const loadPromises = activityPhotos.map((photo) => loadPdfImageSafe(photo));
       const results = await Promise.all(loadPromises);
@@ -896,40 +818,17 @@ export async function generateActivityPdf(
       if (validImages.length > 0) {
         loadedPhotos = validImages;
       }
-      photoLoadState = {
-        hasAttempted: true,
-        totalFound,
-        loadedCount: validImages.length,
-        failedCount: totalFound - validImages.length,
-      };
-    } else {
-      photoLoadState = {
-        hasAttempted: false,
-        totalFound: 0,
-        loadedCount: 0,
-        failedCount: 0,
-      };
     }
   }
 
-  const pageInfo = renderActivityContent(
+  renderOfficialActivityDocument(
     doc,
     activity,
-    {
-      activityStartPage: 1,
-      isFirstActivity: true,
-    },
-    loadedPhotos,
-    photoLoadState
+    { isFirstActivity: true },
+    loadedPhotos
   );
 
-  for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {
-    pageActivityMap.set(p, activity.orderNumber);
-  }
-
-  applyDocumentFooter(doc, pageActivityMap);
-
-  // Download automático com nome oficial individual
+  // Download com nome padronizado
   const cleanOrder = sanitizeFileName(activity.orderNumber);
   const fileName = `OS_${cleanOrder}_Relatorio_Atividade.pdf`;
   doc.save(fileName);
@@ -937,8 +836,7 @@ export async function generateActivityPdf(
 
 /**
  * Gera e realiza o download de um ÚNICO arquivo PDF contendo todas as atividades selecionadas.
- * Cada atividade inicia obrigatoriamente em uma nova página, reutilizando 100% do layout
- * da ficha completa RSS3 e mantendo paginação global unificada (Página X de Y).
+ * Cada atividade inicia obrigatoriamente em uma nova página com a sua estrutura oficial completa.
  */
 export async function generateActivitiesPdf(
   activities: Activity[],
@@ -954,16 +852,11 @@ export async function generateActivitiesPdf(
     format: "a4",
   });
 
-  const pageActivityMap = new Map<number, string>();
-
-  // Renderiza sequencialmente cada atividade com quebra de página garantida
-  // e carregamento sob demanda de fotos para não estourar memória do browser
   for (let index = 0; index < activities.length; index++) {
     const activity = activities[index];
     const isFirstActivity = index === 0;
 
     let loadedPhotos: LoadedPdfImage[] | undefined = undefined;
-    let photoLoadState: PhotoLoadState | undefined = undefined;
 
     if (options?.includePhotos) {
       let activityPhotos = activity.photos;
@@ -976,8 +869,6 @@ export async function generateActivitiesPdf(
         }
       }
 
-      const totalFound = activityPhotos?.length || 0;
-
       if (activityPhotos && activityPhotos.length > 0) {
         const loadPromises = activityPhotos.map((photo) => loadPdfImageSafe(photo));
         const results = await Promise.all(loadPromises);
@@ -985,42 +876,18 @@ export async function generateActivitiesPdf(
         if (validImages.length > 0) {
           loadedPhotos = validImages;
         }
-        photoLoadState = {
-          hasAttempted: true,
-          totalFound,
-          loadedCount: validImages.length,
-          failedCount: totalFound - validImages.length,
-        };
-      } else {
-        photoLoadState = {
-          hasAttempted: false,
-          totalFound: 0,
-          loadedCount: 0,
-          failedCount: 0,
-        };
       }
     }
 
-    const pageInfo = renderActivityContent(
+    renderOfficialActivityDocument(
       doc,
       activity,
-      {
-        activityStartPage: doc.getNumberOfPages(),
-        isFirstActivity,
-      },
-      loadedPhotos,
-      photoLoadState
+      { isFirstActivity },
+      loadedPhotos
     );
-
-    for (let p = pageInfo.startPage; p <= pageInfo.endPage; p++) {
-      pageActivityMap.set(p, activity.orderNumber);
-    }
   }
 
-  // Aplica paginação global e rodapé contínuo em todas as páginas
-  applyDocumentFooter(doc, pageActivityMap);
-
-  // Nome do arquivo consolidado oficial: atividades-pintura-rss3-DD-MM-AAAA.pdf
+  // Nome do arquivo consolidado oficial
   const now = new Date();
   const day = String(now.getDate()).padStart(2, "0");
   const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -1030,4 +897,3 @@ export async function generateActivitiesPdf(
   doc.save(fileName);
   return true;
 }
-
