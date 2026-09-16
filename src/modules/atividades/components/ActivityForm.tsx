@@ -23,7 +23,8 @@ import { ImageLightboxModal } from "@/modules/chat/components/ImageLightboxModal
 interface ActivityFormProps {
   initialActivity?: Activity | null; // Quando fornecido, atua em modo de EDIÇÃO da atividade
   readOnly?: boolean; // Quando true, formulário atua em modo SOMENTE LEITURA ("Ver detalhes")
-  onSave: (activity: Activity) => Promise<void> | void;
+  onSave: (activity: Activity) => Promise<Activity | void> | void;
+  onSuccess?: (savedActivity: Activity) => void;
   onCancel: () => void;
 }
 
@@ -69,7 +70,13 @@ const PRESET_TEAMS = [
   "Equipe de Manutenção Rápida",
 ];
 
-export function ActivityForm({ initialActivity, readOnly = false, onSave, onCancel }: ActivityFormProps) {
+export function ActivityForm({
+  initialActivity,
+  readOnly = false,
+  onSave,
+  onSuccess,
+  onCancel,
+}: ActivityFormProps) {
   const isEditing = Boolean(initialActivity);
 
   // Identificação
@@ -288,6 +295,7 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
   // Mensagens de Erro e Estado de Submissão
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitProgressMessage, setSubmitProgressMessage] = useState<string | null>(null);
   const isSubmittingRef = useRef(false);
 
   const handleAddAdditionalTag = () => {
@@ -625,25 +633,46 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
       };
 
       try {
+        setSubmitProgressMessage("Salvando alterações da atividade...");
         // 1. Salvar os dados cadastrais da atividade
-        await onSave(updatedActivity);
+        const savedResult = await onSave(updatedActivity);
+        const effectiveActivity = (savedResult as Activity) || updatedActivity;
 
         // 2. Se houver fotos marcadas para exclusão, remover com segurança e auditoria
         if (photoIdsToDelete.length > 0) {
+          setSubmitProgressMessage(`Removendo ${photoIdsToDelete.length} foto(s) excluída(s)...`);
           try {
             await deleteActivityPhotos(initialActivity.id, photoIdsToDelete);
+            // Atualiza existingPhotos e limpa photoIdsToDelete para evitar re-execução em retry
+            setExistingPhotos((prev) => prev.filter((p) => !photoIdsToDelete.includes(p.id)));
+            setPhotoIdsToDelete([]);
           } catch (delErr) {
             console.warn("Aviso ao excluir fotos marcadas:", delErr);
+            throw new Error(
+              delErr instanceof Error
+                ? `Erro ao excluir fotos: ${delErr.message}`
+                : "Falha ao excluir fotos selecionadas."
+            );
           }
         }
 
         // 3. Se houver novas fotos anexadas, realizar upload atômico
         if (newPhotoFiles.length > 0) {
+          setSubmitProgressMessage(`Enviando ${newPhotoFiles.length} foto(s)...`);
           await uploadActivityPhotos(
             initialActivity.id,
             newPhotoFiles,
             `Fotos adicionadas na edição da OS ${updatedActivity.orderNumber}`
           );
+          // Limpa as fotos pendentes de upload já concluídas
+          setNewPhotoFiles([]);
+          setNewPhotoPreviews([]);
+        }
+
+        setSubmitProgressMessage("Finalizando...");
+        // 4. Somente após todos os uploads e exclusões concluídos com sucesso, fecha o formulário
+        if (onSuccess) {
+          onSuccess(effectiveActivity);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro ao salvar atividade no sistema.";
@@ -651,6 +680,7 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
       } finally {
         isSubmittingRef.current = false;
         setIsSubmitting(false);
+        setSubmitProgressMessage(null);
       }
     } else {
       // MODO CRIAÇÃO: Nova atividade
@@ -697,23 +727,35 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
       };
 
       try {
-        // 1. Criar a atividade no Supabase e aguardar resolução
-        await onSave(newActivity);
+        setSubmitProgressMessage("Cadastrando nova atividade...");
+        // 1. Criar a atividade no Supabase e obter a entidade persistida com ID real
+        const savedResult = await onSave(newActivity);
+        const createdActivity = savedResult as Activity | undefined;
 
-        // Se houver novas fotos anexadas, obter o ID da atividade cadastrada
-        if (newPhotoFiles.length > 0) {
-          // Busca a atividade recém-criada pelo número de OS
-          const { fetchActivities } = await import("../services/activity.service");
-          const allActs = await fetchActivities();
-          const createdAct = allActs.find((a) => a.orderNumber === newActivity.orderNumber);
+        const targetActivityId = createdActivity?.id && !createdActivity.id.startsWith("act-")
+          ? createdActivity.id
+          : null;
 
-          if (createdAct?.id) {
-            await uploadActivityPhotos(
-              createdAct.id,
-              newPhotoFiles,
-              `Fotos iniciais anexadas no cadastro da OS ${newActivity.orderNumber}`
-            );
-          }
+        if (!targetActivityId && newPhotoFiles.length > 0) {
+          throw new Error("Não foi possível obter o ID real da atividade criada para vincular as fotos.");
+        }
+
+        // 2. Se houver novas fotos anexadas, realizar upload atômico utilizando estritamente o ID real retornado
+        if (targetActivityId && newPhotoFiles.length > 0) {
+          setSubmitProgressMessage(`Enviando ${newPhotoFiles.length} foto(s)...`);
+          await uploadActivityPhotos(
+            targetActivityId,
+            newPhotoFiles,
+            `Fotos iniciais anexadas no cadastro da OS ${newActivity.orderNumber}`
+          );
+          setNewPhotoFiles([]);
+          setNewPhotoPreviews([]);
+        }
+
+        setSubmitProgressMessage("Finalizando...");
+        // 3. Somente após criação da atividade e upload das fotos concluídos com sucesso, fecha o formulário
+        if (onSuccess && createdActivity) {
+          onSuccess(createdActivity);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Erro ao cadastrar atividade no sistema.";
@@ -721,6 +763,7 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
       } finally {
         isSubmittingRef.current = false;
         setIsSubmitting(false);
+        setSubmitProgressMessage(null);
       }
     }
   };
@@ -1776,7 +1819,7 @@ export function ActivityForm({ initialActivity, readOnly = false, onSave, onCanc
                   <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 )}
                 {isSubmitting
-                  ? "Salvando..."
+                  ? (submitProgressMessage || "Salvando...")
                   : isEditing
                   ? "Salvar Alterações"
                   : "Cadastrar Atividade"}

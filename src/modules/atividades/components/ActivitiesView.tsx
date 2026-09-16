@@ -93,9 +93,9 @@ export function ActivitiesView() {
     }
   };
 
-  const handleSaveNew = async (activityData: Activity) => {
-    await addActivity(activityData);
-    setIsCreating(false);
+  const handleSaveNew = async (activityData: Activity): Promise<Activity> => {
+    const saved = await addActivity(activityData);
+    return saved;
   };
 
   const handleStartEdit = (activity: Activity) => {
@@ -108,8 +108,13 @@ export function ActivitiesView() {
     setViewingActivity(activity);
   };
 
-  const handleSaveEdit = async (updated: Activity) => {
-    await updateActivity(updated);
+  const handleSaveEdit = async (updated: Activity): Promise<Activity> => {
+    const saved = await updateActivity(updated);
+    return saved;
+  };
+
+  const handleFormSuccess = () => {
+    setIsCreating(false);
     setEditingActivity(null);
   };
 
@@ -231,6 +236,7 @@ export function ActivitiesView() {
         <div className="py-2">
           <ActivityForm
             onSave={handleSaveNew}
+            onSuccess={handleFormSuccess}
             onCancel={() => setIsCreating(false)}
           />
         </div>
@@ -239,6 +245,7 @@ export function ActivitiesView() {
           <ActivityForm
             initialActivity={editingActivity}
             onSave={handleSaveEdit}
+            onSuccess={handleFormSuccess}
             onCancel={() => setEditingActivity(null)}
           />
         </div>
