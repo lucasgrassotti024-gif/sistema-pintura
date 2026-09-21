@@ -1,6 +1,8 @@
 import React from "react";
 import { Activity } from "../types/activity.types";
 import { ActivityStatusBadge } from "./ActivityStatusBadge";
+import { ActivityPriorityBadge } from "./ActivityPriorityBadge";
+import { ActivitySyncBadge } from "./ActivitySyncBadge";
 import { isActivityDelayed } from "../rules/activity.rules";
 
 interface ActivityListProps {
@@ -92,7 +94,10 @@ export function ActivityList({
                     </h3>
                   </div>
                 </div>
-                <ActivityStatusBadge status={activity.status} />
+                <div className="flex flex-col items-end gap-1">
+                  <ActivityStatusBadge status={activity.status} />
+                  <ActivitySyncBadge status={activity.syncStatus} compact />
+                </div>
               </div>
 
               {/* Localização e Responsável */}
@@ -211,7 +216,10 @@ export function ActivityList({
                     </span>
                   </td>
                   <td className="py-3 px-4">
-                    <ActivityStatusBadge status={activity.status} />
+                    <div className="flex flex-col gap-1 items-start">
+                      <ActivityStatusBadge status={activity.status} />
+                      <ActivitySyncBadge status={activity.syncStatus} compact />
+                    </div>
                   </td>
                   <td className="py-3 px-4 text-right font-mono font-bold text-orange-400">
                     {activity.progressPercentage}%

@@ -77,6 +77,7 @@ export interface ActivityPhotoItem {
   createdAt: string;
   signedUrl?: string;
   observation?: string;
+  syncStatus?: "synced" | "pending" | "syncing" | "failed" | "conflict";
 }
 
 export type ActivityPriority = "baixa" | "media" | "alta" | "urgente";
@@ -104,6 +105,7 @@ export interface Activity {
   consumptions: ActivityConsumption[];
   history: ActivityHistoryEntry[];
   photos?: ActivityPhotoItem[]; // Fotos e evidências fotográficas associadas
+  syncStatus?: "synced" | "pending" | "syncing" | "failed" | "conflict"; // Status da sincronização local com o servidor
   archivedAt?: string;
   archivedBy?: string;
   archiveReason?: string;

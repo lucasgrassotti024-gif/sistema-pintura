@@ -4,9 +4,10 @@ import React, { useState, useEffect, useRef } from "react";
 import { Activity } from "../types/activity.types";
 import { validateProgress } from "../rules/activity.rules";
 import { Material } from "@/modules/materiais/types/material.types";
-import { getMaterials } from "@/modules/materiais/services/material.service";
+import { materialRepository } from "@/modules/materiais/repositories/material.repository";
 import { PermissionGate } from "@/components/auth/PermissionGate";
-import { updateActivityProgress } from "../services/activity.service";
+import { activityRepository } from "../repositories/activity.repository";
+import { isBrowserOnline } from "@/lib/offline";
 
 interface ActivityUpdateModalProps {
   activity: Activity;
@@ -110,7 +111,7 @@ export function ActivityUpdateModal({ activity, onSave, onClose }: ActivityUpdat
     let isMounted = true;
     async function loadCatalog() {
       try {
-        const mats = await getMaterials();
+        const mats = await materialRepository.getMaterials();
         if (isMounted) {
           const activeMats = mats.filter((m) => m.active);
           setCatalogMaterials(activeMats);
@@ -302,8 +303,8 @@ export function ActivityUpdateModal({ activity, onSave, onClose }: ActivityUpdat
     }
 
     try {
-      // Envia a chave estável da operação via RPC atômica
-      const updated = await updateActivityProgress(
+      // 1. Executa a RPC segura transacional com idempotência através do repositório
+      const updated = await activityRepository.updateActivityProgress(
         activity.id,
         progress,
         consumptionsPayload,
@@ -353,6 +354,16 @@ export function ActivityUpdateModal({ activity, onSave, onClose }: ActivityUpdat
             ×
           </button>
         </div>
+
+        {/* Aviso Contextual de Modo Offline */}
+        {!isBrowserOnline() && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300 font-mono flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span>
+              Você está em modo offline. O progresso e consumos serão salvos neste dispositivo e sincronizados quando a conexão retornar.
+            </span>
+          </div>
+        )}
 
         {error && (
           <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded text-xs text-rose-300 font-mono">

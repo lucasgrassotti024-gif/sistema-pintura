@@ -2,14 +2,9 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Activity } from "../types/activity.types";
-import { 
-  fetchActivities, 
-  getActivityById,
-  createActivity, 
-  updateActivity as updateActivityService, 
-  archiveActivity as archiveActivityService 
-} from "../services/activity.service";
+import { activityRepository } from "../repositories/activity.repository";
 import { createClient } from "@/lib/supabase/client";
+import { realtimeReconciler } from "@/lib/offline/realtime-reconciler.service";
 
 /**
  * Garante que a lista de atividades permaneça estritamente desduplicada por ID ou número de OS (orderNumber).
@@ -48,7 +43,7 @@ export function useActivities() {
     setIsLoading(true);
     setError(null);
     try {
-      const data = await fetchActivities();
+      const data = await activityRepository.getActivities();
       // Desduplica por ID e por orderNumber para integridade absoluta
       const uniqueData: Activity[] = [];
       for (const item of data) {
@@ -81,7 +76,7 @@ export function useActivities() {
   }, []);
 
   // ----------------------------------------------------------------------------
-  // Sincronização em Tempo Real (Supabase Realtime)
+  // Sincronização em Tempo Real (Supabase Realtime) via Reconciliador Central
   // ----------------------------------------------------------------------------
   useEffect(() => {
     const supabase = createClient();
@@ -100,27 +95,37 @@ export function useActivities() {
           try {
             if (payload.eventType === "INSERT") {
               const newId = (payload.new as { id: string }).id;
-              const fullActivity = await getActivityById(newId);
-              if (fullActivity && !fullActivity.archivedAt) {
-                setActivities((prev) => upsertActivityInList(prev, fullActivity));
+              const fullActivity = await activityRepository.getActivityById(newId);
+              if (fullActivity) {
+                // Passa pelo Reconciliador central antes de refletir localmente
+                const reconcileRes = await realtimeReconciler.reconcileActivityUpsert(fullActivity, "INSERT");
+                if (reconcileRes.applied && !fullActivity.archivedAt) {
+                  setActivities((prev) => upsertActivityInList(prev, fullActivity));
+                }
               }
             } else if (payload.eventType === "UPDATE") {
               const updatedId = (payload.new as { id: string }).id;
-              const fullActivity = await getActivityById(updatedId);
+              const fullActivity = await activityRepository.getActivityById(updatedId);
               if (fullActivity) {
-                if (fullActivity.archivedAt) {
-                  // Se foi arquivada, remove da listagem operacional ativa
-                  setActivities((prev) => prev.filter((a) => a.id !== updatedId));
-                  setSelectedActivity((curr) => (curr?.id === updatedId ? null : curr));
-                } else {
-                  setActivities((prev) => upsertActivityInList(prev, fullActivity));
-                  setSelectedActivity((curr) => (curr?.id === updatedId ? fullActivity : curr));
+                // Passa pelo Reconciliador central (protege Outbox e versão)
+                const reconcileRes = await realtimeReconciler.reconcileActivityUpsert(fullActivity, "UPDATE");
+                if (reconcileRes.applied) {
+                  if (fullActivity.archivedAt) {
+                    setActivities((prev) => prev.filter((a) => a.id !== updatedId));
+                    setSelectedActivity((curr) => (curr?.id === updatedId ? null : curr));
+                  } else {
+                    setActivities((prev) => upsertActivityInList(prev, fullActivity));
+                    setSelectedActivity((curr) => (curr?.id === updatedId ? fullActivity : curr));
+                  }
                 }
               }
             } else if (payload.eventType === "DELETE") {
               const deletedId = (payload.old as { id: string }).id;
-              setActivities((prev) => prev.filter((a) => a.id !== deletedId));
-              setSelectedActivity((curr) => (curr?.id === deletedId ? null : curr));
+              const reconcileRes = await realtimeReconciler.reconcileActivityDelete(deletedId);
+              if (reconcileRes.applied) {
+                setActivities((prev) => prev.filter((a) => a.id !== deletedId));
+                setSelectedActivity((curr) => (curr?.id === deletedId ? null : curr));
+              }
             }
           } catch (err) {
             console.warn("[useActivities] Erro ao sincronizar evento Realtime:", err);
@@ -207,7 +212,7 @@ export function useActivities() {
 
   const addActivity = async (newActivity: Activity) => {
     try {
-      const persisted = await createActivity(newActivity);
+      const persisted = await activityRepository.createActivity(newActivity);
       setActivities((prev) => upsertActivityInList(prev, persisted));
       setSelectedActivity(persisted);
       return persisted;
@@ -221,7 +226,7 @@ export function useActivities() {
 
   const updateActivity = async (updatedActivity: Activity) => {
     try {
-      const persisted = await updateActivityService(updatedActivity);
+      const persisted = await activityRepository.updateActivity(updatedActivity);
       setActivities((prev) => upsertActivityInList(prev, persisted));
       setSelectedActivity(persisted);
       return persisted;
@@ -233,7 +238,7 @@ export function useActivities() {
 
   const archiveActivity = async (activityId: string, reason?: string) => {
     try {
-      await archiveActivityService(activityId, reason);
+      await activityRepository.archiveActivity(activityId, reason);
       // Remove da listagem ativa imediatamente
       setActivities((prev) => prev.filter((act) => act.id !== activityId));
       if (selectedActivity?.id === activityId) {

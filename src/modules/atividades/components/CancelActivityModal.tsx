@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Activity } from "../types/activity.types";
-import { cancelActivity } from "../services/activity.service";
+import { activityRepository } from "../repositories/activity.repository";
 
 interface CancelActivityModalProps {
   activity: Activity;
@@ -26,7 +26,7 @@ export function CancelActivityModal({ activity, onConfirmCancel, onClose }: Canc
 
     setIsSubmitting(true);
     try {
-      const updated = await cancelActivity(activity.id, justification.trim());
+      const updated = await activityRepository.cancelActivity(activity.id, justification.trim());
       onConfirmCancel(updated);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Erro ao cancelar atividade no banco.";

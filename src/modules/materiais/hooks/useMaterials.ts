@@ -10,16 +10,12 @@ import {
   StockEntryInput,
 } from "../types/material.types";
 import {
-  getMaterials,
-  createMaterial as createMaterialService,
-  updateMaterial as updateMaterialService,
-  deleteMaterial as deleteMaterialService,
-  registerStockEntry as registerStockEntryService,
   mapRowToMaterial,
   SupabaseMaterialRow,
 } from "../services/material.service";
-import { getMaterialsPlanningMetrics } from "../services/material-planning.service";
+import { materialRepository } from "../repositories/material.repository";
 import { createClient } from "@/lib/supabase/client";
+import { realtimeReconciler } from "@/lib/offline/realtime-reconciler.service";
 
 export function useMaterials() {
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -38,10 +34,10 @@ export function useMaterials() {
     setIsLoading(true);
     setError(null);
     try {
-      const mats = await getMaterials();
+      const mats = await materialRepository.getMaterials();
       setMaterials(mats);
 
-      const metrics = await getMaterialsPlanningMetrics(mats, period);
+      const metrics = await materialRepository.getMaterialsPlanningMetrics(mats, period);
       setPlanningMetricsList(metrics);
       return metrics;
     } catch (err) {
@@ -71,22 +67,31 @@ export function useMaterials() {
           schema: "public",
           table: "materials",
         },
-        (payload) => {
+        async (payload) => {
           try {
             if (payload.eventType === "INSERT") {
               const newMaterial = mapRowToMaterial(payload.new as SupabaseMaterialRow);
-              setMaterials((prev) => {
-                if (prev.some((m) => m.id === newMaterial.id)) return prev;
-                return [newMaterial, ...prev];
-              });
+              const reconcileRes = await realtimeReconciler.reconcileMaterialUpsert(newMaterial, "INSERT");
+              if (reconcileRes.applied) {
+                setMaterials((prev) => {
+                  if (prev.some((m) => m.id === newMaterial.id)) return prev;
+                  return [newMaterial, ...prev];
+                });
+              }
             } else if (payload.eventType === "UPDATE") {
               const updatedMaterial = mapRowToMaterial(payload.new as SupabaseMaterialRow);
-              setMaterials((prev) =>
-                prev.map((m) => (m.id === updatedMaterial.id ? updatedMaterial : m))
-              );
+              const reconcileRes = await realtimeReconciler.reconcileMaterialUpsert(updatedMaterial, "UPDATE");
+              if (reconcileRes.applied) {
+                setMaterials((prev) =>
+                  prev.map((m) => (m.id === updatedMaterial.id ? updatedMaterial : m))
+                );
+              }
             } else if (payload.eventType === "DELETE") {
               const deletedId = (payload.old as { id: string }).id;
-              setMaterials((prev) => prev.filter((m) => m.id !== deletedId));
+              const reconcileRes = await realtimeReconciler.reconcileMaterialDelete(deletedId);
+              if (reconcileRes.applied) {
+                setMaterials((prev) => prev.filter((m) => m.id !== deletedId));
+              }
             }
             // Recarregar métricas para garantir sincronia física
             loadMaterials();
@@ -112,7 +117,7 @@ export function useMaterials() {
   }, [loadMaterials]);
 
   const addNewMaterial = async (input: NewMaterialInput): Promise<Material> => {
-    const created = await createMaterialService(input);
+    const created = await materialRepository.createMaterial(input);
     await loadMaterials();
     setSelectedMaterialId(created.id);
     return created;
@@ -122,13 +127,13 @@ export function useMaterials() {
     id: string,
     input: NewMaterialInput & { active?: boolean }
   ): Promise<{ updated: Material; refreshedMetrics: MaterialPlanningMetrics[] }> => {
-    const updated = await updateMaterialService(id, input);
+    const updated = await materialRepository.updateMaterial(id, input);
     const refreshedMetrics = await loadMaterials();
     return { updated, refreshedMetrics };
   };
 
   const removeMaterial = async (id: string): Promise<void> => {
-    await deleteMaterialService(id);
+    await materialRepository.deleteMaterial(id);
     await loadMaterials();
     if (selectedMaterialId === id) {
       setSelectedMaterialId(null);
@@ -136,7 +141,7 @@ export function useMaterials() {
   };
 
   const addStockEntry = async (input: StockEntryInput) => {
-    const result = await registerStockEntryService(input);
+    const result = await materialRepository.registerStockEntry(input);
     await loadMaterials();
     return result;
   };

@@ -9,14 +9,11 @@ import {
   ActivityPhotoItem,
 } from "../types/activity.types";
 import { Material } from "@/modules/materiais/types/material.types";
-import { getMaterials } from "@/modules/materiais/services/material.service";
+import { materialRepository } from "@/modules/materiais/repositories/material.repository";
 import {
-  getAssignableUsers,
-  AssignableUser,
-  uploadActivityPhotos,
-  deleteActivityPhotos,
-  getActivityPhotos,
-} from "../services/activity.service";
+  activityRepository,
+} from "../repositories/activity.repository";
+import { AssignableUser } from "../services/activity.service";
 import { calculateMaterialRequirement } from "@/modules/materiais/rules/consumption-calculator.rules";
 import { ImageLightboxModal } from "@/modules/chat/components/ImageLightboxModal";
 
@@ -176,7 +173,7 @@ export function ActivityForm({
     async function loadCatalog() {
       setLoadingCatalog(true);
       try {
-        const data = await getMaterials();
+        const data = await materialRepository.getMaterials();
         if (isMounted) {
           setCatalogMaterials(data.filter((m) => m.active));
         }
@@ -198,7 +195,7 @@ export function ActivityForm({
     async function loadUsers() {
       setLoadingUsers(true);
       try {
-        const users = await getAssignableUsers();
+        const users = await activityRepository.getAssignableUsers();
         if (isMounted) {
           setAssignableUsers(users);
         }
@@ -277,7 +274,7 @@ export function ActivityForm({
         setExistingPhotos(initialActivity.photos);
       } else {
         setLoadingPhotos(true);
-        getActivityPhotos(initialActivity.id, true)
+        activityRepository.getActivityPhotos(initialActivity.id, true)
           .then((pts) => {
             if (isMounted) setExistingPhotos(pts);
           })
@@ -642,7 +639,7 @@ export function ActivityForm({
         if (photoIdsToDelete.length > 0) {
           setSubmitProgressMessage(`Removendo ${photoIdsToDelete.length} foto(s) excluída(s)...`);
           try {
-            await deleteActivityPhotos(initialActivity.id, photoIdsToDelete);
+            await activityRepository.deleteActivityPhotos(initialActivity.id, photoIdsToDelete);
             // Atualiza existingPhotos e limpa photoIdsToDelete para evitar re-execução em retry
             setExistingPhotos((prev) => prev.filter((p) => !photoIdsToDelete.includes(p.id)));
             setPhotoIdsToDelete([]);
@@ -659,7 +656,7 @@ export function ActivityForm({
         // 3. Se houver novas fotos anexadas, realizar upload atômico
         if (newPhotoFiles.length > 0) {
           setSubmitProgressMessage(`Enviando ${newPhotoFiles.length} foto(s)...`);
-          await uploadActivityPhotos(
+          await activityRepository.uploadActivityPhotos(
             initialActivity.id,
             newPhotoFiles,
             `Fotos adicionadas na edição da OS ${updatedActivity.orderNumber}`
@@ -727,8 +724,8 @@ export function ActivityForm({
       };
 
       try {
-        setSubmitProgressMessage("Cadastrando nova atividade...");
-        // 1. Criar a atividade no Supabase e obter a entidade persistida com ID real
+        setSubmitProgressMessage("Salvando atividade...");
+        // 1. Criar a atividade (online via Supabase ou offline via Dexie) e obter a entidade persistida
         const savedResult = await onSave(newActivity);
         const createdActivity = savedResult as Activity | undefined;
 
@@ -743,7 +740,7 @@ export function ActivityForm({
         // 2. Se houver novas fotos anexadas, realizar upload atômico utilizando estritamente o ID real retornado
         if (targetActivityId && newPhotoFiles.length > 0) {
           setSubmitProgressMessage(`Enviando ${newPhotoFiles.length} foto(s)...`);
-          await uploadActivityPhotos(
+          await activityRepository.uploadActivityPhotos(
             targetActivityId,
             newPhotoFiles,
             `Fotos iniciais anexadas no cadastro da OS ${newActivity.orderNumber}`

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
+import { SyncStatusBadge } from "./SyncStatusBadge";
+
 export function AppHeader() {
   const pathname = usePathname();
   const { profile } = useAuth();
@@ -49,11 +51,8 @@ export function AppHeader() {
 
       {/* 2. STATUS DO SISTEMA E INFORMAÇÃO DO USUÁRIO */}
       <div className="flex items-center gap-3">
-        {/* Indicador de Status Operacional Online */}
-        <div className="hidden sm:flex items-center gap-1.5 bg-[var(--bg-base)] border border-[var(--border-subtle)] px-2.5 py-1 rounded-full text-[11px] font-mono text-[var(--text-secondary)]">
-          <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
-          <span className="font-semibold text-[var(--text-primary)]">Planta Operacional</span>
-        </div>
+        {/* Indicador de Conectividade / Sincronização Offline-First */}
+        <SyncStatusBadge />
 
         {/* Perfil Compacto do Usuário */}
         {profile && (

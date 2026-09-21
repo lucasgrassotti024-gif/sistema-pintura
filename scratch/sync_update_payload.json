@@ -1,0 +1,23 @@
+{
+  "p_activity_id": "00000000-0000-0000-0000-000000000000",
+  "p_expected_version": 1,
+  "p_name": "Teste",
+  "p_service_type": "Pintura Geral",
+  "p_description": "Descricao",
+  "p_origin_reference": null,
+  "p_area_id": "00000000-0000-0000-0000-000000000000",
+  "p_location_id": "00000000-0000-0000-0000-000000000000",
+  "p_equipment_id": null,
+  "p_custom_location_text": null,
+  "p_priority": "media",
+  "p_assigned_user_id": null,
+  "p_team_id": null,
+  "p_service_quantity": null,
+  "p_service_unit": "m²",
+  "p_planned_start_date": "2026-09-17",
+  "p_planned_end_date": "2026-09-17",
+  "p_observations": null,
+  "p_tags": [],
+  "p_planned_materials": [],
+  "p_idempotency_key": "00000000-0000-0000-0000-000000000000"
+}

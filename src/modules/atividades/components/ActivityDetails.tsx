@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Activity, ActivityPhotoItem } from "../types/activity.types";
 import { ActivityStatusBadge } from "./ActivityStatusBadge";
 import { ActivityPriorityBadge } from "./ActivityPriorityBadge";
+import { ActivitySyncBadge } from "./ActivitySyncBadge";
 import { ActivityProgress } from "./ActivityProgress";
 import { ActivityUpdateModal } from "./ActivityUpdateModal";
 import { CancelActivityModal } from "./CancelActivityModal";
@@ -9,7 +10,7 @@ import { ArchiveActivityModal } from "./ArchiveActivityModal";
 import { PermanentDeleteActivityModal } from "./PermanentDeleteActivityModal";
 import { GeneratePdfModal } from "./GeneratePdfModal";
 import { ImageLightboxModal } from "@/modules/chat/components/ImageLightboxModal";
-import { getActivityPhotos } from "../services/activity.service";
+import { activityRepository } from "../repositories/activity.repository";
 import { PermissionGate } from "@/components/auth/PermissionGate";
 import { useAuth } from "@/context/AuthContext";
 import { isActivityDelayed, canEditActivity } from "../rules/activity.rules";
@@ -51,7 +52,8 @@ export function ActivityDetails({
       setPhotos(activity.photos);
     } else if (activity.id) {
       setLoadingPhotos(true);
-      getActivityPhotos(activity.id, true)
+      activityRepository
+        .getActivityPhotos(activity.id, true)
         .then((pts) => {
           if (isMounted) setPhotos(pts);
         })
@@ -218,6 +220,7 @@ export function ActivityDetails({
           <ActivityStatusBadge status={activity.status} />
         )}
         <ActivityPriorityBadge priority={activity.priority} />
+        <ActivitySyncBadge status={activity.syncStatus} />
         {delayed && !isArchived && !isCompleted && !isCancelled && (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-[11px] font-mono uppercase tracking-wider bg-rose-500/10 text-rose-400 border border-rose-500/30 font-medium select-none cursor-default">
             <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
@@ -336,6 +339,31 @@ export function ActivityDetails({
                   alt={p.originalFilename}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
+
+                {/* Selo de Sincronização da Foto (quando não sincronizada) */}
+                {p.syncStatus && p.syncStatus !== "synced" && (
+                  <div className="absolute top-1 left-1 z-10">
+                    {p.syncStatus === "pending" && (
+                      <span className="inline-flex items-center gap-1 text-[8px] font-mono px-1 py-0.5 rounded bg-black/80 text-amber-300 border border-amber-500/40 backdrop-blur-xs">
+                        <span className="w-1 h-1 rounded-full bg-amber-400" />
+                        Pendente
+                      </span>
+                    )}
+                    {p.syncStatus === "syncing" && (
+                      <span className="inline-flex items-center gap-1 text-[8px] font-mono px-1 py-0.5 rounded bg-black/80 text-sky-300 border border-sky-500/40 backdrop-blur-xs">
+                        <span className="w-1 h-1 rounded-full bg-sky-400 animate-spin" />
+                        Enviando...
+                      </span>
+                    )}
+                    {p.syncStatus === "failed" && (
+                      <span className="inline-flex items-center gap-1 text-[8px] font-mono px-1 py-0.5 rounded bg-black/80 text-rose-400 border border-rose-500/40 backdrop-blur-xs">
+                        <span className="w-1 h-1 rounded-full bg-rose-400" />
+                        Erro upload
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                   <span className="text-[10px] text-white font-mono bg-black/70 px-1.5 py-0.5 rounded">
                     Ampliar ↗
