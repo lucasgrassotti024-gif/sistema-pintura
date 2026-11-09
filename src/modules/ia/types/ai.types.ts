@@ -10,7 +10,8 @@ export type AiDomain =
   | "consumo"
   | "historico"
   | "alertas"
-  | "gestao";
+  | "gestao"
+  | "tecnico";
 
 export interface AiEntityMemoryActivity {
   id: string;

@@ -9,9 +9,10 @@ import { consumptionDeclarations, executeConsumptionTool } from "./consumption.t
 import { historyDeclarations, executeHistoryTool } from "./history.tool";
 import { alertsDeclarations, executeAlertsTool } from "./alerts.tool";
 import { managementDeclarations, executeManagementTool } from "./management.tool";
+import { technicalDeclarations, executeTechnicalTool } from "./technical.tool";
 
 /**
- * Catálogo completo de declarações de ferramentas da IA dos 7 Domínios Operacionais.
+ * Catálogo completo de declarações de ferramentas da IA dos Domínios Operacionais e Técnicos.
  */
 export const ALL_AI_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   ...activitiesDeclarations,
@@ -21,6 +22,7 @@ export const ALL_AI_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   ...historyDeclarations,
   ...alertsDeclarations,
   ...managementDeclarations,
+  ...technicalDeclarations,
 ];
 
 /**
@@ -36,6 +38,8 @@ const TOOL_DOMAIN_MAP: Record<string, AiDomain> = {
   consultarNotificacoesRecentes: "alertas",
   obterResumoGeralPlanta: "gestao",
   verificarViabilidadeMateriais: "gestao",
+  calcularRendimentoTinta: "tecnico",
+  consultarNormaTecnicaPintura: "tecnico",
 };
 
 /**
@@ -97,6 +101,9 @@ export async function dispatchAiTool(
         break;
       case "gestao":
         output = await executeManagementTool(toolName, args, supabase);
+        break;
+      case "tecnico":
+        output = await executeTechnicalTool(toolName, args);
         break;
       default:
         output = { erro: `Domínio ou ferramenta não implementada: ${toolName}` };

@@ -188,10 +188,14 @@ export function useIaChat() {
   const sendMessage = useCallback(
     async (
       text: string,
-      attachment?: { activity?: AttachedActivityData | null; material?: AttachedMaterialData | null }
+      attachment?: {
+        activity?: AttachedActivityData | null;
+        material?: AttachedMaterialData | null;
+        image?: { dataUrl: string; name?: string; mimeType: string } | null;
+      }
     ) => {
       const trimmed = text.trim();
-      const hasAttachment = Boolean(attachment?.activity || attachment?.material);
+      const hasAttachment = Boolean(attachment?.activity || attachment?.material || attachment?.image);
 
       if ((!trimmed && !hasAttachment) || isLoading || !user) return;
 
@@ -207,6 +211,7 @@ export function useIaChat() {
         timestamp: timeNow,
         activity: attachment?.activity || null,
         material: attachment?.material || null,
+        image: attachment?.image || null,
       };
 
       const initialIaMsg: IaChatMessage = {
@@ -352,6 +357,7 @@ export function useIaChat() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: payloadMessages,
+            image: attachment?.image || null,
             clientContext: {
               currentModule: "pintura/ia",
               recentMemory,

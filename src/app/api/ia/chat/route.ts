@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
 
     // 2. Extrair payload da requisição
     const body = await req.json();
-    const { messages, clientContext } = body as {
+    const { messages, clientContext, image } = body as {
       messages?: Array<{ sender: "user" | "ia"; text: string }>;
       clientContext?: {
         currentModule?: string;
@@ -29,6 +29,11 @@ export async function POST(req: NextRequest) {
         permissions?: string[];
         recentMemory?: any;
       };
+      image?: {
+        dataUrl: string;
+        name?: string;
+        mimeType: string;
+      } | null;
     };
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -42,7 +47,7 @@ export async function POST(req: NextRequest) {
     const context = await buildAiSessionContext(supabase, user, clientContext);
 
     // 4. Delegar ao AI Orchestrator
-    return await orchestrateAiConversation(messages, context, supabase);
+    return await orchestrateAiConversation(messages, context, supabase, image);
   } catch (error) {
     console.error("[POST /api/ia/chat] Erro não tratado:", error);
     return NextResponse.json(

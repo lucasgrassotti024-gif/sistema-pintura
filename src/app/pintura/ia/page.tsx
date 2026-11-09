@@ -30,6 +30,7 @@ export default function IAPage() {
   const [inputQuery, setInputQuery] = useState("");
   const [attachedActivity, setAttachedActivity] = useState<AttachedActivityData | null>(null);
   const [attachedMaterial, setAttachedMaterial] = useState<AttachedMaterialData | null>(null);
+  const [attachedImage, setAttachedImage] = useState<{ dataUrl: string; name: string; mimeType: string } | null>(null);
 
   // Modais de busca e emojis (reutilizados do Chat de Operação)
   const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
@@ -41,6 +42,7 @@ export default function IAPage() {
   const [isLoadingActivityDetails, setIsLoadingActivityDetails] = useState(false);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const chatBottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -97,6 +99,37 @@ export default function IAPage() {
     setAttachedActivity(null);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("Por favor, selecione um arquivo de imagem válido (JPEG, PNG ou WEBP).");
+      return;
+    }
+
+    // Limite defensivo de 6MB
+    if (file.size > 6 * 1024 * 1024) {
+      alert("A imagem selecionada é muito grande. O limite máximo é 6MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        setAttachedImage({
+          dataUrl: result,
+          name: file.name,
+          mimeType: file.type,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+    // Limpa o input file para permitir selecionar o mesmo arquivo novamente se desejar
+    e.target.value = "";
+  };
+
   const handleOpenActivityDetails = async (activityId: string) => {
     setIsLoadingActivityDetails(true);
     try {
@@ -111,18 +144,20 @@ export default function IAPage() {
 
   const handleSend = (textToSend?: string) => {
     const query = textToSend !== undefined ? textToSend : inputQuery;
-    const hasAttachment = Boolean(attachedActivity || attachedMaterial);
+    const hasAttachment = Boolean(attachedActivity || attachedMaterial || attachedImage);
 
     if ((!query.trim() && !hasAttachment) || isLoading) return;
 
     sendMessage(query, {
       activity: attachedActivity,
       material: attachedMaterial,
+      image: attachedImage,
     });
 
     setInputQuery("");
     setAttachedActivity(null);
     setAttachedMaterial(null);
+    setAttachedImage(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -223,6 +258,22 @@ export default function IAPage() {
                     );
                   })()}
 
+                  {/* Imagem de Inspeção Anexada (se houver) */}
+                  {msg.image?.dataUrl && (
+                    <div className="mt-1 max-w-sm rounded-lg overflow-hidden border border-[var(--border-medium)] shadow-md bg-black/40">
+                      <img
+                        src={msg.image.dataUrl}
+                        alt={msg.image.name || "Foto de inspeção"}
+                        className="max-h-60 w-auto object-contain rounded-md"
+                      />
+                      {msg.image.name && (
+                        <div className="p-1.5 text-[10px] font-mono text-[var(--text-muted)] truncate bg-[var(--bg-surface)]">
+                          📷 {msg.image.name}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Bolha Textual da Mensagem */}
                   {msg.text && (
                     <div
@@ -241,7 +292,7 @@ export default function IAPage() {
                     </div>
                   )}
 
-                  {!msg.text && !msg.activity && !msg.material && !msg.activities && !msg.materials && (
+                  {!msg.text && !msg.activity && !msg.material && !msg.activities && !msg.materials && !msg.image && (
                     <div className="flex items-center gap-2 text-[var(--text-muted)] font-mono py-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
                       Consultando dados operacionais da planta...
@@ -309,7 +360,43 @@ export default function IAPage() {
             </div>
           )}
 
-          {/* Barra de Ações Rápidas: Emojis + Anexar OS + Anexar Material + Limpar Conversa */}
+          {/* Tag de Imagem/Foto Anexada pelo Usuário antes de enviar */}
+          {attachedImage && (
+            <div className="flex items-center gap-2.5 p-2 bg-[var(--bg-surface)] border border-blue-500/40 rounded-lg max-w-md animate-in fade-in">
+              <img
+                src={attachedImage.dataUrl}
+                alt="Preview"
+                className="w-10 h-10 object-cover rounded border border-[var(--border-subtle)] shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                  {attachedImage.name}
+                </div>
+                <div className="text-[10px] text-blue-400 font-mono">
+                  Pronta para análise visual
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAttachedImage(null)}
+                title="Remover foto"
+                className="p-1 text-[var(--text-muted)] hover:text-rose-500 rounded transition-colors text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Input oculto para carregar arquivo de foto */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/jpg"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+
+          {/* Barra de Ações Rápidas: Emojis + Foto + Anexar OS + Anexar Material + Limpar Conversa */}
           <div className="flex items-center gap-2 relative flex-wrap">
             {/* Popover de Emojis Reutilizado */}
             <div className="relative">
@@ -332,6 +419,21 @@ export default function IAPage() {
                 onSelectEmoji={handleSelectEmoji}
               />
             </div>
+
+            {/* Anexar Foto de Inspeção */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors cursor-pointer ${
+                attachedImage
+                  ? "bg-blue-600/20 border-blue-500 text-blue-400"
+                  : "bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-highlight)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border-[var(--border-medium)] hover:border-blue-500/40"
+              }`}
+              title="Anexar foto de campo para inspeção de pintura"
+            >
+              <span>📷</span>
+              <span>Foto Inspeção</span>
+            </button>
 
             <span className="text-[var(--border-medium)]">|</span>
 
@@ -375,6 +477,126 @@ export default function IAPage() {
               </button>
             </div>
           </div>
+
+          {/* Chips de Prompts Rápidos e Contextuais */}
+          {!isLoading && (
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] scrollbar-thin">
+              <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0 font-bold uppercase tracking-wider flex items-center gap-1">
+                <span className="text-emerald-500">⚡</span> Sugestões:
+              </span>
+              {attachedImage ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Avalie visualmente esta foto: identifique possíveis patologias ou defeitos na película de pintura (ex: bolhas, escorrimento, casca de laranja).")}
+                    className="shrink-0 px-2.5 py-1 bg-blue-950/40 border border-blue-500/40 text-blue-300 hover:text-blue-200 rounded-full transition-colors cursor-pointer"
+                  >
+                    🔍 Diagnosticar patologias / defeitos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Estime o grau de corrosão e preparação de superfície desta imagem conforme padrões visuais (ISO 8501-1 / SSPC).")}
+                    className="shrink-0 px-2.5 py-1 bg-blue-950/40 border border-blue-500/40 text-blue-300 hover:text-blue-200 rounded-full transition-colors cursor-pointer"
+                  >
+                    🧪 Grau de corrosão (ISO 8501-1)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Avalie a uniformidade da aplicação e cobertura da demão nesta estrutura.")}
+                    className="shrink-0 px-2.5 py-1 bg-blue-950/40 border border-blue-500/40 text-blue-300 hover:text-blue-200 rounded-full transition-colors cursor-pointer"
+                  >
+                    🎨 Uniformidade da demão
+                  </button>
+                </>
+              ) : attachedActivity ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Qual o status atual, avanço e previsão desta OS?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    📊 Status e previsão
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Quanto de material/tinta foi consumido nesta atividade?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    🧪 Consumo apontado
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Quais são as especificações de área, demãos e responsáveis desta OS?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    📋 Detalhes técnicos
+                  </button>
+                </>
+              ) : attachedMaterial ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Qual o saldo em estoque e situação deste material?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    📦 Saldo em estoque
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Existe risco de ruptura ou necessidade de compra deste insumo?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    ⚠️ Risco de falta
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Quais atividades estão com prazo crítico ou atrasadas?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    ⏰ OSs com prazo crítico
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Existe algum material com estoque abaixo do mínimo hoje?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    🚨 Estoque abaixo do mínimo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Resuma o panorama geral de produção de pintura da planta.")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    🏭 Panorama da planta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Calcule o rendimento prático de tinta e volume necessário para uma EPS de 120 micras com airless em 200 m².")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    📐 Cálculo de rendimento (EPS)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Quais são as condições ambientais e critérios de aceitação de EPS na norma Petrobras N-1201?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    📜 Regras Petrobras N-1201
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSend("Quais atividades estão em andamento agora?")}
+                    className="shrink-0 px-2.5 py-1 bg-[var(--bg-surface)] hover:bg-emerald-950/40 border border-[var(--border-medium)] hover:border-emerald-500/40 text-[var(--text-secondary)] hover:text-emerald-400 rounded-full transition-colors cursor-pointer"
+                  >
+                    ⚙️ Frentes em andamento
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Campo de Texto e Botão de Envio */}
           <div className="flex items-end gap-2.5">

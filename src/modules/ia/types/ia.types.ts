@@ -44,6 +44,11 @@ export interface IaChatMessage {
   material?: AttachedMaterialData | null;
   activities?: AttachedActivityData[];
   materials?: AttachedMaterialData[];
+  image?: {
+    dataUrl: string;
+    name?: string;
+    mimeType: string;
+  } | null;
 }
 
 export interface ActivitySnapshotItem {

@@ -183,17 +183,24 @@ async function callGeminiWithRetry(
 export async function orchestrateAiConversation(
   messages: Array<{ sender: "user" | "ia"; text: string }>,
   context: AiSessionContext,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  image?: {
+    dataUrl: string;
+    name?: string;
+    mimeType: string;
+  } | null
 ): Promise<Response> {
   const latestMessage = messages[messages.length - 1]?.text?.trim() || "";
-  if (!latestMessage) {
+  if (!latestMessage && !image) {
     return createDirectSseResponse("Mensagem vazia recebida.");
   }
 
-  // 1. Fast-path para saudações isoladas (0ms LLM / 0 chamadas de API)
-  const fastGreeting = getFastPathGreeting(latestMessage);
-  if (fastGreeting) {
-    return createDirectSseResponse(fastGreeting);
+  // 1. Fast-path para saudações isoladas (somente se não tiver imagem anexada)
+  if (!image) {
+    const fastGreeting = getFastPathGreeting(latestMessage);
+    if (fastGreeting) {
+      return createDirectSseResponse(fastGreeting);
+    }
   }
 
   // 2. Chave de API
@@ -259,10 +266,32 @@ ${OPERATIONAL_AI_SYSTEM_PROMPT}
 ${memoryContextText}`;
 
   // 4. Histórico de conversação multi-turn (últimas 10 mensagens)
-  const conversationHistory: Content[] = messages.slice(-10).map((m) => ({
-    role: m.sender === "user" ? "user" : "model",
-    parts: [{ text: m.text }],
-  }));
+  const conversationHistory: Content[] = messages.slice(-10).map((m, idx, arr) => {
+    const isLatest = idx === arr.length - 1;
+    const parts: Part[] = [{ text: m.text || (isLatest && image ? "Analise a imagem de pintura anexada." : "") }];
+
+    // Se a mensagem for a última enviada pelo usuário e tiver imagem anexada, injetamos como inlineData
+    if (isLatest && m.sender === "user" && image?.dataUrl) {
+      try {
+        const commaIdx = image.dataUrl.indexOf(",");
+        const base64Data = commaIdx !== -1 ? image.dataUrl.substring(commaIdx + 1) : image.dataUrl;
+        const mimeType = image.mimeType || "image/jpeg";
+        parts.unshift({
+          inlineData: {
+            data: base64Data,
+            mimeType,
+          },
+        });
+      } catch (imgErr) {
+        console.error("[AI Orchestrator] Erro ao decodificar imagem para inlineData:", imgErr);
+      }
+    }
+
+    return {
+      role: m.sender === "user" ? "user" : "model",
+      parts,
+    };
+  });
 
   const startTimeTotal = Date.now();
   let lastError: unknown = null;
@@ -449,8 +478,7 @@ ${memoryContextText}`;
 
       console.info(`[AI Orchestrator Telemetry] ${JSON.stringify(telemetry)}`);
 
-      // 7. O Gemini JÁ gerou o texto final no loop.
-      // Se houver referências coletadas reais, empacotamos no final do texto para o cliente decodificar
+      // 7. Resposta Final: Se o Gemini gerou texto no loop ou se chamamos generateContentStream
       if (finalText) {
         let payloadWithEntities = finalText;
         if (collectedActivities.length > 0 || collectedMaterials.length > 0) {
@@ -462,6 +490,57 @@ ${memoryContextText}`;
         }
 
         return createLocalStreamingResponse(payloadWithEntities);
+      }
+
+      // Se todas as tools foram executadas e ainda não geramos a síntese textual final,
+      // acionamos o generateContentStream nativo do Gemini para streaming direto ao cliente (TTFT sub-400ms)
+      try {
+        const streamResult = await ai.models.generateContentStream({
+          model: currentModel,
+          contents,
+          config: {
+            systemInstruction,
+            temperature: 0.1,
+          },
+        });
+
+        const textEncoder = new TextEncoder();
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const chunk of streamResult) {
+                const chunkText = chunk.text;
+                if (chunkText) {
+                  controller.enqueue(textEncoder.encode(chunkText));
+                }
+              }
+
+              // Anexa referências de cards coletadas durante o ciclo de tools
+              if (collectedActivities.length > 0 || collectedMaterials.length > 0) {
+                const refsJson = JSON.stringify({
+                  activities: collectedActivities,
+                  materials: collectedMaterials,
+                });
+                controller.enqueue(textEncoder.encode(`\n<!--REFERENCES:${refsJson}-->`));
+              }
+
+              controller.close();
+            } catch (streamErr) {
+              console.error("[AI Orchestrator] Erro durante o stream nativo do Gemini:", streamErr);
+              controller.close();
+            }
+          },
+        });
+
+        return new Response(readable, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Cache-Control": "no-cache, no-transform",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      } catch (streamInitErr) {
+        console.warn(`[AI Orchestrator] Falha ao iniciar generateContentStream em ${currentModel}:`, streamInitErr);
       }
 
       // Se porventura o texto vier vazio (caso atípico), retorna aviso técnico
