@@ -4,8 +4,13 @@ import { AuthProvider } from "@/context/AuthContext";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Sistema de Pintura",
-  description: "Fundação do Sistema de Pintura",
+  title: "Sistema de Pintura — RSS3",
+  description: "Gestão Integrada de Pintura Industrial e Predial",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({
